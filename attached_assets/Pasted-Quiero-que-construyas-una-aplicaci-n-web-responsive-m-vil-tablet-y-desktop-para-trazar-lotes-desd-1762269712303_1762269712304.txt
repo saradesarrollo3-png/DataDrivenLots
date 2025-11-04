@@ -1,0 +1,359 @@
+Quiero que construyas una aplicación web responsive (móvil, tablet y desktop) para trazar lotes desde la recepción hasta la expedición, con persistencia completa (CRUD), auditoría, etiquetado en PDF con QR, exportaciones a Excel/PDF, y lógica FEFO para expediciones.
+
+1) Pautas generales
+
+Stack sugerido (puedes ajustar si mejoras DX):
+
+Frontend: React + TypeScript + TailwindCSS (Vite). Router (wouter o react-router-dom). Form libs (react-hook-form + zod).
+
+Backend: Node.js + TypeScript + Express. Validación con zod. Prisma como ORM.
+
+BD: PostgreSQL.
+
+Auth: JWT (cookies httpOnly) + roles (admin, calidad, producción, expedición, visor).
+
+Archivos/exports: xlsx para Excel; pdfkit o pdf-lib para PDFs; qrcode para QR.
+
+Logs/auditoría: tabla de auditoría + middleware que registre usuario, acción, entidad, antes/después.
+
+Arquitectura:
+
+API REST organizada por recursos y transacciones.
+
+Service layer con reglas de negocio (FEFO, cambios de estado, conversión kg→tarros).
+
+Stock ledger (asientos de inventario) para trazabilidad de movimientos.
+
+Migrations con Prisma. Seed con datos de ejemplo.
+
+Testing básico (por lo menos servicios críticos: FEFO, transiciones de estado, generación de albarán).
+
+UI/UX:
+
+Diseño responsive con Tailwind (grid y cards).
+
+Layout con sidebar y topbar (buscador y acciones rápidas).
+
+Dark mode opcional.
+
+Toasts de éxito/error; estados vacíos; skeletons de carga.
+
+Filtro/búsqueda en tablas, paginación, exportar resultados.
+
+2) Páginas obligatorias y flujos
+2.1 Configuración (Datos básicos de la empresa)
+
+CRUD completos y listados con filtros:
+
+Proveedores: nombreEmpresa (req), código (único), personaContacto, teléfono, email.
+
+Productos: nombre (req), código (único), tipo (texto o enum: “pimiento asado”, etc.), formato (p.ej., “tarro 370g”), vidaÚtilDías (int, req), descripción.
+
+Ubicaciones: nombre (req), código (único), tipo (enum: recepción, producción, calidad, expedición).
+
+Tipos de envase: nombre (req), código (único), pesoKg (float, req).
+
+Clientes: nombre (req), código (único), contacto, teléfono, email, dirección.
+
+Validaciones: emails válidos, códigos únicos, teléfono con máscara, longitudes razonables.
+
+2.2 Recepción (entrada de materia prima)
+
+Alta de Entrada con: proveedor (select), nº albarán proveedor (texto), matrícula camión, temperatura llegada (ºC, float), producto (select), fecha/hora llegada (default ahora), cantidad (float), unidad (kg/ton), ubicación destino (de tipo recepción o producción).
+
+Al crear la entrada, generar Lote de Materia Prima con un código de lote único (e.g., MP-YYYYMMDD-####), estado “en recepción”, y movimiento de stock (+cantidad en la ubicación destino).
+
+Impresión/visualización de Etiqueta de Recepción (PDF + QR) con: nº lote, tipo de producto, código producto, cantidad, estado, fecha, ubicación, QR con payload JSON.
+
+Listado de entradas con filtros por proveedor, fechas, producto, estado; posibilidad de editar/invalidar (con auditoría) si aún no hay consumos.
+
+2.3 Producción (4 etapas)
+
+Cuatro etapas con formularios y transiciones. Cada etapa debe:
+
+Permitir consumir cantidad de uno o varios lotes de origen.
+
+Registrar mermas (opcional, con motivo).
+
+Generar lote(s) intermedios/de salida según etapa.
+
+Crear movimientos de stock coherentes (– origen / + destino).
+
+Persistir trazabilidad (relación origen→resultado).
+
+Validaciones de disponibilidad de stock.
+
+Etapas:
+
+Asado
+
+Seleccionar lote(s) de materia prima en stock (kg) y cantidad a consumir (kg).
+
+Salida: lote asado (kg) en ubicación de producción (subtipo “asado” si quieres granularidad), con estado “en proceso”.
+
+Pelado y corte
+
+Consumir del lote asado (kg).
+
+Salida: lote preparado (kg) con atributos de calidad intermedia (opcional).
+
+Envasado
+
+Aquí se convierte de kg a tarros.
+
+Formulario que pide: lote preparado origen (kg), tipo de envase (select), rendimiento o tarros producidos (int), peso por tarro lleno (derivado por formato), tara (del tipo de envase).
+
+Salida: lote envasado expresado en tarros (unidades), con metadatos: nº de tarros, peso neto por tarro, lote comercial (e.g., EN-YYYYMMDD-####), fecha fabricación.
+
+Esterilizado
+
+Consumir tarros del lote envasado.
+
+Registrar parámetros de proceso (temperatura, tiempo, autoclave, etc.).
+
+Salida: lote final (tarros) en ubicación calidad con estado = “retenido”.
+
+Asignar fecha caducidad = fecha fabricación + vidaÚtilDías (del producto).
+
+Cada etapa debe mostrar: disponibles, reservas (si aplicas), consumos, salidas, mermas y un historial de movimientos por lote.
+
+2.4 Calidad (retención y liberación)
+
+Vista de Productos retenidos (lotes finales en calidad, estado “retenido”).
+
+Formulario de revisión: check-list simple (apariencia, cierre, pH, etc.), observaciones, adjuntos (opcional).
+
+Acción Aprobar para venta → estado “aprobado” (ubicación puede pasar a expedición o mantenerse en calidad pero con estado “aprobado”).
+
+Rechazar con motivo → estado “bloqueado” (no expedible).
+
+Auditoría de quién y cuándo.
+
+2.5 Expedición (FEFO, albaranes de venta)
+
+Crear albarán: cliente (select), fecha/hora (default ahora), observaciones.
+
+Añadir líneas: buscar productos aprobados por código producto, formato, etc. El picker debe sugerir lotes en orden FEFO (fecha de caducidad más próxima primero; si igual, por fecha fabricación o FIFO).
+
+Validar que no se añaden lotes retenidos o bloqueados.
+
+Cerrar envío:
+
+Generar nº albarán interno (e.g., ALB-YYYYMMDD-####).
+
+Crear movimientos de stock negativos en las ubicaciones origen.
+
+Marcar el albarán como cerrado con totales.
+
+Exportar PDF del albarán.
+
+Devolver (opcional): flujo inverso con motivo (queda trazado).
+
+2.6 Trazabilidad (dashboard)
+
+Dashboard con KPIs: entradas por periodo, mermas por etapa, rendimiento kg→tarros, stock por estado, lote próximos a caducar, órdenes abiertas, etc.
+
+Línea temporal de movimientos por lote o por producto.
+
+Buscador de trazabilidad: introducir nº de lote (materia prima, intermedio, final o comercial) → ver árbol origen→destino y viceversa (genealogía de lote).
+
+2.7 Historial
+
+Historial completo de: recepciones, producciones, calidad, expediciones, ajustes.
+
+Filtros, fechas, exportar a Excel/PDF.
+
+2.8 Etiquetado
+
+Buscador de lotes y generación de etiquetas PDF para cajas, palets y recepción.
+
+Etiqueta de recepción (mínimos): nº lote, tipo de producto, código, cantidad, estado, fecha, ubicación, QR.
+
+QR payload: JSON con { loteId, tipo, productoCodigo, cantidad, unidad, estado, fechaISO, ubicacionCodigo }.
+
+Plantillas con tamaños estándar (A6/A7) y opción de cantidad de copias.
+
+2.9 Administración
+
+Gestión de usuarios y roles (admin, calidad, producción, expedición, visor).
+
+Auditoría: consultas por fecha/entidad/usuario/acción; exportación.
+
+Backups/restore (si no implementas, dejar stub y documentación).
+
+3) Modelo de datos (Prisma, nombres en inglés pero campos claros)
+
+Crea un esquema sólido y normalizado (ejemplo base, puedes extender):
+
+User { id, name, email (unique), role [ADMIN|QUALITY|PRODUCTION|SHIPPING|VIEWER], passwordHash, createdAt }
+
+Supplier { id, name, code (unique), contactName, phone, email, createdAt }
+
+Customer { id, name, code (unique), contactName, phone, email, address, createdAt }
+
+Product { id, name, code (unique), type, format, shelfLifeDays (int), description, createdAt }
+
+Location { id, name, code (unique), type [RECEPCION|PRODUCCION|CALIDAD|EXPEDICION], createdAt }
+
+PackageType { id, name, code (unique), weightKg (float), createdAt }
+
+Batch {
+id, code (unique), productId, unit [KG|TARROS], quantity (float),
+state [RECEPCION|EN_PROCESO|RETENIDO|APROBADO|BLOQUEADO|EXPEDIDO],
+locationId, productionStage [ASADO|PELADO_CORTE|ENVASADO|ESTERILIZADO|null],
+manufactureAt (datetime|null), expiryAt (datetime|null), parentLink (texto opcional), createdAt
+}
+
+parentLink: opcional si no usas tabla intermedia. Mejor usar relación muchos-a-muchos con cantidades:
+
+BatchRelation { id, parentBatchId, childBatchId, consumedQty (float), unit [KG|TARROS] }
+
+StockMove {
+id, batchId, fromLocationId (nullable), toLocationId (nullable),
+qty (float), unit [KG|TARROS], reason [RECEPCION|CONSUMO|PRODUCCION|CALIDAD|EXPEDICION|AJUSTE],
+refType [RECEPTION|PRODUCTION|QUALITY|SHIPMENT|ADJUSTMENT], refId (string),
+createdById, createdAt
+}
+
+Reception { id, supplierId, supplierDeliveryNote, truckPlate, arrivalTempC, productId, arrivedAt, qty, unit, storedAtLocationId, createdById, createdAt, generatedBatchId }
+
+ProductionStep {
+id, stage [ASADO|PELADO_CORTE|ENVASADO|ESTERILIZADO],
+inputs: JSON (lista {batchId, qty, unit}),
+outputs: JSON (lista {batchId, qty, unit}),
+wasteQty (float), notes, createdById, createdAt
+}
+
+QualityCheck { id, batchId, result [APROBADO|RECHAZADO], checklist JSON, notes, createdById, createdAt }
+
+Shipment { id, customerId, code (unique), status [ABIERTO|CERRADO], notes, createdById, createdAt, closedAt }
+
+ShipmentLine { id, shipmentId, batchId, qty (float), unit [TARROS], createdAt }
+
+AuditLog { id, userId, entity, entityId, action [CREATE|UPDATE|DELETE|STATE_CHANGE|EXPORT], before JSON, after JSON, createdAt }
+
+Claves/Índices: únicos en códigos, índices por expiryAt, state, locationId, productId.
+
+4) Reglas de negocio clave
+
+Conversión kg → tarros en Envasado:
+
+Permite ingresar tarros producidos directamente o calcularlos por rendimiento: tarros = floor((kgDisponibles * rendimiento%) / pesoNetoPorTarro).
+
+Guardar ambos: kg consumidos del lote origen, tarros generados en el lote destino.
+
+Caducidad: expiryAt = manufactureAt + shelfLifeDays.
+
+Estados:
+
+Recepción → “RECEPCION”
+
+Producción intermedia → “EN_PROCESO” (con productionStage correspondiente)
+
+Fin de Esterilizado → mover a ubicación de calidad y estado “RETENIDO”
+
+Calidad aprueba → “APROBADO” (expedible)
+
+Rechazo → “BLOQUEADO” (no expedible)
+
+FEFO para expedición: ordenar candidatos por expiryAt asc, luego manufactureAt asc, luego createdAt asc. Excluir RETENIDO/BLOQUEADO.
+
+Integridad de stock:
+
+Nunca permitir consumos > stock disponible del lote.
+
+Todas las transacciones crean StockMove coherentes.
+
+Si falla algo, transacción atómica (todo o nada).
+
+5) API (ejemplos; crea todos los CRUD + transaccionales)
+
+/auth/login, /auth/me, /auth/logout
+
+/suppliers (CRUD), /products (CRUD), /locations (CRUD), /package-types (CRUD), /customers (CRUD)
+
+/receptions:
+
+POST /receptions crea recepción y lote; devuelve etiqueta PDF (URL) y lote.
+
+GET /receptions?from=..&to=..&supplier=..&product=..
+
+/production:
+
+POST /production/asado (inputs: [{batchId, qtyKg}], output auto-lote)
+
+POST /production/pelado-corte …
+
+POST /production/envasado (inputs kg, outputs tarros, tipoEnvase…)
+
+POST /production/esterilizado (inputs tarros, parámetros de proceso) → lote final RETENIDO
+
+/quality:
+
+GET /quality/held (retenidos)
+
+POST /quality/approve {batchId} → cambia a APROBADO
+
+POST /quality/reject {batchId, notes}
+
+/shipments:
+
+POST /shipments (crear albarán)
+
+POST /shipments/:id/lines (sugiere FEFO si no se especifica lote)
+
+POST /shipments/:id/close → movimientos stock, PDF albarán
+
+/labels:
+
+GET /labels/reception/:batchId.pdf
+
+GET /labels/case/:batchId.pdf
+
+GET /labels/pallet/:batchId.pdf
+
+/trace:
+
+GET /trace/batch/:code → árbol origen/destino
+
+/exports:
+
+GET /exports/receptions.xlsx, /exports/shipments.xlsx, /exports/audit.xlsx, etc.
+
+/admin/users (CRUD), /admin/audit (listado y filtros)
+
+6) Seguridad, errores y auditoría
+
+RBAC:
+
+admin: todo;
+
+calidad: ver todo, aprobar/rechazar;
+
+producción: recepciones y etapas;
+
+expedición: albaranes;
+
+visor: solo lectura.
+
+Middlewares: autenticación, validación zod por endpoint, manejo de errores consistente (códigos y mensajes claros).
+
+AuditLog en cada acción crítica (antes/después cuando aplique).
+
+7) UI (componentes mínimos por página)
+
+Listas con columnas clave + acciones inline (ver, editar, borrar).
+
+Formularios con validaciones inline, selects con búsqueda, fechas con timepicker, inputs numéricos con step apropiado.
+
+Cards KPI en dashboard (entradas hoy, % aprobados, tarros producidos, próximos a caducar).
+
+Vista Trazabilidad: árbol interactivo (expandible) y timeline de movimientos.
+
+8) Etiquetas PDF y QR
+
+Usa pdfkit o pdf-lib y qrcode.
+
+Plantilla limpia con tipografía legible y disposición: título, campos, código de barras QR a la derecha.
+
+Recepción (requerida): nº lote, producto (nombre + código), cantidad + unidad, estado, fecha/hora, ubicación, QR con payload JSON descrito.
