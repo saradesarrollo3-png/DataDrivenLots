@@ -201,12 +201,13 @@ export default function Configuracion() {
   const handleProductSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const shelfLifeValue = formData.get('shelfLife') as string;
     createProductMutation.mutate({
       name: formData.get('name'),
       code: formData.get('code'),
       type: formData.get('type'),
       format: formData.get('format') || null,
-      shelfLife: parseInt(formData.get('shelfLife') as string),
+      shelfLife: shelfLifeValue ? parseInt(shelfLifeValue) : null,
       description: formData.get('description') || null,
     });
   };
@@ -367,9 +368,24 @@ export default function Configuracion() {
               <DataTable
                 columns={supplierColumns}
                 data={suppliers}
-                onView={(row) => console.log("View supplier:", row)}
-                onEdit={(row) => console.log("Edit supplier:", row)}
-                onDelete={(row) => console.log("Delete supplier:", row)}
+                onView={(row) => {
+                  toast({ title: "Ver Proveedor", description: `Mostrando detalles de ${row.name}` });
+                }}
+                onEdit={(row) => {
+                  toast({ title: "Editar Proveedor", description: `Editando ${row.name}` });
+                }}
+                onDelete={(row) => {
+                  if (confirm(`¿Estás seguro de eliminar el proveedor ${row.name}?`)) {
+                    fetch(`/api/suppliers/${row.id}`, { method: 'DELETE' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+                        toast({ title: "Proveedor eliminado", description: "El proveedor se ha eliminado correctamente." });
+                      })
+                      .catch(() => {
+                        toast({ title: "Error", description: "No se pudo eliminar el proveedor.", variant: "destructive" });
+                      });
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -390,7 +406,7 @@ export default function Configuracion() {
                       Nuevo Producto
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Nuevo Producto</DialogTitle>
                       <DialogDescription>
@@ -419,8 +435,8 @@ export default function Configuracion() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="shelfLife">Vida Útil (días) *</Label>
-                        <Input id="shelfLife" name="shelfLife" type="number" required placeholder="730" />
+                        <Label htmlFor="shelfLife">Vida Útil (días)</Label>
+                        <Input id="shelfLife" name="shelfLife" type="number" placeholder="730" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="prod-description">Descripción</Label>
@@ -441,9 +457,24 @@ export default function Configuracion() {
               <DataTable
                 columns={productColumns}
                 data={products}
-                onView={(row) => console.log("View product:", row)}
-                onEdit={(row) => console.log("Edit product:", row)}
-                onDelete={(row) => console.log("Delete product:", row)}
+                onView={(row) => {
+                  toast({ title: "Ver Producto", description: `Mostrando detalles de ${row.name}` });
+                }}
+                onEdit={(row) => {
+                  toast({ title: "Editar Producto", description: `Editando ${row.name}` });
+                }}
+                onDelete={(row) => {
+                  if (confirm(`¿Estás seguro de eliminar el producto ${row.name}?`)) {
+                    fetch(`/api/products/${row.id}`, { method: 'DELETE' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+                        toast({ title: "Producto eliminado", description: "El producto se ha eliminado correctamente." });
+                      })
+                      .catch(() => {
+                        toast({ title: "Error", description: "No se pudo eliminar el producto.", variant: "destructive" });
+                      });
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -511,9 +542,24 @@ export default function Configuracion() {
               <DataTable
                 columns={locationColumns}
                 data={locations}
-                onView={(row) => console.log("View location:", row)}
-                onEdit={(row) => console.log("Edit location:", row)}
-                onDelete={(row) => console.log("Delete location:", row)}
+                onView={(row) => {
+                  toast({ title: "Ver Ubicación", description: `Mostrando detalles de ${row.name}` });
+                }}
+                onEdit={(row) => {
+                  toast({ title: "Editar Ubicación", description: `Editando ${row.name}` });
+                }}
+                onDelete={(row) => {
+                  if (confirm(`¿Estás seguro de eliminar la ubicación ${row.name}?`)) {
+                    fetch(`/api/locations/${row.id}`, { method: 'DELETE' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
+                        toast({ title: "Ubicación eliminada", description: "La ubicación se ha eliminado correctamente." });
+                      })
+                      .catch(() => {
+                        toast({ title: "Error", description: "No se pudo eliminar la ubicación.", variant: "destructive" });
+                      });
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -534,7 +580,7 @@ export default function Configuracion() {
                       Nuevo Cliente
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Nuevo Cliente</DialogTitle>
                       <DialogDescription>
@@ -548,8 +594,8 @@ export default function Configuracion() {
                           <Input id="cust-name" name="name" required placeholder="Distribuidora García" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="cust-code">Código *</Label>
-                          <Input id="cust-code" name="code" required placeholder="DIST-GAR" />
+                          <Label htmlFor="cust-code">Código</Label>
+                          <Input id="cust-code" name="code" placeholder="DIST-GAR" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -585,9 +631,24 @@ export default function Configuracion() {
               <DataTable
                 columns={customerColumns}
                 data={customers}
-                onView={(row) => console.log("View customer:", row)}
-                onEdit={(row) => console.log("Edit customer:", row)}
-                onDelete={(row) => console.log("Delete customer:", row)}
+                onView={(row) => {
+                  toast({ title: "Ver Cliente", description: `Mostrando detalles de ${row.name}` });
+                }}
+                onEdit={(row) => {
+                  toast({ title: "Editar Cliente", description: `Editando ${row.name}` });
+                }}
+                onDelete={(row) => {
+                  if (confirm(`¿Estás seguro de eliminar el cliente ${row.name}?`)) {
+                    fetch(`/api/customers/${row.id}`, { method: 'DELETE' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+                        toast({ title: "Cliente eliminado", description: "El cliente se ha eliminado correctamente." });
+                      })
+                      .catch(() => {
+                        toast({ title: "Error", description: "No se pudo eliminar el cliente.", variant: "destructive" });
+                      });
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -622,8 +683,8 @@ export default function Configuracion() {
                           <Input id="pkg-name" name="name" required placeholder="Frasco vidrio" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="pkg-code">Código *</Label>
-                          <Input id="pkg-code" name="code" required placeholder="FRA-VID" />
+                          <Label htmlFor="pkg-code">Código</Label>
+                          <Input id="pkg-code" name="code" placeholder="FRA-VID" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -655,9 +716,24 @@ export default function Configuracion() {
               <DataTable
                 columns={packageTypeColumns}
                 data={packageTypes}
-                onView={(row) => console.log("View package:", row)}
-                onEdit={(row) => console.log("Edit package:", row)}
-                onDelete={(row) => console.log("Delete package:", row)}
+                onView={(row) => {
+                  toast({ title: "Ver Tipo de Envase", description: `Mostrando detalles de ${row.name}` });
+                }}
+                onEdit={(row) => {
+                  toast({ title: "Editar Tipo de Envase", description: `Editando ${row.name}` });
+                }}
+                onDelete={(row) => {
+                  if (confirm(`¿Estás seguro de eliminar el tipo de envase ${row.name}?`)) {
+                    fetch(`/api/package-types/${row.id}`, { method: 'DELETE' })
+                      .then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/package-types'] });
+                        toast({ title: "Tipo de envase eliminado", description: "El tipo de envase se ha eliminado correctamente." });
+                      })
+                      .catch(() => {
+                        toast({ title: "Error", description: "No se pudo eliminar el tipo de envase.", variant: "destructive" });
+                      });
+                  }
+                }}
               />
             </CardContent>
           </Card>
