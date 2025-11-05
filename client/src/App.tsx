@@ -100,9 +100,18 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
 
   console.log("ProtectedRoute - sessionId:", sessionId, "user:", user);
 
-  if (!sessionId || !user) {
-    console.log("ProtectedRoute - Redirecting to /login");
+  // Si no hay sessionId, redirigir a login
+  if (!sessionId) {
+    console.log("ProtectedRoute - No sessionId, redirecting to /login");
     return <Redirect to="/login" />;
+  }
+
+  // Si hay sessionId pero user aún no está cargado, mostrar loading
+  if (!user) {
+    console.log("ProtectedRoute - Loading user data...");
+    return <div className="flex items-center justify-center h-screen">
+      <div className="animate-pulse text-muted-foreground">Cargando...</div>
+    </div>;
   }
 
   console.log("ProtectedRoute - Rendering protected component");
