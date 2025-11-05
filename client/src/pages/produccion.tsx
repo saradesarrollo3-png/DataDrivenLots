@@ -656,7 +656,7 @@ export default function Produccion() {
                 id: selectedBatch.batchId,
                 data: {
                   quantity: remainingQuantity.toString(),
-                  status: newStatus, // Actualizar estado a la nueva etapa
+                  status: newStatus,
                 },
               });
             }
