@@ -247,16 +247,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       action: 'created',
       toStatus: batch.status,
       toLocation: batch.locationId,
-      notes: 'Batch created'
+      notes: 'Batch created',
+      organizationId: req.user!.organizationId
     });
 
     // Update product stock
     if (batch.productId && batch.quantity && batch.unit) {
+      const quantityValue = typeof batch.quantity === 'string' 
+        ? parseFloat(batch.quantity) 
+        : Number(batch.quantity);
+      
       await storage.updateProductStock(
         req.user!.organizationId,
         batch.productId,
         batch.unit,
-        parseFloat(batch.quantity)
+        quantityValue
       );
     }
 

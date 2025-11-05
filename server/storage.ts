@@ -282,17 +282,16 @@ export const storage = {
     const [existingStock] = await db.select()
       .from(productStock)
       .where(
-        eq(productStock.organizationId, organizationId),
-        eq(productStock.productId, productId),
-        eq(productStock.unit, unit)
+        sql`${productStock.organizationId} = ${organizationId} AND ${productStock.productId} = ${productId} AND ${productStock.unit} = ${unit}`
       );
 
     if (existingStock) {
       // Actualizar stock existente
-      const newQuantity = parseFloat(existingStock.quantity) + quantityChange;
+      const currentQuantity = parseFloat(existingStock.quantity);
+      const newQuantity = currentQuantity + quantityChange;
       const [updated] = await db.update(productStock)
         .set({ 
-          quantity: newQuantity.toString(),
+          quantity: newQuantity.toFixed(2),
           updatedAt: new Date()
         })
         .where(eq(productStock.id, existingStock.id))
@@ -305,7 +304,7 @@ export const storage = {
           organizationId,
           productId,
           unit,
-          quantity: quantityChange.toString()
+          quantity: quantityChange.toFixed(2)
         })
         .returning();
       return created;

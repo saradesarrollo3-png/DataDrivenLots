@@ -109,6 +109,7 @@ export default function Recepcion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       setIsDialogOpen(false);
       setEditingReception(null);
       toast({
@@ -141,6 +142,7 @@ export default function Recepcion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       setDeletingReception(null);
       toast({
         title: "Recepción eliminada",
