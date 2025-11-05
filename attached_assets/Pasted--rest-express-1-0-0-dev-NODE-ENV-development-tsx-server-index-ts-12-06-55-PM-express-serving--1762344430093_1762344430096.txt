@@ -1,0 +1,76 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+12:06:55 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+[replit-cartographer] Error processing /home/runner/workspace/client/src/pages/produccion.tsx: SyntaxError: Unexpected token (665:8)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1503:19)
+    at unexpected (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1543:16)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1350:16)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:583:22)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:734:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:713:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:675:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3855:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:409:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:421:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:376:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3727:22)
+    at parseExpressionBase (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3187:16)
+    at parseExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:683:23)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3185:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:477:17)
+    at parseStatementListItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:426:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1439:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1412:10)
+    at parseBlock (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1380:10)
+    at parseTryStatement (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1200:23)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:544:21)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3185:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:477:17)
+    at parseStatementListItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:426:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1439:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1412:10)
+    at parseBlock (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1380:10)
+    at parseFunctionBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:2616:24)
+    at parseArrowExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:2553:10)
+    at parseAsyncArrowFromCallExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1059:10)
+    at parseAsyncArrowFromCallExpression (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3687:20)
+    at parseCoverCallAndAsyncArrowHead (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:934:27)
+    at parseSubscript (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:796:19)
+    at parseSubscript (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:2850:20)
+    at parseSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:755:19)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:740:17)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:713:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:675:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3855:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:409:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:421:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:376:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3727:22) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 665, column: 8, index: 22864 },
+  pos: 22864,
+  syntaxPlugin: undefined
+}
+12:07:00 PM [vite] Pre-transform error: /home/runner/workspace/client/src/pages/produccion.tsx: Unexpected token (665:8)
+
+  663 |           }
+  664 |         }
+> 665 |       } catch (error: any) {
+      |         ^
+  666 |         toast({
+  667 |           title: "Error",
+  668 |           description: error.message || "No se pudo completar el proceso",
