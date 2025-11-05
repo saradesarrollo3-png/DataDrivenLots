@@ -29,12 +29,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductionBatch {
   id: string;
-  code: string;
-  product: string;
+  batchCode: string;
+  productName: string;
   quantity: number;
   unit: string;
-  stage: string;
+  status: string;
   createdAt: string;
+  inputBatchCodes?: string[];
 }
 
 interface AvailableBatch {
@@ -65,21 +66,23 @@ export default function Produccion() {
   const [selectedPackageType, setSelectedPackageType] = useState("");
   const [packageCount, setPackageCount] = useState("");
   const [notes, setNotes] = useState("");
+  const [editingBatch, setEditingBatch] = useState<ProductionBatch | null>(null);
+  const [viewingBatch, setViewingBatch] = useState<ProductionBatch | null>(null);
 
-  const { data: asadoRecords = [] } = useQuery<any[]>({
-    queryKey: ['/api/production-records/stage/ASADO'],
+  const { data: asadoBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/ASADO'],
   });
 
-  const { data: peladoRecords = [] } = useQuery<any[]>({
-    queryKey: ['/api/production-records/stage/PELADO'],
+  const { data: peladoBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/PELADO'],
   });
 
-  const { data: envasadoRecords = [] } = useQuery<any[]>({
-    queryKey: ['/api/production-records/stage/ENVASADO'],
+  const { data: envasadoBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/ENVASADO'],
   });
 
-  const { data: esterilizadoRecords = [] } = useQuery<any[]>({
-    queryKey: ['/api/production-records/stage/ESTERILIZADO'],
+  const { data: esterilizadoBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/ESTERILIZADO'],
   });
 
   const { data: allBatches = [] } = useQuery<any[]>({
@@ -155,28 +158,43 @@ export default function Produccion() {
     },
   });
 
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al eliminar lote');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      toast({
+        title: "Lote eliminado",
+        description: "El lote ha sido eliminado exitosamente",
+      });
+    },
+  });
+
   const getAvailableBatches = (): AvailableBatch[] => {
     let filteredBatches: any[] = [];
 
     switch (activeStage) {
       case "asado":
-        // Solo lotes en RECEPCION
-        filteredBatches = allBatches.filter(b => b.batch.status === "RECEPCION");
+        filteredBatches = allBatches.filter(b => b.batch.status === "RECEPCION" && parseFloat(b.batch.quantity) > 0);
         break;
       case "pelado":
-        // Solo lotes que pasaron por ASADO
-        const asadoBatchCodes = asadoRecords.map(r => r.outputBatchCode);
-        filteredBatches = allBatches.filter(b => asadoBatchCodes.includes(b.batch.batchCode));
+        filteredBatches = allBatches.filter(b => b.batch.status === "ASADO" && parseFloat(b.batch.quantity) > 0);
         break;
       case "envasado":
-        // Solo lotes que pasaron por PELADO
-        const peladoBatchCodes = peladoRecords.map(r => r.outputBatchCode);
-        filteredBatches = allBatches.filter(b => peladoBatchCodes.includes(b.batch.batchCode));
+        filteredBatches = allBatches.filter(b => b.batch.status === "PELADO" && parseFloat(b.batch.quantity) > 0);
         break;
       case "esterilizado":
-        // Solo lotes que pasaron por ENVASADO
-        const envasadoBatchCodes = envasadoRecords.map(r => r.outputBatchCode);
-        filteredBatches = allBatches.filter(b => envasadoBatchCodes.includes(b.batch.batchCode));
+        filteredBatches = allBatches.filter(b => b.batch.status === "ENVASADO" && parseFloat(b.batch.quantity) > 0);
         break;
     }
 
@@ -220,6 +238,7 @@ export default function Produccion() {
 
   const handleCloseDialog = () => {
     setShowNewProcessDialog(false);
+    setEditingBatch(null);
     setSelectedBatches([]);
     setOutputBatchCode("");
     setOutputQuantity("");
@@ -252,7 +271,6 @@ export default function Produccion() {
     let finalUnit: string;
 
     if (activeStage === "envasado") {
-      // Envasado: cambio de unidad a envases
       if (!selectedPackageType || !packageCount || parseFloat(packageCount) === 0) {
         toast({
           title: "Error",
@@ -265,7 +283,6 @@ export default function Produccion() {
       finalOutputQuantity = parseFloat(packageCount);
       finalUnit = `envases ${pkgType?.name || 'unidad'}`;
     } else {
-      // Otras etapas: misma unidad
       if (!outputQuantity || parseFloat(outputQuantity) === 0) {
         toast({
           title: "Error",
@@ -279,7 +296,6 @@ export default function Produccion() {
     }
 
     try {
-      // Determinar el estado según la etapa
       const stageStatusMap: Record<string, string> = {
         'asado': 'ASADO',
         'pelado': 'PELADO',
@@ -288,7 +304,7 @@ export default function Produccion() {
       };
       const newStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
 
-      // Crear lote de salida
+      // Crear UN ÚNICO lote de salida consolidado
       const firstBatch = allBatches.find((b: any) => b.batch.id === selectedBatches[0].batchId);
       const newBatch = await createBatchMutation.mutateAsync({
         batchCode: outputBatchCode,
@@ -298,46 +314,52 @@ export default function Produccion() {
         status: newStatus,
       });
 
-      // Crear registros de producción para cada lote de entrada
+      // Crear UN registro de producción que consolida todos los lotes de entrada
+      const inputBatchCodes = selectedBatches
+        .filter(b => b.selectedQuantity > 0)
+        .map(b => b.batchCode)
+        .join(', ');
+
+      await createProductionRecordMutation.mutateAsync({
+        batchId: newBatch.id,
+        stage: activeStage.toUpperCase(),
+        inputBatchCode: inputBatchCodes,
+        outputBatchCode: outputBatchCode,
+        inputQuantity: totalInput.toString(),
+        outputQuantity: finalOutputQuantity.toString(),
+        unit: selectedBatches[0].unit,
+        notes: notes || null,
+        completedAt: new Date().toISOString(),
+      });
+
+      // Actualizar cantidades disponibles de todos los lotes de entrada
       for (const selectedBatch of selectedBatches) {
         if (selectedBatch.selectedQuantity > 0) {
-          await createProductionRecordMutation.mutateAsync({
-            batchId: newBatch.id,
-            stage: activeStage.toUpperCase(),
-            inputBatchCode: selectedBatch.batchCode,
-            outputBatchCode: outputBatchCode,
-            inputQuantity: selectedBatch.selectedQuantity.toString(),
-            outputQuantity: finalOutputQuantity.toString(),
-            unit: selectedBatch.unit,
-            notes: notes || null,
-            completedAt: new Date().toISOString(),
-          });
-
-          // Actualizar cantidad disponible del lote de entrada
           const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
           if (sourceBatch) {
             const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
-            const stageStatusMap: Record<string, string> = {
-              'asado': 'ASADO',
-              'pelado': 'PELADO',
-              'envasado': 'ENVASADO',
-              'esterilizado': 'ESTERILIZADO',
-            };
-            const processedStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
-            
             await updateBatchMutation.mutateAsync({
               id: selectedBatch.batchId,
               data: {
                 quantity: remainingQuantity.toString(),
-                status: remainingQuantity > 0 ? sourceBatch.batch.status : processedStatus,
               },
             });
           }
         }
       }
 
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      
+      toast({
+        title: "Proceso creado",
+        description: "El lote consolidado se ha creado exitosamente",
+      });
+      handleCloseDialog();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -347,29 +369,29 @@ export default function Produccion() {
     }
   };
 
-  const mapRecords = (records: any[]): ProductionBatch[] => 
-    records.map(r => ({
-      id: r.record?.id || r.id,
-      code: r.record?.outputBatchCode || r.outputBatchCode,
-      product: r.record?.inputBatchCode || r.inputBatchCode,
-      quantity: parseFloat(r.record?.outputQuantity || r.outputQuantity),
-      unit: r.record?.unit || r.unit,
-      stage: (r.record?.completedAt || r.completedAt) ? "Completado" : "Pendiente",
-      createdAt: new Date(r.record?.createdAt || r.createdAt).toLocaleDateString('es-ES')
+  const mapBatchesToTable = (batches: any[]): ProductionBatch[] => 
+    batches.map(b => ({
+      id: b.batch.id,
+      batchCode: b.batch.batchCode,
+      productName: b.product?.name || '-',
+      quantity: parseFloat(b.batch.quantity),
+      unit: b.batch.unit,
+      status: b.batch.status,
+      createdAt: new Date(b.batch.createdAt).toLocaleDateString('es-ES'),
     }));
 
-  const asadoBatches = mapRecords(asadoRecords);
-  const peladoBatches = mapRecords(peladoRecords);
-  const envasadoBatches = mapRecords(envasadoRecords);
-  const esterilizadoBatches = mapRecords(esterilizadoRecords);
+  const asadoTableData = mapBatchesToTable(asadoBatches);
+  const peladoTableData = mapBatchesToTable(peladoBatches);
+  const envasadoTableData = mapBatchesToTable(envasadoBatches);
+  const esterilizadoTableData = mapBatchesToTable(esterilizadoBatches);
 
   const columns: Column<ProductionBatch>[] = [
     { 
-      key: "code", 
-      label: "Código Lote Salida",
+      key: "batchCode", 
+      label: "Código Lote",
       render: (value) => <span className="font-mono font-medium">{value}</span>
     },
-    { key: "product", label: "Lote Entrada" },
+    { key: "productName", label: "Producto" },
     { 
       key: "quantity", 
       label: "Cantidad",
@@ -377,15 +399,28 @@ export default function Produccion() {
     },
     { key: "createdAt", label: "Fecha" },
     { 
-      key: "stage", 
+      key: "status", 
       label: "Estado",
-      render: (value) => (
-        <StatusBadge 
-          status={value === "Completado" ? "APROBADO" : "EN_PROCESO"} 
-        />
-      )
+      render: (value) => <StatusBadge status={value} />
     },
   ];
+
+  const handleView = (batch: ProductionBatch) => {
+    setViewingBatch(batch);
+  };
+
+  const handleEdit = async (batch: ProductionBatch) => {
+    setEditingBatch(batch);
+    setOutputBatchCode(batch.batchCode);
+    setOutputQuantity(batch.quantity.toString());
+    setShowNewProcessDialog(true);
+  };
+
+  const handleDelete = async (batch: ProductionBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
 
   const stages = [
     {
@@ -393,7 +428,7 @@ export default function Produccion() {
       title: "Asado",
       icon: Flame,
       description: "Proceso de asado de materia prima",
-      data: asadoBatches,
+      data: asadoTableData,
       color: "text-orange-600 dark:text-orange-400",
     },
     {
@@ -401,7 +436,7 @@ export default function Produccion() {
       title: "Pelado y Corte",
       icon: Scissors,
       description: "Pelado y corte del producto asado",
-      data: peladoBatches,
+      data: peladoTableData,
       color: "text-blue-600 dark:text-blue-400",
     },
     {
@@ -409,7 +444,7 @@ export default function Produccion() {
       title: "Envasado",
       icon: PackageIcon,
       description: "Conversión a tarros y envasado",
-      data: envasadoBatches,
+      data: envasadoTableData,
       color: "text-green-600 dark:text-green-400",
     },
     {
@@ -417,7 +452,7 @@ export default function Produccion() {
       title: "Esterilizado",
       icon: Droplets,
       description: "Esterilización y sellado final",
-      data: esterilizadoBatches,
+      data: esterilizadoTableData,
       color: "text-purple-600 dark:text-purple-400",
     },
   ];
@@ -476,8 +511,9 @@ export default function Produccion() {
                 <DataTable
                   columns={columns}
                   data={stage.data}
-                  onView={(row) => console.log(`View ${stage.id}:`, row)}
-                  onEdit={(row) => console.log(`Edit ${stage.id}:`, row)}
+                  onView={stage.id === "asado" ? handleView : undefined}
+                  onEdit={stage.id === "asado" ? handleEdit : undefined}
+                  onDelete={stage.id === "asado" ? handleDelete : undefined}
                   emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
                 />
               </CardContent>
@@ -486,11 +522,49 @@ export default function Produccion() {
         ))}
       </Tabs>
 
+      <Dialog open={!!viewingBatch} onOpenChange={(open) => !open && setViewingBatch(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles del Lote</DialogTitle>
+          </DialogHeader>
+          {viewingBatch && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Código de Lote</Label>
+                  <p className="font-medium font-mono">{viewingBatch.batchCode}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Estado</Label>
+                  <div className="mt-1">
+                    <StatusBadge status={viewingBatch.status} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Producto</Label>
+                  <p className="font-medium">{viewingBatch.productName}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Cantidad</Label>
+                  <p className="font-medium">{viewingBatch.quantity} {viewingBatch.unit}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Fecha de Creación</Label>
+                <p className="font-medium">{viewingBatch.createdAt}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showNewProcessDialog} onOpenChange={setShowNewProcessDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Nuevo Proceso - {stages.find(s => s.id === activeStage)?.title}
+              {editingBatch ? "Editar Proceso" : "Nuevo Proceso"} - {stages.find(s => s.id === activeStage)?.title}
             </DialogTitle>
             <DialogDescription>
               {activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}

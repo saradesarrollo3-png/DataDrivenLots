@@ -236,6 +236,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(batch);
   });
 
+  app.get("/api/batches/status/:status", requireAuth, async (req, res) => {
+    const batches = await storage.getBatchesByStatus(req.params.status, req.user!.organizationId);
+    res.json(batches);
+  });
+
   app.post("/api/batches", requireAuth, async (req, res) => {
     const { organizationId, ...bodyData } = req.body;
     const data = insertBatchSchema.omit({ organizationId: true }).parse(bodyData);

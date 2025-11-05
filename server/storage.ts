@@ -156,6 +156,22 @@ export const storage = {
     .where(eq(batches.batchCode, batchCode), eq(batches.organizationId, organizationId));
     return result;
   },
+  async getBatchesByStatus(status: string, organizationId: string) {
+    return db.select({
+      batch: batches,
+      supplier: suppliers,
+      product: products,
+      location: locations
+    })
+    .from(batches)
+    .leftJoin(suppliers, eq(batches.supplierId, suppliers.id))
+    .leftJoin(products, eq(batches.productId, products.id))
+    .leftJoin(locations, eq(batches.locationId, locations.id))
+    .where(
+      sql`${batches.organizationId} = ${organizationId} AND ${batches.status} = ${status}`
+    )
+    .orderBy(desc(batches.createdAt));
+  },
   async insertBatch(data: typeof batches.$inferInsert) {
     const [batch] = await db.insert(batches).values(data).returning();
     return batch;
