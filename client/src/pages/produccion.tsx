@@ -488,18 +488,14 @@ export default function Produccion() {
     if (activeStage === "pelado") {
       try {
         for (const selectedBatch of selectedBatches) {
-          const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-          if (sourceBatch) {
-            // Cambiar estado a PELADO manteniendo la cantidad original del lote de ASADO
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                status: 'PELADO',
-                processedDate: processedDateTime,
-                // Mantener la cantidad original del lote
-              },
-            });
-          }
+          // Solo cambiar el estado del lote de ASADO a PELADO
+          await updateBatchMutation.mutateAsync({
+            id: selectedBatch.batchId,
+            data: {
+              status: 'PELADO',
+              processedDate: processedDateTime,
+            },
+          });
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
@@ -866,16 +862,32 @@ export default function Produccion() {
   };
 
   const mapBatchesToTable = (batches: any[]): ProductionBatch[] => 
-    batches.map(b => ({
-      id: b.batch.id,
-      batchCode: b.batch.batchCode,
-      productName: b.product?.name || '-',
-      quantity: parseFloat(b.batch.quantity),
-      initialQuantity: b.batch.initialQuantity !== undefined ? parseFloat(b.batch.initialQuantity) : undefined, // Added for ZodError
-      unit: b.batch.unit,
-      status: b.batch.status,
-      createdAt: new Date(b.batch.createdAt).toLocaleDateString('es-ES'),
-    }));
+    batches.map(b => {
+      let displayDateTime = '';
+      if (b.batch.processedDate) {
+        const dt = new Date(b.batch.processedDate);
+        displayDateTime = dt.toLocaleString('es-ES', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        displayDateTime = new Date(b.batch.createdAt).toLocaleDateString('es-ES');
+      }
+      
+      return {
+        id: b.batch.id,
+        batchCode: b.batch.batchCode,
+        productName: b.product?.name || '-',
+        quantity: parseFloat(b.batch.quantity),
+        initialQuantity: b.batch.initialQuantity !== undefined ? parseFloat(b.batch.initialQuantity) : undefined,
+        unit: b.batch.unit,
+        status: b.batch.status,
+        createdAt: displayDateTime,
+      };
+    });
 
   const asadoTableData = mapBatchesToTable(asadoBatches);
   const peladoTableData = mapBatchesToTable(peladoBatches);
@@ -907,11 +919,12 @@ export default function Produccion() {
   };
 
   const handleEdit = async (batch: ProductionBatch) => {
+    console.log('Edit asado:', batch);
     setEditingBatch(batch);
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
 
-    // Cargar los registros de producción para obtener los lotes de entrada con cantidades
+    // Cargar los registros de producción para obtener fecha/hora y notas
     try {
       const response = await fetch(`/api/production-records/batch/${batch.id}`, {
         headers: {
@@ -922,30 +935,6 @@ export default function Produccion() {
         const records = await response.json();
         if (records.length > 0) {
           const record = records[0].record;
-
-          // Parsear los detalles de lotes de entrada
-          let inputBatchDetails = [];
-          try {
-            inputBatchDetails = record.inputBatchDetails ? JSON.parse(record.inputBatchDetails) : [];
-          } catch (e) {
-            console.error('Error parsing inputBatchDetails:', e);
-          }
-
-          const inputSelections: BatchSelection[] = [];
-          for (const detail of inputBatchDetails) {
-            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-            if (inputBatch) {
-              inputSelections.push({
-                batchId: inputBatch.batch.id,
-                batchCode: inputBatch.batch.batchCode,
-                productName: inputBatch.product?.name || '-',
-                maxQuantity: parseFloat(inputBatch.batch.quantity) + detail.quantity, // Cantidad actual + cantidad usada
-                unit: inputBatch.batch.unit,
-                selectedQuantity: detail.quantity, // Cantidad usada originalmente
-              });
-            }
-          }
-          setSelectedBatches(inputSelections);
 
           if (record.notes) {
             setNotes(record.notes);
@@ -966,6 +955,8 @@ export default function Produccion() {
       console.error('Error loading production records:', error);
     }
 
+    // No cargar lotes de entrada para evitar que reaparezcan
+    setSelectedBatches([]);
     setShowNewProcessDialog(true);
   };
 
@@ -1300,9 +1291,8 @@ export default function Produccion() {
                   name="processedDate"
                   type="date"
                   required
-                  value={editingBatch ? editProcessedDate : undefined}
-                  defaultValue={editingBatch ? undefined : new Date().toISOString().split('T')[0]}
-                  onChange={(e) => editingBatch && setEditProcessedDate(e.target.value)}
+                  key={`date-${editingBatch?.id || 'new'}-${activeStage}`}
+                  defaultValue={editingBatch && editProcessedDate ? editProcessedDate : new Date().toISOString().split('T')[0]}
                   data-testid="input-processed-date"
                 />
               </div>
@@ -1313,9 +1303,8 @@ export default function Produccion() {
                   name="processedTime"
                   type="time"
                   required
-                  value={editingBatch ? editProcessedTime : undefined}
-                  defaultValue={editingBatch ? undefined : new Date().toTimeString().slice(0, 5)}
-                  onChange={(e) => editingBatch && setEditProcessedTime(e.target.value)}
+                  key={`time-${editingBatch?.id || 'new'}-${activeStage}`}
+                  defaultValue={editingBatch && editProcessedTime ? editProcessedTime : new Date().toTimeString().slice(0, 5)}
                   data-testid="input-processed-time"
                 />
               </div>
