@@ -1,0 +1,69 @@
+Getting session: 7cjdrt4kj3bmhlvw4g2 Found: true Total sessions: 1
+file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587
+                const error = new ZodError(ctx.common.issues);
+                              ^
+
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "number",
+    "path": [
+      "initialQuantity"
+    ],
+    "message": "Expected string, received number"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "number",
+    "path": [
+      "quantity"
+    ],
+    "message": "Expected string, received number"
+  }
+]
+    at get error [as error] (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587:31)
+    at ZodObject.parse (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:663:22)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:246:67)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at requireAuth (/home/runner/workspace/server/auth.ts:78:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [ 'initialQuantity' ],
+      message: 'Expected string, received number'
+    },
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [ 'quantity' ],
+      message: 'Expected string, received number'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [ 'initialQuantity' ],
+      message: 'Expected string, received number'
+    },
+    {
+      code: 'invalid_type',
+      expected: 'string',
+      received: 'number',
+      path: [ 'quantity' ],
+      message: 'Expected string, received number'
+    }
+  ]
+}
+
+Node.js v20.19.3
