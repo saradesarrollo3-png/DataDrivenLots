@@ -65,6 +65,18 @@ export default function Configuracion() {
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
+  
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingPackage, setEditingPackage] = useState<PackageType | null>(null);
+  
+  const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [viewingPackage, setViewingPackage] = useState<PackageType | null>(null);
 
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ['/api/suppliers'],
@@ -88,101 +100,131 @@ export default function Configuracion() {
 
   const createSupplierMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/suppliers', {
-        method: 'POST',
+      const url = editingSupplier ? `/api/suppliers/${editingSupplier.id}` : '/api/suppliers';
+      const method = editingSupplier ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Error al crear proveedor');
+      if (!response.ok) throw new Error('Error al guardar proveedor');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
-      toast({ title: "Proveedor creado", description: "El proveedor se ha creado correctamente." });
+      toast({ 
+        title: editingSupplier ? "Proveedor actualizado" : "Proveedor creado", 
+        description: editingSupplier ? "El proveedor se ha actualizado correctamente." : "El proveedor se ha creado correctamente." 
+      });
       setSupplierDialogOpen(false);
+      setEditingSupplier(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo crear el proveedor.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo guardar el proveedor.", variant: "destructive" });
     },
   });
 
   const createProductMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/products', {
-        method: 'POST',
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+      const method = editingProduct ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Error al crear producto');
+      if (!response.ok) throw new Error('Error al guardar producto');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      toast({ title: "Producto creado", description: "El producto se ha creado correctamente." });
+      toast({ 
+        title: editingProduct ? "Producto actualizado" : "Producto creado", 
+        description: editingProduct ? "El producto se ha actualizado correctamente." : "El producto se ha creado correctamente." 
+      });
       setProductDialogOpen(false);
+      setEditingProduct(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo crear el producto.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo guardar el producto.", variant: "destructive" });
     },
   });
 
   const createLocationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/locations', {
-        method: 'POST',
+      const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations';
+      const method = editingLocation ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Error al crear ubicación');
+      if (!response.ok) throw new Error('Error al guardar ubicación');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
-      toast({ title: "Ubicación creada", description: "La ubicación se ha creado correctamente." });
+      toast({ 
+        title: editingLocation ? "Ubicación actualizada" : "Ubicación creada", 
+        description: editingLocation ? "La ubicación se ha actualizado correctamente." : "La ubicación se ha creado correctamente." 
+      });
       setLocationDialogOpen(false);
+      setEditingLocation(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo crear la ubicación.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo guardar la ubicación.", variant: "destructive" });
     },
   });
 
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
+      const url = editingCustomer ? `/api/customers/${editingCustomer.id}` : '/api/customers';
+      const method = editingCustomer ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Error al crear cliente');
+      if (!response.ok) throw new Error('Error al guardar cliente');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
-      toast({ title: "Cliente creado", description: "El cliente se ha creado correctamente." });
+      toast({ 
+        title: editingCustomer ? "Cliente actualizado" : "Cliente creado", 
+        description: editingCustomer ? "El cliente se ha actualizado correctamente." : "El cliente se ha creado correctamente." 
+      });
       setCustomerDialogOpen(false);
+      setEditingCustomer(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo crear el cliente.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo guardar el cliente.", variant: "destructive" });
     },
   });
 
   const createPackageTypeMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/package-types', {
-        method: 'POST',
+      const url = editingPackage ? `/api/package-types/${editingPackage.id}` : '/api/package-types';
+      const method = editingPackage ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Error al crear tipo de envase');
+      if (!response.ok) throw new Error('Error al guardar tipo de envase');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/package-types'] });
-      toast({ title: "Tipo de envase creado", description: "El tipo de envase se ha creado correctamente." });
+      toast({ 
+        title: editingPackage ? "Tipo de envase actualizado" : "Tipo de envase creado", 
+        description: editingPackage ? "El tipo de envase se ha actualizado correctamente." : "El tipo de envase se ha creado correctamente." 
+      });
       setPackageDialogOpen(false);
+      setEditingPackage(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo crear el tipo de envase.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo guardar el tipo de envase.", variant: "destructive" });
     },
   });
 
@@ -316,48 +358,48 @@ export default function Configuracion() {
                 </div>
                 <Dialog open={supplierDialogOpen} onOpenChange={setSupplierDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-new-supplier">
+                    <Button data-testid="button-new-supplier" onClick={() => setEditingSupplier(null)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Proveedor
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Nuevo Proveedor</DialogTitle>
+                      <DialogTitle>{editingSupplier ? "Editar Proveedor" : "Nuevo Proveedor"}</DialogTitle>
                       <DialogDescription>
-                        Registra un nuevo proveedor de materia prima
+                        {editingSupplier ? "Modifica los datos del proveedor" : "Registra un nuevo proveedor de materia prima"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSupplierSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">Nombre de la Empresa *</Label>
-                          <Input id="name" name="name" required placeholder="Agrícola del Sur" />
+                          <Input id="name" name="name" required placeholder="Agrícola del Sur" defaultValue={editingSupplier?.name || ""} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="code">Código *</Label>
-                          <Input id="code" name="code" required placeholder="AGR-SUR" />
+                          <Label htmlFor="code">Código</Label>
+                          <Input id="code" name="code" placeholder="AGR-SUR" defaultValue={editingSupplier?.code || ""} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="contact">Persona de Contacto</Label>
-                          <Input id="contact" name="contact" placeholder="Juan Pérez" />
+                          <Input id="contact" name="contact" placeholder="Juan Pérez" defaultValue={editingSupplier?.contact || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone">Teléfono</Label>
-                          <Input id="phone" name="phone" placeholder="+34 600 123 456" />
+                          <Input id="phone" name="phone" placeholder="+34 600 123 456" defaultValue={editingSupplier?.phone || ""} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input id="email" name="email" type="email" placeholder="contacto@proveedor.com" />
+                        <Input id="email" name="email" type="email" placeholder="contacto@proveedor.com" defaultValue={editingSupplier?.email || ""} />
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setSupplierDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => { setSupplierDialogOpen(false); setEditingSupplier(null); }}>
                           Cancelar
                         </Button>
-                        <Button type="submit">Crear Proveedor</Button>
+                        <Button type="submit">{editingSupplier ? "Actualizar" : "Crear"} Proveedor</Button>
                       </div>
                     </form>
                   </DialogContent>
@@ -369,10 +411,11 @@ export default function Configuracion() {
                 columns={supplierColumns}
                 data={suppliers}
                 onView={(row) => {
-                  toast({ title: "Ver Proveedor", description: `Mostrando detalles de ${row.name}` });
+                  setViewingSupplier(row);
                 }}
                 onEdit={(row) => {
-                  toast({ title: "Editar Proveedor", description: `Editando ${row.name}` });
+                  setEditingSupplier(row);
+                  setSupplierDialogOpen(true);
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el proveedor ${row.name}?`)) {
@@ -387,6 +430,42 @@ export default function Configuracion() {
                   }
                 }}
               />
+              
+              <Dialog open={!!viewingSupplier} onOpenChange={(open) => !open && setViewingSupplier(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Detalles del Proveedor</DialogTitle>
+                  </DialogHeader>
+                  {viewingSupplier && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Nombre</Label>
+                          <p className="font-medium">{viewingSupplier.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Código</Label>
+                          <p className="font-medium font-mono">{viewingSupplier.code || "-"}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Contacto</Label>
+                          <p className="font-medium">{viewingSupplier.contact || "-"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Teléfono</Label>
+                          <p className="font-medium">{viewingSupplier.phone || "-"}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Email</Label>
+                        <p className="font-medium">{viewingSupplier.email || "-"}</p>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -401,52 +480,52 @@ export default function Configuracion() {
                 </div>
                 <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-new-product">
+                    <Button data-testid="button-new-product" onClick={() => setEditingProduct(null)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Producto
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Nuevo Producto</DialogTitle>
+                      <DialogTitle>{editingProduct ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
                       <DialogDescription>
-                        Registra un nuevo producto en el catálogo
+                        {editingProduct ? "Modifica los datos del producto" : "Registra un nuevo producto en el catálogo"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleProductSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="prod-name">Nombre *</Label>
-                          <Input id="prod-name" name="name" required placeholder="Pimiento asado" />
+                          <Input id="prod-name" name="name" required placeholder="Pimiento asado" defaultValue={editingProduct?.name || ""} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="prod-code">Código *</Label>
-                          <Input id="prod-code" name="code" required placeholder="PIMP-AS" />
+                          <Label htmlFor="prod-code">Código</Label>
+                          <Input id="prod-code" name="code" placeholder="PIMP-AS" defaultValue={editingProduct?.code || ""} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="type">Tipo *</Label>
-                          <Input id="type" name="type" required placeholder="Conserva" />
+                          <Input id="type" name="type" required placeholder="Conserva" defaultValue={editingProduct?.type || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="format">Formato</Label>
-                          <Input id="format" name="format" placeholder="Frasco 370ml" />
+                          <Input id="format" name="format" placeholder="Frasco 370ml" defaultValue={editingProduct?.format || ""} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="shelfLife">Vida Útil (días)</Label>
-                        <Input id="shelfLife" name="shelfLife" type="number" placeholder="730" />
+                        <Input id="shelfLife" name="shelfLife" type="number" placeholder="730" defaultValue={editingProduct?.shelfLife || ""} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="prod-description">Descripción</Label>
                         <Textarea id="prod-description" name="description" placeholder="Descripción del producto..." />
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setProductDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => { setProductDialogOpen(false); setEditingProduct(null); }}>
                           Cancelar
                         </Button>
-                        <Button type="submit">Crear Producto</Button>
+                        <Button type="submit">{editingProduct ? "Actualizar" : "Crear"} Producto</Button>
                       </div>
                     </form>
                   </DialogContent>
@@ -458,10 +537,11 @@ export default function Configuracion() {
                 columns={productColumns}
                 data={products}
                 onView={(row) => {
-                  toast({ title: "Ver Producto", description: `Mostrando detalles de ${row.name}` });
+                  setViewingProduct(row);
                 }}
                 onEdit={(row) => {
-                  toast({ title: "Editar Producto", description: `Editando ${row.name}` });
+                  setEditingProduct(row);
+                  setProductDialogOpen(true);
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el producto ${row.name}?`)) {
@@ -476,6 +556,42 @@ export default function Configuracion() {
                   }
                 }}
               />
+              
+              <Dialog open={!!viewingProduct} onOpenChange={(open) => !open && setViewingProduct(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Detalles del Producto</DialogTitle>
+                  </DialogHeader>
+                  {viewingProduct && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Nombre</Label>
+                          <p className="font-medium">{viewingProduct.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Código</Label>
+                          <p className="font-medium font-mono">{viewingProduct.code || "-"}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Tipo</Label>
+                          <p className="font-medium">{viewingProduct.type}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Formato</Label>
+                          <p className="font-medium">{viewingProduct.format || "-"}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Vida Útil</Label>
+                        <p className="font-medium">{viewingProduct.shelfLife ? `${viewingProduct.shelfLife} días` : "-"}</p>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -490,32 +606,32 @@ export default function Configuracion() {
                 </div>
                 <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-new-location">
+                    <Button data-testid="button-new-location" onClick={() => setEditingLocation(null)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nueva Ubicación
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Nueva Ubicación</DialogTitle>
+                      <DialogTitle>{editingLocation ? "Editar Ubicación" : "Nueva Ubicación"}</DialogTitle>
                       <DialogDescription>
-                        Registra una nueva ubicación física
+                        {editingLocation ? "Modifica los datos de la ubicación" : "Registra una nueva ubicación física"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleLocationSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="loc-name">Nombre *</Label>
-                          <Input id="loc-name" name="name" required placeholder="Recepción - Zona 1" />
+                          <Input id="loc-name" name="name" required placeholder="Recepción - Zona 1" defaultValue={editingLocation?.name || ""} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="loc-code">Código *</Label>
-                          <Input id="loc-code" name="code" required placeholder="REC-Z1" />
+                          <Label htmlFor="loc-code">Código</Label>
+                          <Input id="loc-code" name="code" placeholder="REC-Z1" defaultValue={editingLocation?.code || ""} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="loc-type">Tipo *</Label>
-                        <Select name="type" required>
+                        <Select name="type" required defaultValue={editingLocation?.type || ""}>
                           <SelectTrigger id="loc-type">
                             <SelectValue placeholder="Seleccionar tipo" />
                           </SelectTrigger>
@@ -528,10 +644,10 @@ export default function Configuracion() {
                         </Select>
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setLocationDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => { setLocationDialogOpen(false); setEditingLocation(null); }}>
                           Cancelar
                         </Button>
-                        <Button type="submit">Crear Ubicación</Button>
+                        <Button type="submit">{editingLocation ? "Actualizar" : "Crear"} Ubicación</Button>
                       </div>
                     </form>
                   </DialogContent>
@@ -543,10 +659,11 @@ export default function Configuracion() {
                 columns={locationColumns}
                 data={locations}
                 onView={(row) => {
-                  toast({ title: "Ver Ubicación", description: `Mostrando detalles de ${row.name}` });
+                  setViewingLocation(row);
                 }}
                 onEdit={(row) => {
-                  toast({ title: "Editar Ubicación", description: `Editando ${row.name}` });
+                  setEditingLocation(row);
+                  setLocationDialogOpen(true);
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar la ubicación ${row.name}?`)) {
@@ -561,6 +678,32 @@ export default function Configuracion() {
                   }
                 }}
               />
+              
+              <Dialog open={!!viewingLocation} onOpenChange={(open) => !open && setViewingLocation(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Detalles de la Ubicación</DialogTitle>
+                  </DialogHeader>
+                  {viewingLocation && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Nombre</Label>
+                          <p className="font-medium">{viewingLocation.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Código</Label>
+                          <p className="font-medium font-mono">{viewingLocation.code || "-"}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Tipo</Label>
+                        <p className="font-medium">{viewingLocation.type}</p>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -575,52 +718,52 @@ export default function Configuracion() {
                 </div>
                 <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-new-customer">
+                    <Button data-testid="button-new-customer" onClick={() => setEditingCustomer(null)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Cliente
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Nuevo Cliente</DialogTitle>
+                      <DialogTitle>{editingCustomer ? "Editar Cliente" : "Nuevo Cliente"}</DialogTitle>
                       <DialogDescription>
-                        Registra un nuevo cliente
+                        {editingCustomer ? "Modifica los datos del cliente" : "Registra un nuevo cliente"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCustomerSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="cust-name">Nombre *</Label>
-                          <Input id="cust-name" name="name" required placeholder="Distribuidora García" />
+                          <Input id="cust-name" name="name" required placeholder="Distribuidora García" defaultValue={editingCustomer?.name || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="cust-code">Código</Label>
-                          <Input id="cust-code" name="code" placeholder="DIST-GAR" />
+                          <Input id="cust-code" name="code" placeholder="DIST-GAR" defaultValue={editingCustomer?.code || ""} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="cust-contact">Persona de Contacto</Label>
-                          <Input id="cust-contact" name="contact" placeholder="María García" />
+                          <Input id="cust-contact" name="contact" placeholder="María García" defaultValue={editingCustomer?.contact || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="cust-phone">Teléfono</Label>
-                          <Input id="cust-phone" name="phone" placeholder="+34 600 123 456" />
+                          <Input id="cust-phone" name="phone" placeholder="+34 600 123 456" defaultValue={editingCustomer?.phone || ""} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="cust-email">Email</Label>
-                        <Input id="cust-email" name="email" type="email" placeholder="contacto@cliente.com" />
+                        <Input id="cust-email" name="email" type="email" placeholder="contacto@cliente.com" defaultValue={editingCustomer?.email || ""} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address">Dirección</Label>
-                        <Textarea id="address" name="address" placeholder="Calle Principal 123, Madrid" />
+                        <Textarea id="address" name="address" placeholder="Calle Principal 123, Madrid" defaultValue={editingCustomer?.address || ""} />
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setCustomerDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => { setCustomerDialogOpen(false); setEditingCustomer(null); }}>
                           Cancelar
                         </Button>
-                        <Button type="submit">Crear Cliente</Button>
+                        <Button type="submit">{editingCustomer ? "Actualizar" : "Crear"} Cliente</Button>
                       </div>
                     </form>
                   </DialogContent>
@@ -632,10 +775,11 @@ export default function Configuracion() {
                 columns={customerColumns}
                 data={customers}
                 onView={(row) => {
-                  toast({ title: "Ver Cliente", description: `Mostrando detalles de ${row.name}` });
+                  setViewingCustomer(row);
                 }}
                 onEdit={(row) => {
-                  toast({ title: "Editar Cliente", description: `Editando ${row.name}` });
+                  setEditingCustomer(row);
+                  setCustomerDialogOpen(true);
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el cliente ${row.name}?`)) {
@@ -650,6 +794,46 @@ export default function Configuracion() {
                   }
                 }}
               />
+              
+              <Dialog open={!!viewingCustomer} onOpenChange={(open) => !open && setViewingCustomer(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Detalles del Cliente</DialogTitle>
+                  </DialogHeader>
+                  {viewingCustomer && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Nombre</Label>
+                          <p className="font-medium">{viewingCustomer.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Código</Label>
+                          <p className="font-medium font-mono">{viewingCustomer.code || "-"}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Contacto</Label>
+                          <p className="font-medium">{viewingCustomer.contact || "-"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Teléfono</Label>
+                          <p className="font-medium">{viewingCustomer.phone || "-"}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Email</Label>
+                        <p className="font-medium">{viewingCustomer.email || "-"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Dirección</Label>
+                        <p className="font-medium">{viewingCustomer.address || "-"}</p>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
@@ -664,48 +848,48 @@ export default function Configuracion() {
                 </div>
                 <Dialog open={packageDialogOpen} onOpenChange={setPackageDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button data-testid="button-new-package">
+                    <Button data-testid="button-new-package" onClick={() => setEditingPackage(null)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Tipo de Envase
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Nuevo Tipo de Envase</DialogTitle>
+                      <DialogTitle>{editingPackage ? "Editar Tipo de Envase" : "Nuevo Tipo de Envase"}</DialogTitle>
                       <DialogDescription>
-                        Registra un nuevo tipo de envase
+                        {editingPackage ? "Modifica los datos del tipo de envase" : "Registra un nuevo tipo de envase"}
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handlePackageTypeSubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="pkg-name">Nombre *</Label>
-                          <Input id="pkg-name" name="name" required placeholder="Frasco vidrio" />
+                          <Input id="pkg-name" name="name" required placeholder="Frasco vidrio" defaultValue={editingPackage?.name || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="pkg-code">Código</Label>
-                          <Input id="pkg-code" name="code" placeholder="FRA-VID" />
+                          <Input id="pkg-code" name="code" placeholder="FRA-VID" defaultValue={editingPackage?.code || ""} />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="capacity">Capacidad</Label>
-                          <Input id="capacity" name="capacity" type="number" step="0.01" placeholder="370" />
+                          <Input id="capacity" name="capacity" type="number" step="0.01" placeholder="370" defaultValue={editingPackage?.capacity || ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="unit">Unidad</Label>
-                          <Input id="unit" name="unit" placeholder="ml" />
+                          <Input id="unit" name="unit" placeholder="ml" defaultValue={editingPackage?.unit || ""} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="pkg-description">Descripción</Label>
-                        <Textarea id="pkg-description" name="description" placeholder="Descripción del envase..." />
+                        <Textarea id="pkg-description" name="description" placeholder="Descripción del envase..." defaultValue={editingPackage?.description || ""} />
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setPackageDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => { setPackageDialogOpen(false); setEditingPackage(null); }}>
                           Cancelar
                         </Button>
-                        <Button type="submit">Crear Tipo de Envase</Button>
+                        <Button type="submit">{editingPackage ? "Actualizar" : "Crear"} Tipo de Envase</Button>
                       </div>
                     </form>
                   </DialogContent>
@@ -717,10 +901,11 @@ export default function Configuracion() {
                 columns={packageTypeColumns}
                 data={packageTypes}
                 onView={(row) => {
-                  toast({ title: "Ver Tipo de Envase", description: `Mostrando detalles de ${row.name}` });
+                  setViewingPackage(row);
                 }}
                 onEdit={(row) => {
-                  toast({ title: "Editar Tipo de Envase", description: `Editando ${row.name}` });
+                  setEditingPackage(row);
+                  setPackageDialogOpen(true);
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el tipo de envase ${row.name}?`)) {
@@ -735,6 +920,38 @@ export default function Configuracion() {
                   }
                 }}
               />
+              
+              <Dialog open={!!viewingPackage} onOpenChange={(open) => !open && setViewingPackage(null)}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Detalles del Tipo de Envase</DialogTitle>
+                  </DialogHeader>
+                  {viewingPackage && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Nombre</Label>
+                          <p className="font-medium">{viewingPackage.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Código</Label>
+                          <p className="font-medium font-mono">{viewingPackage.code || "-"}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Capacidad</Label>
+                          <p className="font-medium">{viewingPackage.capacity ? `${viewingPackage.capacity} ${viewingPackage.unit || ''}` : "-"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Descripción</Label>
+                          <p className="font-medium">{viewingPackage.description || "-"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </TabsContent>
