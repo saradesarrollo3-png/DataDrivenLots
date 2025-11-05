@@ -20,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -36,12 +46,18 @@ interface Reception {
   deliveryNote: string;
   arrivedAt: string;
   status: BatchStatus;
+  supplierId?: string;
+  productId?: string;
+  locationId?: string;
 }
 
 export default function Recepcion() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewingReception, setViewingReception] = useState<Reception | null>(null);
+  const [editingReception, setEditingReception] = useState<Reception | null>(null);
+  const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
 
   const { data: batchesData = [] } = useQuery<any[]>({
     queryKey: ['/api/batches'],
@@ -61,8 +77,10 @@ export default function Recepcion() {
 
   const createReceptionMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/batches', {
-        method: 'POST',
+      const url = editingReception ? `/api/batches/${editingReception.id}` : '/api/batches';
+      const method = editingReception ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('sessionId')}`
@@ -71,22 +89,54 @@ export default function Recepcion() {
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Error al crear recepción');
+        throw new Error(error.message || 'Error al guardar recepción');
       }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       setIsDialogOpen(false);
+      setEditingReception(null);
       toast({
-        title: "Recepción creada",
-        description: "El lote ha sido registrado correctamente.",
+        title: editingReception ? "Recepción actualizada" : "Recepción creada",
+        description: editingReception ? "El lote ha sido actualizado correctamente." : "El lote ha sido registrado correctamente.",
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la recepción",
+        description: error.message || "No se pudo guardar la recepción",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteReceptionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`
+        },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al eliminar recepción');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      setDeletingReception(null);
+      toast({
+        title: "Recepción eliminada",
+        description: "El lote ha sido eliminado correctamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la recepción",
         variant: "destructive",
       });
     },
@@ -109,30 +159,45 @@ export default function Recepcion() {
       hour: '2-digit',
       minute: '2-digit'
     }),
-    status: item.batch.status
+    status: item.batch.status,
+    supplierId: item.batch.supplierId,
+    productId: item.batch.productId,
+    locationId: item.batch.locationId
   }));
 
   const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    // Generar código de lote automáticamente
-    const batchCode = `L-${Date.now().toString().slice(-8)}`;
-    
     const data: any = {
-      batchCode,
+      batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
       supplierId: formData.get('supplierId') || null,
-      productId: formData.get('productId') || null,
+      productId: formData.get('productId'),
       quantity: formData.get('quantity'),
       unit: formData.get('unit'),
       deliveryNote: formData.get('deliveryNote'),
       temperature: formData.get('temperature') || null,
       truckPlate: formData.get('truckPlate') || null,
       locationId: formData.get('locationId') || null,
-      status: 'RECEPCION',
+      status: editingReception ? editingReception.status : 'RECEPCION',
     };
 
     createReceptionMutation.mutate(data);
+  };
+
+  const handleEdit = (reception: Reception) => {
+    setEditingReception(reception);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (reception: Reception) => {
+    setDeletingReception(reception);
+  };
+
+  const confirmDelete = () => {
+    if (deletingReception) {
+      deleteReceptionMutation.mutate(deletingReception.id);
+    }
   };
 
   const columns: Column<Reception>[] = [
@@ -177,25 +242,28 @@ export default function Recepcion() {
             Gestión de entradas de materia prima
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setEditingReception(null);
+        }}>
           <DialogTrigger asChild>
-            <Button data-testid="button-new-reception">
+            <Button data-testid="button-new-reception" onClick={() => setEditingReception(null)}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva Recepción
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Nueva Recepción</DialogTitle>
+              <DialogTitle>{editingReception ? "Editar Recepción" : "Nueva Recepción"}</DialogTitle>
               <DialogDescription>
-                Registra una nueva entrada de materia prima
+                {editingReception ? "Modifica los datos de la recepción" : "Registra una nueva entrada de materia prima"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateReception} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="supplier">Proveedor *</Label>
-                  <Select name="supplierId" required>
+                  <Select name="supplierId" required defaultValue={editingReception?.supplierId || ""}>
                     <SelectTrigger id="supplier" data-testid="select-supplier">
                       <SelectValue placeholder="Seleccionar proveedor" />
                     </SelectTrigger>
@@ -215,6 +283,7 @@ export default function Recepcion() {
                     name="deliveryNote"
                     placeholder="ALB-2025-001"
                     required
+                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : ''}
                     data-testid="input-delivery-note"
                   />
                 </div>
@@ -230,12 +299,13 @@ export default function Recepcion() {
                     step="0.01"
                     placeholder="250.00"
                     required
+                    defaultValue={editingReception?.quantity || ''}
                     data-testid="input-quantity"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unidad *</Label>
-                  <Select name="unit" required>
+                  <Select name="unit" required defaultValue={editingReception?.unit || ""}>
                     <SelectTrigger id="unit" data-testid="select-unit">
                       <SelectValue placeholder="Seleccionar unidad" />
                     </SelectTrigger>
@@ -250,10 +320,10 @@ export default function Recepcion() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="product">Producto</Label>
-                  <Select name="productId">
+                  <Label htmlFor="product">Producto *</Label>
+                  <Select name="productId" required defaultValue={editingReception?.productId || ""}>
                     <SelectTrigger id="product" data-testid="select-product">
-                      <SelectValue placeholder="Seleccionar producto (opcional)" />
+                      <SelectValue placeholder="Seleccionar producto" />
                     </SelectTrigger>
                     <SelectContent>
                       {productsData.map((product) => (
@@ -272,6 +342,7 @@ export default function Recepcion() {
                     type="number"
                     step="0.1"
                     placeholder="4.5"
+                    defaultValue={editingReception?.temperature || ''}
                     data-testid="input-temperature"
                   />
                 </div>
@@ -284,12 +355,13 @@ export default function Recepcion() {
                     id="truckPlate"
                     name="truckPlate"
                     placeholder="ABC-1234"
+                    defaultValue={editingReception?.truckPlate !== '-' ? editingReception?.truckPlate : ''}
                     data-testid="input-truck-plate"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Ubicación Destino</Label>
-                  <Select name="locationId">
+                  <Select name="locationId" defaultValue={editingReception?.locationId || ""}>
                     <SelectTrigger id="location" data-testid="select-location">
                       <SelectValue placeholder="Seleccionar ubicación (opcional)" />
                     </SelectTrigger>
@@ -308,7 +380,10 @@ export default function Recepcion() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setEditingReception(null);
+                  }}
                   disabled={createReceptionMutation.isPending}
                 >
                   Cancelar
@@ -318,7 +393,7 @@ export default function Recepcion() {
                   data-testid="button-submit-reception"
                   disabled={createReceptionMutation.isPending}
                 >
-                  {createReceptionMutation.isPending ? "Guardando..." : "Registrar Recepción"}
+                  {createReceptionMutation.isPending ? "Guardando..." : (editingReception ? "Actualizar Recepción" : "Registrar Recepción")}
                 </Button>
               </div>
             </form>
@@ -350,9 +425,91 @@ export default function Recepcion() {
       <DataTable
         columns={columns}
         data={filteredReceptions}
-        onView={(row) => console.log("View reception:", row)}
-        onEdit={(row) => console.log("Edit reception:", row)}
+        onView={(row) => setViewingReception(row)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
+
+      {/* Dialog para ver detalles */}
+      <Dialog open={!!viewingReception} onOpenChange={(open) => !open && setViewingReception(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles de la Recepción</DialogTitle>
+          </DialogHeader>
+          {viewingReception && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Código de Lote</Label>
+                  <p className="font-medium font-mono">{viewingReception.batchCode}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Estado</Label>
+                  <div className="mt-1">
+                    <StatusBadge status={viewingReception.status} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Proveedor</Label>
+                  <p className="font-medium">{viewingReception.supplier}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Producto</Label>
+                  <p className="font-medium">{viewingReception.product}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Cantidad</Label>
+                  <p className="font-medium">{viewingReception.quantity} {viewingReception.unit}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Nº Albarán</Label>
+                  <p className="font-medium">{viewingReception.deliveryNote}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Temperatura</Label>
+                  <p className="font-medium">{viewingReception.temperature.toFixed(1)}°C</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Matrícula Camión</Label>
+                  <p className="font-medium">{viewingReception.truckPlate}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Fecha y Hora de Llegada</Label>
+                <p className="font-medium">{viewingReception.arrivedAt}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog para confirmar eliminación */}
+      <AlertDialog open={!!deletingReception} onOpenChange={(open) => !open && setDeletingReception(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la recepción con código de lote{' '}
+              <span className="font-mono font-semibold">{deletingReception?.batchCode}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
