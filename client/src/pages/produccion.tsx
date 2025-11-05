@@ -57,6 +57,13 @@ interface BatchSelection {
   selectedQuantity: number;
 }
 
+interface PackageOutput {
+  id: string;
+  packageTypeId: string;
+  packageTypeName: string;
+  quantity: number;
+}
+
 interface ViewBatchDetailsProps {
   batch: ProductionBatch;
   allBatches: any[];
@@ -197,6 +204,7 @@ export default function Produccion() {
   const [outputQuantity, setOutputQuantity] = useState("");
   const [selectedPackageType, setSelectedPackageType] = useState("");
   const [packageCount, setPackageCount] = useState("");
+  const [packageOutputs, setPackageOutputs] = useState<PackageOutput[]>([]);
   const [notes, setNotes] = useState("");
   const [editingBatch, setEditingBatch] = useState<ProductionBatch | null>(null);
   const [viewingBatch, setViewingBatch] = useState<ProductionBatch | null>(null);
@@ -368,6 +376,46 @@ export default function Produccion() {
     return selectedBatches.reduce((sum, b) => sum + b.selectedQuantity, 0);
   };
 
+  const calculateTotalPackageOutput = () => {
+    return packageOutputs.reduce((sum, p) => sum + p.quantity, 0);
+  };
+
+  const addPackageOutput = () => {
+    if (!selectedPackageType || !packageCount || parseFloat(packageCount) <= 0) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un tipo de envase y especificar una cantidad válida",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const pkgType = packageTypes.find((pt: any) => pt.id === selectedPackageType);
+    if (!pkgType) return;
+
+    const newOutput: PackageOutput = {
+      id: `pkg-${Date.now()}`,
+      packageTypeId: selectedPackageType,
+      packageTypeName: pkgType.name,
+      quantity: parseFloat(packageCount),
+    };
+
+    setPackageOutputs([...packageOutputs, newOutput]);
+    setSelectedPackageType("");
+    setPackageCount("");
+  };
+
+  const removePackageOutput = (id: string) => {
+    setPackageOutputs(packageOutputs.filter(p => p.id !== id));
+  };
+
+  const updatePackageOutputQuantity = (id: string, quantity: string) => {
+    const numQuantity = parseFloat(quantity) || 0;
+    setPackageOutputs(packageOutputs.map(p => 
+      p.id === id ? { ...p, quantity: numQuantity } : p
+    ));
+  };
+
   const handleCloseDialog = () => {
     setShowNewProcessDialog(false);
     setEditingBatch(null);
@@ -376,6 +424,7 @@ export default function Produccion() {
     setOutputQuantity("");
     setSelectedPackageType("");
     setPackageCount("");
+    setPackageOutputs([]);
     setNotes("");
   };
 
@@ -445,17 +494,38 @@ export default function Produccion() {
     let finalUnit: string;
 
     if (activeStage === "envasado") {
-      if (!selectedPackageType || !packageCount || parseFloat(packageCount) === 0) {
+      if (packageOutputs.length === 0) {
         toast({
           title: "Error",
-          description: "Debes seleccionar un tipo de envase y especificar la cantidad de envases",
+          description: "Debes añadir al menos un tipo de envase con su cantidad",
           variant: "destructive",
         });
         return;
       }
-      const pkgType = packageTypes.find((pt: any) => pt.id === selectedPackageType);
-      finalOutputQuantity = parseFloat(packageCount);
-      finalUnit = `envases ${pkgType?.name || 'unidad'}`;
+      
+      const totalPackages = calculateTotalPackageOutput();
+      if (totalPackages === 0) {
+        toast({
+          title: "Error",
+          description: "La cantidad total de envases debe ser mayor a cero",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar que el total no exceda la materia disponible
+      const totalAvailable = calculateTotalInput();
+      if (totalAvailable === 0) {
+        toast({
+          title: "Error",
+          description: "Debes especificar las cantidades de los lotes seleccionados",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      finalOutputQuantity = totalPackages;
+      finalUnit = "envases";
     } else {
       if (!outputQuantity || parseFloat(outputQuantity) === 0) {
         toast({
@@ -479,70 +549,125 @@ export default function Produccion() {
       const newStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
       const currentStage = activeStage.toUpperCase();
 
-      // Crear UN ÚNICO lote de salida consolidado
       const firstBatch = allBatches.find((b: any) => b.batch.id === selectedBatches[0].batchId);
-      
-      const batchData: any = {
+
+      if (activeStage === "envasado") {
+        // Para envasado con múltiples salidas, crear un lote por cada tipo de envase
+        const inputBatchCodes = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => b.batchCode)
+          .join(', ');
+
+        const inputBatchDetails = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => ({
+            batchId: b.batchId,
+            batchCode: b.batchCode,
+            quantity: b.selectedQuantity,
+          }));
+
+        const totalInput = calculateTotalInput();
+
+        // Crear un lote por cada tipo de envase
+        for (const pkgOutput of packageOutputs) {
+          const pkgType = packageTypes.find((pt: any) => pt.id === pkgOutput.packageTypeId);
+          const batchCodeWithPkg = `${outputBatchCode}-${pkgType?.code || pkgOutput.packageTypeName}`;
+          
+          const batchData: any = {
+            batchCode: batchCodeWithPkg,
+            productId: firstBatch?.batch.productId,
+            initialQuantity: pkgOutput.quantity.toString(),
+            quantity: pkgOutput.quantity.toString(),
+            unit: `envases ${pkgType?.name || 'unidad'}`,
+            status: newStatus,
+          };
+
+          const newBatch = await createBatchMutation.mutateAsync(batchData);
+
+          // Crear registro de producción para este envase
+          await createProductionRecordMutation.mutateAsync({
+            batchId: newBatch.id,
+            stage: currentStage,
+            inputBatchCode: inputBatchCodes,
+            outputBatchCode: batchCodeWithPkg,
+            inputQuantity: totalInput.toString(),
+            outputQuantity: pkgOutput.quantity.toString(),
+            unit: selectedBatches[0].unit,
+            inputBatchDetails: JSON.stringify(inputBatchDetails),
+            notes: notes ? `${notes} - Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)` : `Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)`,
+            completedAt: new Date().toISOString(),
+          });
+        }
+
+        // Actualizar cantidades disponibles de todos los lotes de entrada (solo una vez)
+        for (const selectedBatch of selectedBatches) {
+          if (selectedBatch.selectedQuantity > 0) {
+            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            if (sourceBatch) {
+              const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: remainingQuantity.toString(),
+                },
+              });
+            }
+          }
+        }
+      } else {
+        // Para otras etapas, crear un solo lote consolidado
+        const batchData: any = {
           batchCode: outputBatchCode,
           productId: firstBatch?.batch.productId,
           initialQuantity: outputQuantity.toString(),
-          quantity: finalOutputQuantity.toString(),
-          unit: finalUnit,
+          quantity: outputQuantity.toString(),
+          unit: selectedBatches[0].unit,
           status: newStatus,
-      };
+        };
 
-      // Set quantity based on stage
-      if (activeStage === "envasado") {
-          batchData.quantity = packageCount.toString();
-          batchData.unit = finalUnit;
-      } else {
-          batchData.quantity = outputQuantity.toString();
-          batchData.unit = selectedBatches[0].unit;
-      }
-      
+        const newBatch = await createBatchMutation.mutateAsync(batchData);
 
-      const newBatch = await createBatchMutation.mutateAsync(batchData);
+        const inputBatchCodes = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => b.batchCode)
+          .join(', ');
 
-      // Crear UN registro de producción que consolida todos los lotes de entrada
-      const inputBatchCodes = selectedBatches
-        .filter(b => b.selectedQuantity > 0)
-        .map(b => b.batchCode)
-        .join(', ');
+        const inputBatchDetails = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => ({
+            batchId: b.batchId,
+            batchCode: b.batchCode,
+            quantity: b.selectedQuantity,
+          }));
 
-      // Guardar los detalles de cada lote de entrada con sus cantidades
-      const inputBatchDetails = selectedBatches
-        .filter(b => b.selectedQuantity > 0)
-        .map(b => ({
-          batchId: b.batchId,
-          batchCode: b.batchCode,
-          quantity: b.selectedQuantity,
-        }));
+        const totalInput = calculateTotalInput();
 
-      await createProductionRecordMutation.mutateAsync({
-        batchId: newBatch.id,
-        stage: currentStage,
-        inputBatchCode: inputBatchCodes,
-        outputBatchCode: outputBatchCode,
-        inputQuantity: totalInput.toString(),
-        outputQuantity: finalOutputQuantity.toString(),
-        unit: selectedBatches[0].unit,
-        inputBatchDetails: JSON.stringify(inputBatchDetails),
-        notes: notes || null,
-        completedAt: new Date().toISOString(),
-      });
+        await createProductionRecordMutation.mutateAsync({
+          batchId: newBatch.id,
+          stage: currentStage,
+          inputBatchCode: inputBatchCodes,
+          outputBatchCode: outputBatchCode,
+          inputQuantity: totalInput.toString(),
+          outputQuantity: finalOutputQuantity.toString(),
+          unit: selectedBatches[0].unit,
+          inputBatchDetails: JSON.stringify(inputBatchDetails),
+          notes: notes || null,
+          completedAt: new Date().toISOString(),
+        });
 
-      // Actualizar cantidades disponibles de todos los lotes de entrada
-      for (const selectedBatch of selectedBatches) {
-        if (selectedBatch.selectedQuantity > 0) {
-          const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-          if (sourceBatch) {
-            const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: remainingQuantity.toString(),
-              },
-            });
+        // Actualizar cantidades disponibles de todos los lotes de entrada
+        for (const selectedBatch of selectedBatches) {
+          if (selectedBatch.selectedQuantity > 0) {
+            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            if (sourceBatch) {
+              const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: remainingQuantity.toString(),
+                },
+              });
+            }
           }
         }
       }
@@ -556,7 +681,9 @@ export default function Produccion() {
 
       toast({
         title: "Proceso creado",
-        description: "El lote consolidado se ha creado exitosamente",
+        description: activeStage === "envasado" 
+          ? `Se han creado ${packageOutputs.length} lotes de envases exitosamente`
+          : "El lote consolidado se ha creado exitosamente",
       });
       handleCloseDialog();
     } catch (error: any) {
@@ -967,69 +1094,129 @@ export default function Produccion() {
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Lote de Salida</Label>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="output-code">Código de Lote Salida</Label>
-                    <Input
-                      id="output-code"
-                      value={outputBatchCode}
-                      onChange={(e) => setOutputBatchCode(e.target.value)}
-                      placeholder="Ej: ASADO-001"
-                    />
-                  </div>
-
-                  {activeStage === "envasado" ? (
-                    <>
-                      <div>
-                        <Label htmlFor="package-type">Tipo de Envase</Label>
-                        <Select value={selectedPackageType} onValueChange={setSelectedPackageType}>
-                          <SelectTrigger id="package-type">
-                            <SelectValue placeholder="Seleccionar envase" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {packageTypes.map((pt: any) => (
-                              <SelectItem key={pt.id} value={pt.id}>
-                                {pt.name} ({pt.capacity} {pt.unit})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="package-count">Número de Envases</Label>
-                        <Input
-                          id="package-count"
-                          type="number"
-                          step="1"
-                          min="0"
-                          value={packageCount}
-                          onChange={(e) => setPackageCount(e.target.value)}
-                          placeholder="Cantidad de envases"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <Label htmlFor="output-qty">Cantidad de Salida</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="output-qty"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={outputQuantity}
-                          onChange={(e) => setOutputQuantity(e.target.value)}
-                          placeholder="Cantidad producida"
-                        />
-                        {selectedBatches.length > 0 && (
-                          <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
-                            {selectedBatches[0].unit}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                <div>
+                  <Label htmlFor="output-code">Código de Lote Base</Label>
+                  <Input
+                    id="output-code"
+                    value={outputBatchCode}
+                    onChange={(e) => setOutputBatchCode(e.target.value)}
+                    placeholder={activeStage === "envasado" ? "Ej: ENV-001 (se añadirá sufijo por tipo)" : "Ej: ASADO-001"}
+                  />
+                  {activeStage === "envasado" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Se creará un lote por cada tipo de envase con el formato: CODIGO-TIPO
+                    </p>
                   )}
                 </div>
+
+                {activeStage === "envasado" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-base font-semibold">Tipos de Envase</Label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        <div>
+                          <Label htmlFor="package-type">Tipo de Envase</Label>
+                          <Select value={selectedPackageType} onValueChange={setSelectedPackageType}>
+                            <SelectTrigger id="package-type">
+                              <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {packageTypes.map((pt: any) => (
+                                <SelectItem key={pt.id} value={pt.id}>
+                                  {pt.name} ({pt.capacity} {pt.unit})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="package-count">Cantidad</Label>
+                          <Input
+                            id="package-count"
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={packageCount}
+                            onChange={(e) => setPackageCount(e.target.value)}
+                            placeholder="Nº envases"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button type="button" onClick={addPackageOutput} className="w-full">
+                            Añadir
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {packageOutputs.length > 0 && (
+                      <div className="border rounded-lg">
+                        <div className="p-3 bg-muted/50 border-b">
+                          <Label className="font-semibold">Salidas de Envases</Label>
+                        </div>
+                        <div className="divide-y">
+                          {packageOutputs.map((output) => {
+                            const pkgType = packageTypes.find((pt: any) => pt.id === output.packageTypeId);
+                            return (
+                              <div key={output.id} className="p-3 flex items-center justify-between gap-4">
+                                <div className="flex-1">
+                                  <p className="font-medium">{output.packageTypeName}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {pkgType?.capacity} {pkgType?.unit} por envase
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    value={output.quantity}
+                                    onChange={(e) => updatePackageOutputQuantity(output.id, e.target.value)}
+                                    className="w-24"
+                                  />
+                                  <span className="text-sm text-muted-foreground">envases</span>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => removePackageOutput(output.id)}
+                                  >
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="p-3 bg-muted/30 border-t">
+                          <p className="text-sm font-semibold">
+                            Total: {calculateTotalPackageOutput()} envases en {packageOutputs.length} tipo(s)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="output-qty">Cantidad de Salida</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="output-qty"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={outputQuantity}
+                        onChange={(e) => setOutputQuantity(e.target.value)}
+                        placeholder="Cantidad producida"
+                      />
+                      {selectedBatches.length > 0 && (
+                        <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
+                          {selectedBatches[0].unit}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <Label htmlFor="notes">Notas (Opcional)</Label>
