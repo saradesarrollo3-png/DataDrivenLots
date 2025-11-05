@@ -1,0 +1,83 @@
+Session created in store: we20ejuj2domhlrszfp Total sessions: 1
+Session created: we20ejuj2domhlrszfp
+Login response: {
+  sessionId: 'we20ejuj2domhlrszfp',
+  user: {
+    id: '97d3c10a-9bca-4a8a-a20a-87a911635ad5',
+    username: 'Sara',
+    email: 'sara@gmail.com',
+    organizationId: '9ea2b3eb-289f-4270-bf20-73c5975d221b',
+    organizationName: 'Empresa prueba'
+  }
+}
+9:03:21 AM [express] POST /api/auth/login 200 in 460ms :: {"sessionId":"we20ejuj2domhlrszfp","user":…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:21 AM [express] GET /api/auth/me 304 in 122ms :: {"id":"97d3c10a-9bca-4a8a-a20a-87a911635ad5","…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:24 AM [express] GET /api/auth/me 200 in 117ms :: {"id":"97d3c10a-9bca-4a8a-a20a-87a911635ad5","…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:24 AM [express] GET /api/batches 304 in 120ms :: []
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:31 AM [express] GET /api/products 304 in 124ms :: []
+9:03:31 AM [express] GET /api/customers 304 in 304ms :: []
+9:03:31 AM [express] GET /api/locations 304 in 311ms :: []
+9:03:31 AM [express] GET /api/suppliers 304 in 317ms :: []
+9:03:31 AM [express] GET /api/package-types 304 in 328ms :: []
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:36 AM [express] POST /api/suppliers 200 in 128ms :: {"id":"93332eb8-2388-4ec6-86d0-14f81665839f…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:36 AM [express] GET /api/suppliers 200 in 119ms :: [{"id":"93332eb8-2388-4ec6-86d0-14f81665839f…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:46 AM [express] PUT /api/suppliers/93332eb8-2388-4ec6-86d0-14f81665839f 200 in 122ms :: {"id":"…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+9:03:46 AM [express] GET /api/suppliers 200 in 119ms :: [{"id":"93332eb8-2388-4ec6-86d0-14f81665839f…
+Getting session: we20ejuj2domhlrszfp Found: true Total sessions: 1
+file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587
+                const error = new ZodError(ctx.common.issues);
+                              ^
+
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "null",
+    "path": [
+      "shelfLife"
+    ],
+    "message": "Expected number, received null"
+  }
+]
+    at get error [as error] (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587:31)
+    at ZodObject.parse (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:663:22)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:144:69)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at requireAuth (/home/runner/workspace/server/auth.ts:78:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'null',
+      path: [ 'shelfLife' ],
+      message: 'Expected number, received null'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'number',
+      received: 'null',
+      path: [ 'shelfLife' ],
+      message: 'Expected number, received null'
+    }
+  ]
+}
+
+Node.js v20.19.3
