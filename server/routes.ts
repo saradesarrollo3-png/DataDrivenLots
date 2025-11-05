@@ -269,8 +269,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/batches/:id", requireAuth, async (req, res) => {
-    const oldBatch = await storage.getBatchById(req.params.id);
+    const oldBatch = await storage.getBatchById(req.params.id, req.user!.organizationId);
     const batch = await storage.updateBatch(req.params.id, req.body);
+
+    // Update stock if quantity, unit, or product changed
+    if (oldBatch && oldBatch.batch.productId && oldBatch.batch.quantity && oldBatch.batch.unit) {
+      const oldQuantity = parseFloat(oldBatch.batch.quantity);
+      const newQuantity = batch.quantity ? parseFloat(batch.quantity) : oldQuantity;
+      const oldProductId = oldBatch.batch.productId;
+      const newProductId = batch.productId || oldProductId;
+      const oldUnit = oldBatch.batch.unit;
+      const newUnit = batch.unit || oldUnit;
+
+      // If product or unit changed, we need to subtract from old and add to new
+      if (oldProductId !== newProductId || oldUnit !== newUnit) {
+        // Subtract old quantity from old product/unit
+        await storage.updateProductStock(
+          req.user!.organizationId,
+          oldProductId,
+          oldUnit,
+          -oldQuantity
+        );
+        // Add new quantity to new product/unit
+        await storage.updateProductStock(
+          req.user!.organizationId,
+          newProductId,
+          newUnit,
+          newQuantity
+        );
+      } else if (oldQuantity !== newQuantity) {
+        // Same product/unit, just update the difference
+        const quantityDifference = newQuantity - oldQuantity;
+        await storage.updateProductStock(
+          req.user!.organizationId,
+          oldProductId,
+          oldUnit,
+          quantityDifference
+        );
+      }
+    }
 
     // Create history entry if status or location changed
     if (oldBatch && (oldBatch.batch.status !== batch.status || oldBatch.batch.locationId !== batch.locationId)) {
@@ -281,7 +318,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         toStatus: batch.status,
         fromLocation: oldBatch.batch.locationId,
         toLocation: batch.locationId,
-        notes: 'Batch updated'
+        notes: 'Batch updated',
+        organizationId: req.user!.organizationId
       });
     }
 
