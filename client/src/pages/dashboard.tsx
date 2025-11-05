@@ -1,8 +1,10 @@
+
 import { KPICard } from "@/components/kpi-card";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, TrendingUp, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface RecentBatch {
   id: string;
@@ -23,18 +25,50 @@ interface ExpiringBatch {
 }
 
 export default function Dashboard() {
-  const recentBatches: RecentBatch[] = [
-    { id: "1", code: "MP-20250104-0001", product: "Pimiento Asado", quantity: 250, unit: "kg", status: "RECEPCION", date: "2025-01-04" },
-    { id: "2", code: "MP-20250104-0002", product: "Pimiento Rojo", quantity: 180, unit: "kg", status: "EN_PROCESO", date: "2025-01-04" },
-    { id: "3", code: "EN-20250103-0045", product: "Pimiento Asado", quantity: 450, unit: "tarros", status: "RETENIDO", date: "2025-01-03" },
-    { id: "4", code: "EN-20250103-0044", product: "Pimiento Verde", quantity: 380, unit: "tarros", status: "APROBADO", date: "2025-01-03" },
-  ];
+  const { data: batchesData = [] } = useQuery({
+    queryKey: ['/api/batches'],
+  });
 
-  const expiringBatches: ExpiringBatch[] = [
-    { id: "1", code: "EN-20241220-0012", product: "Pimiento Asado 370g", expiryDate: "2025-01-15", daysLeft: 11 },
-    { id: "2", code: "EN-20241222-0015", product: "Pimiento Verde 370g", expiryDate: "2025-01-18", daysLeft: 14 },
-    { id: "3", code: "EN-20241225-0020", product: "Pimiento Rojo 370g", expiryDate: "2025-01-22", daysLeft: 18 },
-  ];
+  // Procesar datos recientes
+  const recentBatches: RecentBatch[] = batchesData.slice(0, 5).map((item: any) => ({
+    id: item.batch.id,
+    code: item.batch.batchCode,
+    product: item.product?.name || 'N/A',
+    quantity: parseFloat(item.batch.quantity),
+    unit: item.batch.unit,
+    status: item.batch.status,
+    date: new Date(item.batch.arrivedAt).toLocaleDateString('es-ES')
+  }));
+
+  // Calcular lotes próximos a caducar
+  const expiringBatches: ExpiringBatch[] = batchesData
+    .filter((item: any) => item.batch.expiryDate)
+    .map((item: any) => {
+      const expiryDate = new Date(item.batch.expiryDate);
+      const today = new Date();
+      const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: item.batch.id,
+        code: item.batch.batchCode,
+        product: item.product?.name || 'N/A',
+        expiryDate: expiryDate.toLocaleDateString('es-ES'),
+        daysLeft
+      };
+    })
+    .filter((item: ExpiringBatch) => item.daysLeft > 0 && item.daysLeft <= 30)
+    .sort((a: ExpiringBatch, b: ExpiringBatch) => a.daysLeft - b.daysLeft)
+    .slice(0, 5);
+
+  // Calcular KPIs
+  const totalLotes = batchesData.length;
+  const lotesEnProceso = batchesData.filter((item: any) => item.batch.status === 'EN_PROCESO').length;
+  const lotesRetenidos = batchesData.filter((item: any) => item.batch.status === 'RETENIDO').length;
+  
+  const today = new Date().toDateString();
+  const lotesAprobadosHoy = batchesData.filter((item: any) => {
+    const arrivedDate = new Date(item.batch.arrivedAt).toDateString();
+    return item.batch.status === 'APROBADO' && arrivedDate === today;
+  }).length;
 
   const recentColumns: Column<RecentBatch>[] = [
     { key: "code", label: "Código Lote" },
@@ -79,27 +113,23 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Lotes"
-          value="1,247"
+          value={totalLotes.toString()}
           icon={Package}
-          trend={{ value: 12.5, isPositive: true }}
         />
         <KPICard
           title="En Producción"
-          value="89"
+          value={lotesEnProceso.toString()}
           icon={TrendingUp}
-          trend={{ value: 8.2, isPositive: true }}
         />
         <KPICard
           title="Retenidos"
-          value="12"
+          value={lotesRetenidos.toString()}
           icon={AlertTriangle}
-          trend={{ value: -15.3, isPositive: false }}
         />
         <KPICard
           title="Aprobados Hoy"
-          value="45"
+          value={lotesAprobadosHoy.toString()}
           icon={CheckCircle}
-          trend={{ value: 23.1, isPositive: true }}
         />
       </div>
 

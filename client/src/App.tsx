@@ -16,6 +16,7 @@ import Dashboard from "@/pages/dashboard";
 import Recepcion from "@/pages/recepcion";
 import Produccion from "@/pages/produccion";
 import Calidad from "@/pages/calidad";
+import Expedicion from "@/pages/expedicion";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/recepcion" component={Recepcion} />
       <Route path="/produccion" component={Produccion} />
       <Route path="/calidad" component={Calidad} />
+      <Route path="/expedicion" component={Expedicion} />
       <Route path="/configuracion" component={Configuracion} />
       <Route path="/trazabilidad" component={Trazabilidad} />
       <Route path="/historial" component={Historial} />
