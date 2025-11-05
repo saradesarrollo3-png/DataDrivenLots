@@ -471,9 +471,14 @@ export default function Produccion() {
       return;
     }
 
-    // Obtener la fecha del formulario
+    // Obtener la fecha y hora del formulario
     const processedDateInput = document.getElementById('processedDate') as HTMLInputElement;
-    const processedDate = processedDateInput?.value || undefined;
+    const processedTimeInput = document.getElementById('processedTime') as HTMLInputElement;
+    
+    let processedDateTime: string | undefined = undefined;
+    if (processedDateInput?.value && processedTimeInput?.value) {
+      processedDateTime = `${processedDateInput.value}T${processedTimeInput.value}:00`;
+    }
 
     // Para pelado, cambiar el estado de los lotes de ASADO a PELADO manteniendo la cantidad
     if (activeStage === "pelado") {
@@ -486,7 +491,7 @@ export default function Produccion() {
               id: selectedBatch.batchId,
               data: {
                 status: 'PELADO',
-                processedDate: processedDate,
+                processedDate: processedDateTime,
                 // Mantener la cantidad original del lote
               },
             });
@@ -635,7 +640,7 @@ export default function Produccion() {
             quantity: pkgOutput.quantity.toString(),
             unit: `envases ${pkgType?.name || 'unidad'}`,
             status: newStatus,
-            processedDate: processedDate,
+            processedDate: processedDateTime,
           };
 
           const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -651,7 +656,7 @@ export default function Produccion() {
             unit: selectedBatches[0].unit,
             inputBatchDetails: JSON.stringify(inputBatchDetails),
             notes: notes ? `${notes} - Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)` : `Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)`,
-            processedDate: processedDate,
+            processedDate: processedDateTime,
             completedAt: new Date().toISOString(),
           });
         }
@@ -704,7 +709,7 @@ export default function Produccion() {
               quantity: selectedBatch.selectedQuantity.toString(),
               unit: selectedBatch.unit,
               status: 'ESTERILIZADO',
-              processedDate: processedDate,
+              processedDate: processedDateTime,
             };
 
             const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -724,7 +729,7 @@ export default function Produccion() {
                 quantity: selectedBatch.selectedQuantity,
               }]),
               notes: notes || null,
-              processedDate: processedDate,
+              processedDate: processedDateTime,
               completedAt: new Date().toISOString(),
             });
 
@@ -771,7 +776,7 @@ export default function Produccion() {
           quantity: finalOutputQuantity.toString(),
           unit: finalUnit,
           status: 'ASADO',
-          processedDate: processedDate,
+          processedDate: processedDateTime,
         };
 
         const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -787,7 +792,7 @@ export default function Produccion() {
           unit: finalUnit,
           inputBatchDetails: JSON.stringify(inputBatchDetails),
           notes: notes || null,
-          processedDate: processedDate,
+          processedDate: processedDateTime,
           completedAt: new Date().toISOString(),
         });
 
@@ -1395,16 +1400,29 @@ export default function Produccion() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="processedDate">Fecha de Proceso *</Label>
-                  <Input
-                    id="processedDate"
-                    name="processedDate"
-                    type="date"
-                    required
-                    defaultValue={new Date().toISOString().split('T')[0]}
-                    data-testid="input-processed-date"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="processedDate">Fecha de Proceso *</Label>
+                    <Input
+                      id="processedDate"
+                      name="processedDate"
+                      type="date"
+                      required
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                      data-testid="input-processed-date"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="processedTime">Hora de Proceso *</Label>
+                    <Input
+                      id="processedTime"
+                      name="processedTime"
+                      type="time"
+                      required
+                      defaultValue={new Date().toTimeString().slice(0, 5)}
+                      data-testid="input-processed-time"
+                    />
+                  </div>
                 </div>
               </div>
             )}

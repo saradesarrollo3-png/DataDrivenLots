@@ -52,6 +52,7 @@ interface Reception {
   productId?: string;
   locationId?: string;
   processedDate?: string;
+  processedTime?: string;
 }
 
 interface ProductStock {
@@ -162,30 +163,42 @@ export default function Recepcion() {
 
   const receptions: Reception[] = batchesData
     .filter(item => item.batch.status === 'RECEPCION')
-    .map(item => ({
-      id: item.batch.id,
-      batchCode: item.batch.batchCode,
-      supplier: item.supplier?.name || '-',
-      product: item.product?.name || '-',
-      initialQuantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
-      quantity: parseFloat(item.batch.quantity),
-      unit: item.batch.unit,
-      temperature: parseFloat(item.batch.temperature || '0'),
-      truckPlate: item.batch.truckPlate || '-',
-      deliveryNote: item.batch.deliveryNote || '-',
-      arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      status: item.batch.status,
-      supplierId: item.batch.supplierId,
-      productId: item.batch.productId,
-      locationId: item.batch.locationId,
-      processedDate: item.batch.processedDate ? new Date(item.batch.processedDate).toISOString().split('T')[0] : undefined
-    }));
+    .map(item => {
+      let processedDateValue = undefined;
+      let processedTimeValue = undefined;
+      
+      if (item.batch.processedDate) {
+        const dt = new Date(item.batch.processedDate);
+        processedDateValue = dt.toISOString().split('T')[0];
+        processedTimeValue = dt.toTimeString().slice(0, 5);
+      }
+      
+      return {
+        id: item.batch.id,
+        batchCode: item.batch.batchCode,
+        supplier: item.supplier?.name || '-',
+        product: item.product?.name || '-',
+        initialQuantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
+        quantity: parseFloat(item.batch.quantity),
+        unit: item.batch.unit,
+        temperature: parseFloat(item.batch.temperature || '0'),
+        truckPlate: item.batch.truckPlate || '-',
+        deliveryNote: item.batch.deliveryNote || '-',
+        arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        status: item.batch.status,
+        supplierId: item.batch.supplierId,
+        productId: item.batch.productId,
+        locationId: item.batch.locationId,
+        processedDate: processedDateValue,
+        processedTime: processedTimeValue,
+      };
+    });
 
   const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -193,6 +206,13 @@ export default function Recepcion() {
     
     const entryQuantity = formData.get('initialQuantity');
     const processedDateStr = formData.get('processedDate') as string;
+    const processedTimeStr = formData.get('processedTime') as string;
+    
+    // Combinar fecha y hora en formato ISO
+    let processedDateTime: string | undefined = undefined;
+    if (processedDateStr && processedTimeStr) {
+      processedDateTime = `${processedDateStr}T${processedTimeStr}:00`;
+    }
     
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
@@ -206,7 +226,7 @@ export default function Recepcion() {
       truckPlate: formData.get('truckPlate') || null,
       locationId: formData.get('locationId') || null,
       status: editingReception ? editingReception.status : 'RECEPCION',
-      processedDate: processedDateStr || undefined,
+      processedDate: processedDateTime,
     };
 
     createReceptionMutation.mutate(data);
@@ -455,16 +475,29 @@ export default function Recepcion() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="processedDate">Fecha de Recepción *</Label>
-                <Input
-                  id="processedDate"
-                  name="processedDate"
-                  type="date"
-                  required
-                  defaultValue={editingReception?.processedDate || new Date().toISOString().split('T')[0]}
-                  data-testid="input-processed-date"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="processedDate">Fecha de Recepción *</Label>
+                  <Input
+                    id="processedDate"
+                    name="processedDate"
+                    type="date"
+                    required
+                    defaultValue={editingReception?.processedDate || new Date().toISOString().split('T')[0]}
+                    data-testid="input-processed-date"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="processedTime">Hora de Recepción *</Label>
+                  <Input
+                    id="processedTime"
+                    name="processedTime"
+                    type="time"
+                    required
+                    defaultValue={editingReception?.processedTime || new Date().toTimeString().slice(0, 5)}
+                    data-testid="input-processed-time"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
