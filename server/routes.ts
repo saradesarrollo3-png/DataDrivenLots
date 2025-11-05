@@ -117,7 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/suppliers", requireAuth, async (req, res) => {
-    const data = insertSupplierSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertSupplierSchema.omit({ organizationId: true }).parse(bodyData);
     const supplier = await storage.insertSupplier({ ...data, organizationId: req.user!.organizationId });
     res.json(supplier);
   });
@@ -139,7 +140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/products", requireAuth, async (req, res) => {
-    const data = insertProductSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertProductSchema.omit({ organizationId: true }).parse(bodyData);
     const product = await storage.insertProduct({ ...data, organizationId: req.user!.organizationId });
     res.json(product);
   });
@@ -161,7 +163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/locations", requireAuth, async (req, res) => {
-    const data = insertLocationSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertLocationSchema.omit({ organizationId: true }).parse(bodyData);
     const location = await storage.insertLocation({ ...data, organizationId: req.user!.organizationId });
     res.json(location);
   });
@@ -183,7 +186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/customers", requireAuth, async (req, res) => {
-    const data = insertCustomerSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertCustomerSchema.omit({ organizationId: true }).parse(bodyData);
     const customer = await storage.insertCustomer({ ...data, organizationId: req.user!.organizationId });
     res.json(customer);
   });
@@ -205,7 +209,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/package-types", requireAuth, async (req, res) => {
-    const data = insertPackageTypeSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertPackageTypeSchema.omit({ organizationId: true }).parse(bodyData);
     const packageType = await storage.insertPackageType({ ...data, organizationId: req.user!.organizationId });
     res.json(packageType);
   });
@@ -232,7 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/batches", requireAuth, async (req, res) => {
-    const data = insertBatchSchema.parse(req.body);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertBatchSchema.omit({ organizationId: true }).parse(bodyData);
     const batch = await storage.insertBatch({ ...data, organizationId: req.user!.organizationId });
 
     // Create history entry
