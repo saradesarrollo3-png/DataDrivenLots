@@ -56,6 +56,131 @@ interface BatchSelection {
   selectedQuantity: number;
 }
 
+interface ViewBatchDetailsProps {
+  batch: ProductionBatch;
+  allBatches: any[];
+}
+
+function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
+  const [productionRecords, setProductionRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        const response = await fetch(`/api/production-records/batch/${batch.id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+          },
+        });
+        if (response.ok) {
+          const records = await response.json();
+          setProductionRecords(records);
+        }
+      } catch (error) {
+        console.error('Error loading production records:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecords();
+  }, [batch.id]);
+
+  if (loading) {
+    return <div className="p-4 text-center text-muted-foreground">Cargando detalles...</div>;
+  }
+
+  const record = productionRecords[0]?.record;
+  const inputCodes = record?.inputBatchCode?.split(', ') || [];
+  const totalInputQty = parseFloat(record?.inputQuantity || '0');
+
+  return (
+    <div className="space-y-6">
+      {/* Información del lote de salida */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3">Lote Producido</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-muted-foreground">Código de Lote</Label>
+            <p className="font-medium font-mono">{batch.batchCode}</p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground">Estado</Label>
+            <div className="mt-1">
+              <StatusBadge status={batch.status} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-muted-foreground">Producto</Label>
+            <p className="font-medium">{batch.productName}</p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground">Cantidad Producida</Label>
+            <p className="font-medium">{batch.quantity} {batch.unit}</p>
+          </div>
+          <div>
+            <Label className="text-muted-foreground">Fecha de Creación</Label>
+            <p className="font-medium">{batch.createdAt}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Materia prima utilizada */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3">Materia Prima Utilizada</h3>
+        <div className="border rounded-lg divide-y">
+          {inputCodes.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground text-center">
+              No hay información de materia prima
+            </p>
+          ) : (
+            inputCodes.map((code: string, index: number) => {
+              const inputBatch = allBatches.find((b: any) => b.batch.batchCode === code.trim());
+              const qtyPerBatch = totalInputQty / inputCodes.length;
+              
+              return (
+                <div key={index} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-medium">{code.trim()}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({inputBatch?.product?.name || 'Producto desconocido'})
+                        </span>
+                      </div>
+                      {inputBatch?.supplier && (
+                        <div className="text-sm text-muted-foreground">
+                          Proveedor: <span className="font-medium">{inputBatch.supplier.name}</span>
+                        </div>
+                      )}
+                      <div className="text-sm mt-1">
+                        Cantidad utilizada: <span className="font-semibold">{qtyPerBatch.toFixed(2)} {batch.unit}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        {totalInputQty > 0 && (
+          <div className="mt-2 text-sm font-medium">
+            Total materia prima: {totalInputQty.toFixed(2)} {batch.unit}
+          </div>
+        )}
+      </div>
+
+      {/* Notas */}
+      {record?.notes && (
+        <div>
+          <Label className="text-muted-foreground">Notas del Proceso</Label>
+          <p className="mt-1 text-sm">{record.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Produccion() {
   const { toast } = useToast();
   const [activeStage, setActiveStage] = useState<string>("asado");
@@ -414,7 +539,7 @@ export default function Produccion() {
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
     
-    // Cargar los registros de producción para obtener los lotes de entrada
+    // Cargar los registros de producción para obtener los lotes de entrada con cantidades
     try {
       const response = await fetch(`/api/production-records/batch/${batch.id}`, {
         headers: {
@@ -424,8 +549,11 @@ export default function Produccion() {
       if (response.ok) {
         const records = await response.json();
         if (records.length > 0) {
-          const inputCodes = records[0].record.inputBatchCode.split(', ');
-          // Marcar los lotes de entrada como seleccionados
+          const record = records[0].record;
+          const inputCodes = record.inputBatchCode.split(', ');
+          const totalInputQty = parseFloat(record.inputQuantity);
+          const qtyPerBatch = totalInputQty / inputCodes.length; // Cantidad promedio por lote
+          
           const inputSelections: BatchSelection[] = [];
           for (const code of inputCodes) {
             const inputBatch = allBatches.find((b: any) => b.batch.batchCode === code.trim());
@@ -434,13 +562,17 @@ export default function Produccion() {
                 batchId: inputBatch.batch.id,
                 batchCode: inputBatch.batch.batchCode,
                 productName: inputBatch.product?.name || '-',
-                maxQuantity: parseFloat(inputBatch.batch.quantity),
+                maxQuantity: parseFloat(inputBatch.batch.quantity) + qtyPerBatch, // Cantidad actual + cantidad usada
                 unit: inputBatch.batch.unit,
-                selectedQuantity: 0, // Se puede mejorar guardando las cantidades originales
+                selectedQuantity: qtyPerBatch, // Cantidad usada originalmente
               });
             }
           }
           setSelectedBatches(inputSelections);
+          
+          if (record.notes) {
+            setNotes(record.notes);
+          }
         }
       }
     } catch (error) {
@@ -557,39 +689,15 @@ export default function Produccion() {
       </Tabs>
 
       <Dialog open={!!viewingBatch} onOpenChange={(open) => !open && setViewingBatch(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalles del Lote</DialogTitle>
+            <DialogTitle>Detalles del Lote de Producción</DialogTitle>
           </DialogHeader>
           {viewingBatch && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Código de Lote</Label>
-                  <p className="font-medium font-mono">{viewingBatch.batchCode}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Estado</Label>
-                  <div className="mt-1">
-                    <StatusBadge status={viewingBatch.status} />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Producto</Label>
-                  <p className="font-medium">{viewingBatch.productName}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Cantidad</Label>
-                  <p className="font-medium">{viewingBatch.quantity} {viewingBatch.unit}</p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Fecha de Creación</Label>
-                <p className="font-medium">{viewingBatch.createdAt}</p>
-              </div>
-            </div>
+            <ViewBatchDetails 
+              batch={viewingBatch} 
+              allBatches={allBatches}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -612,17 +720,64 @@ export default function Produccion() {
           <div className="space-y-6">
             {/* Selección de lotes de entrada */}
             <div>
-              <Label className="text-base font-semibold">Lotes Disponibles</Label>
+              <Label className="text-base font-semibold">
+                {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
+              </Label>
               <div className="mt-2 border rounded-lg">
-                {availableBatches.length === 0 ? (
+                {availableBatches.length === 0 && selectedBatches.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">
                     No hay lotes disponibles para esta etapa
                   </p>
                 ) : (
                   <div className="divide-y">
-                    {availableBatches.map((batch) => {
+                    {/* Mostrar lotes seleccionados (en edición) */}
+                    {editingBatch && selectedBatches.map((selectedBatch) => {
+                      const batchDetails = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+                      
+                      return (
+                        <div key={selectedBatch.batchId} className="p-4 space-y-2 bg-muted/30">
+                          <div className="flex items-start gap-3">
+                            <Checkbox checked={true} disabled />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <p className="font-mono font-medium">{selectedBatch.batchCode}</p>
+                                  <p className="text-sm text-muted-foreground">{selectedBatch.productName}</p>
+                                  {batchDetails?.supplier && (
+                                    <p className="text-sm text-muted-foreground">
+                                      Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
+                                    </p>
+                                  )}
+                                </div>
+                                <p className="text-sm">
+                                  Disponible: <span className="font-semibold">{selectedBatch.maxQuantity.toFixed(2)} {selectedBatch.unit}</span>
+                                </p>
+                              </div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <Label htmlFor={`qty-${selectedBatch.batchId}`} className="text-sm">Cantidad utilizada:</Label>
+                                <Input
+                                  id={`qty-${selectedBatch.batchId}`}
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max={selectedBatch.maxQuantity}
+                                  value={selectedBatch.selectedQuantity || ''}
+                                  onChange={(e) => handleQuantityChange(selectedBatch.batchId, e.target.value)}
+                                  className="w-32"
+                                />
+                                <span className="text-sm text-muted-foreground">{selectedBatch.unit}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Mostrar lotes disponibles (en nuevo proceso) */}
+                    {!editingBatch && availableBatches.map((batch) => {
                       const isSelected = selectedBatches.some(b => b.batchId === batch.id);
                       const selectedBatch = selectedBatches.find(b => b.batchId === batch.id);
+                      const batchDetails = allBatches.find((b: any) => b.batch.id === batch.id);
 
                       return (
                         <div key={batch.id} className="p-4 space-y-2">
@@ -636,6 +791,11 @@ export default function Produccion() {
                                 <div>
                                   <p className="font-mono font-medium">{batch.batchCode}</p>
                                   <p className="text-sm text-muted-foreground">{batch.productName}</p>
+                                  {batchDetails?.supplier && (
+                                    <p className="text-sm text-muted-foreground">
+                                      Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
+                                    </p>
+                                  )}
                                 </div>
                                 <p className="text-sm">
                                   Disponible: <span className="font-semibold">{batch.availableQuantity} {batch.unit}</span>
