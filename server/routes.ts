@@ -147,12 +147,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/products/:id", requireAuth, async (req, res) => {
-    const product = await storage.updateProduct(req.params.id, req.body);
+    const product = await storage.updateProduct(req.params.id, req.body, req.user!.organizationId);
     res.json(product);
   });
 
   app.delete("/api/products/:id", requireAuth, async (req, res) => {
-    await storage.deleteProduct(req.params.id);
+    await storage.deleteProduct(req.params.id, req.user!.organizationId);
     res.json({ success: true });
   });
 
@@ -170,12 +170,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/locations/:id", requireAuth, async (req, res) => {
-    const location = await storage.updateLocation(req.params.id, req.body);
+    const location = await storage.updateLocation(req.params.id, req.body, req.user!.organizationId);
     res.json(location);
   });
 
   app.delete("/api/locations/:id", requireAuth, async (req, res) => {
-    await storage.deleteLocation(req.params.id);
+    await storage.deleteLocation(req.params.id, req.user!.organizationId);
     res.json({ success: true });
   });
 
@@ -193,12 +193,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/customers/:id", requireAuth, async (req, res) => {
-    const customer = await storage.updateCustomer(req.params.id, req.body);
+    const customer = await storage.updateCustomer(req.params.id, req.body, req.user!.organizationId);
     res.json(customer);
   });
 
   app.delete("/api/customers/:id", requireAuth, async (req, res) => {
-    await storage.deleteCustomer(req.params.id);
+    await storage.deleteCustomer(req.params.id, req.user!.organizationId);
     res.json({ success: true });
   });
 
@@ -216,12 +216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/package-types/:id", requireAuth, async (req, res) => {
-    const packageType = await storage.updatePackageType(req.params.id, req.body);
+    const packageType = await storage.updatePackageType(req.params.id, req.body, req.user!.organizationId);
     res.json(packageType);
   });
 
   app.delete("/api/package-types/:id", requireAuth, async (req, res) => {
-    await storage.deletePackageType(req.params.id);
+    await storage.deletePackageType(req.params.id, req.user!.organizationId);
     res.json({ success: true });
   });
 
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/batches/code/:code", requireAuth, async (req, res) => {
-    const batch = await storage.getBatchByCode(req.params.code);
+    const batch = await storage.getBatchByCode(req.params.code, req.user!.organizationId);
     res.json(batch);
   });
 
@@ -350,13 +350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Production Records
-  app.get("/api/production-records", requireAuth, async (_req, res) => {
-    const records = await storage.getProductionRecords();
+  app.get("/api/production-records", requireAuth, async (req, res) => {
+    const records = await storage.getProductionRecords(req.user!.organizationId);
     res.json(records);
   });
 
   app.get("/api/production-records/stage/:stage", requireAuth, async (req, res) => {
-    const records = await storage.getProductionRecordsByStage(req.params.stage);
+    const records = await storage.getProductionRecordsByStage(req.params.stage, req.user!.organizationId);
     res.json(records);
   });
 
@@ -396,13 +396,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Quality Checks
-  app.get("/api/quality-checks", requireAuth, async (_req, res) => {
-    const checks = await storage.getQualityChecks();
+  app.get("/api/quality-checks", requireAuth, async (req, res) => {
+    const checks = await storage.getQualityChecks(req.user!.organizationId);
     res.json(checks);
   });
 
-  app.get("/api/quality-checks/pending", requireAuth, async (_req, res) => {
-    const batches = await storage.getPendingQualityChecks();
+  app.get("/api/quality-checks/pending", requireAuth, async (req, res) => {
+    const batches = await storage.getPendingQualityChecks(req.user!.organizationId);
     res.json(batches);
   });
 
@@ -418,8 +418,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shipments
-  app.get("/api/shipments", requireAuth, async (_req, res) => {
-    const shipments = await storage.getShipments();
+  app.get("/api/shipments", requireAuth, async (req, res) => {
+    const shipments = await storage.getShipments(req.user!.organizationId);
     res.json(shipments);
   });
 
@@ -458,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/batch-history/:batchId", requireAuth, async (req, res) => {
-    const history = await storage.getBatchHistory(req.params.batchId);
+    const history = await storage.getBatchHistory(req.params.batchId, req.user!.organizationId);
     res.json(history);
   });
 

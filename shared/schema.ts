@@ -148,6 +148,7 @@ export const productionRecords = pgTable("production_records", {
 // Quality Checks
 export const qualityChecks = pgTable("quality_checks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   batchId: varchar("batch_id").references(() => batches.id).notNull(),
   checkedBy: varchar("checked_by").references(() => users.id),
   approved: integer("approved").notNull().default(0), // 0 = pending, 1 = approved, -1 = rejected
@@ -159,6 +160,7 @@ export const qualityChecks = pgTable("quality_checks", {
 // Shipments
 export const shipments = pgTable("shipments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   shipmentCode: text("shipment_code").notNull().unique(),
   customerId: varchar("customer_id").references(() => customers.id).notNull(),
   batchId: varchar("batch_id").references(() => batches.id).notNull(),
@@ -173,6 +175,7 @@ export const shipments = pgTable("shipments", {
 // Batch History/Traceability
 export const batchHistory = pgTable("batch_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   batchId: varchar("batch_id").references(() => batches.id).notNull(),
   action: text("action").notNull(), // 'created', 'moved', 'processed', 'quality_check', 'shipped'
   fromStatus: batchStatusEnum("from_status"),
@@ -226,9 +229,9 @@ export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, cr
 export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true, organizationId: true }).extend({
   completedAt: z.string().datetime().optional().nullable(),
 });
-export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true });
-export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true });
-export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true });
+export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true });
+export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });
+export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true, organizationId: true });
 export const insertProductStockSchema = createInsertSchema(productStock).omit({ id: true, updatedAt: true });
 
 // Types
