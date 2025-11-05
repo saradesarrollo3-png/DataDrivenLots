@@ -208,6 +208,8 @@ export default function Produccion() {
   const [notes, setNotes] = useState("");
   const [editingBatch, setEditingBatch] = useState<ProductionBatch | null>(null);
   const [viewingBatch, setViewingBatch] = useState<ProductionBatch | null>(null);
+  const [editProcessedDate, setEditProcessedDate] = useState<string>('');
+  const [editProcessedTime, setEditProcessedTime] = useState<string>('');
 
   const { data: asadoBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ASADO'],
@@ -456,6 +458,8 @@ export default function Produccion() {
     setPackageCount("");
     setPackageOutputs([]);
     setNotes("");
+    setEditProcessedDate("");
+    setEditProcessedTime("");
   };
 
   const handleSubmitProcess = async () => {
@@ -752,7 +756,7 @@ export default function Produccion() {
         return;
       }
     } else {
-        // Para asado, crear nuevo lote y reducir cantidad del lote de recepción
+        // Para asado, crear nuevo lote o actualizar existente
         const inputBatchCodes = selectedBatches
           .filter(b => b.selectedQuantity > 0)
           .map(b => b.batchCode)
@@ -768,47 +772,70 @@ export default function Produccion() {
 
         const totalInput = calculateTotalInput();
 
-        // Crear lote de ASADO
-        const batchData: any = {
-          batchCode: outputBatchCode,
-          productId: firstBatch?.batch.productId,
-          initialQuantity: finalOutputQuantity.toString(),
-          quantity: finalOutputQuantity.toString(),
-          unit: finalUnit,
-          status: 'ASADO',
-          processedDate: processedDateTime,
-        };
+        if (editingBatch) {
+          // Actualizar lote existente
+          await updateBatchMutation.mutateAsync({
+            id: editingBatch.id,
+            data: {
+              quantity: finalOutputQuantity.toString(),
+              processedDate: processedDateTime,
+            },
+          });
 
-        const newBatch = await createBatchMutation.mutateAsync(batchData);
+          // Actualizar el registro de producción existente
+          const existingRecords = await fetch(`/api/production-records/batch/${editingBatch.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+            },
+          }).then(r => r.json());
 
-        // Crear registro de producción
-        await createProductionRecordMutation.mutateAsync({
-          batchId: newBatch.id,
-          stage: 'ASADO',
-          inputBatchCode: inputBatchCodes,
-          outputBatchCode: outputBatchCode,
-          inputQuantity: totalInput.toString(),
-          outputQuantity: finalOutputQuantity.toString(),
-          unit: finalUnit,
-          inputBatchDetails: JSON.stringify(inputBatchDetails),
-          notes: notes || null,
-          processedDate: processedDateTime,
-          completedAt: new Date().toISOString(),
-        });
+          if (existingRecords.length > 0) {
+            // Aquí deberías tener una ruta PUT para actualizar el registro
+            // Por ahora, se mantiene como está
+          }
+        } else {
+          // Crear lote de ASADO
+          const batchData: any = {
+            batchCode: outputBatchCode,
+            productId: firstBatch?.batch.productId,
+            initialQuantity: finalOutputQuantity.toString(),
+            quantity: finalOutputQuantity.toString(),
+            unit: finalUnit,
+            status: 'ASADO',
+            processedDate: processedDateTime,
+          };
 
-        // Reducir cantidad de los lotes de RECEPCIÓN sin cambiar su estado
-        for (const selectedBatch of selectedBatches) {
-          if (selectedBatch.selectedQuantity > 0) {
-            const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-            if (currentBatch) {
-              const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
-              await updateBatchMutation.mutateAsync({
-                id: selectedBatch.batchId,
-                data: {
-                  quantity: remainingQuantity.toString(),
-                  // NO cambiar el estado, permanece en RECEPCION
-                },
-              });
+          const newBatch = await createBatchMutation.mutateAsync(batchData);
+
+          // Crear registro de producción
+          await createProductionRecordMutation.mutateAsync({
+            batchId: newBatch.id,
+            stage: 'ASADO',
+            inputBatchCode: inputBatchCodes,
+            outputBatchCode: outputBatchCode,
+            inputQuantity: totalInput.toString(),
+            outputQuantity: finalOutputQuantity.toString(),
+            unit: finalUnit,
+            inputBatchDetails: JSON.stringify(inputBatchDetails),
+            notes: notes || null,
+            processedDate: processedDateTime,
+            completedAt: new Date().toISOString(),
+          });
+
+          // Reducir cantidad de los lotes de RECEPCIÓN sin cambiar su estado
+          for (const selectedBatch of selectedBatches) {
+            if (selectedBatch.selectedQuantity > 0) {
+              const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+              if (currentBatch) {
+                const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
+                await updateBatchMutation.mutateAsync({
+                  id: selectedBatch.batchId,
+                  data: {
+                    quantity: remainingQuantity.toString(),
+                    // NO cambiar el estado, permanece en RECEPCION
+                  },
+                });
+              }
             }
           }
         }
@@ -927,15 +954,11 @@ export default function Produccion() {
           // Cargar fecha y hora desde processedDate
           if (record.processedDate) {
             const processedDateTime = new Date(record.processedDate);
-            const dateInput = document.getElementById('processedDate') as HTMLInputElement;
-            const timeInput = document.getElementById('processedTime') as HTMLInputElement;
-            
-            if (dateInput) {
-              dateInput.value = processedDateTime.toISOString().split('T')[0];
-            }
-            if (timeInput) {
-              timeInput.value = processedDateTime.toTimeString().slice(0, 5);
-            }
+            setEditProcessedDate(processedDateTime.toISOString().split('T')[0]);
+            setEditProcessedTime(processedDateTime.toTimeString().slice(0, 5));
+          } else {
+            setEditProcessedDate(new Date().toISOString().split('T')[0]);
+            setEditProcessedTime(new Date().toTimeString().slice(0, 5));
           }
         }
       }
@@ -1277,8 +1300,9 @@ export default function Produccion() {
                   name="processedDate"
                   type="date"
                   required
-                  key={`date-${editingBatch?.id || 'new'}-${activeStage}`}
-                  defaultValue={new Date().toISOString().split('T')[0]}
+                  value={editingBatch ? editProcessedDate : undefined}
+                  defaultValue={editingBatch ? undefined : new Date().toISOString().split('T')[0]}
+                  onChange={(e) => editingBatch && setEditProcessedDate(e.target.value)}
                   data-testid="input-processed-date"
                 />
               </div>
@@ -1289,8 +1313,9 @@ export default function Produccion() {
                   name="processedTime"
                   type="time"
                   required
-                  key={`time-${editingBatch?.id || 'new'}-${activeStage}`}
-                  defaultValue={new Date().toTimeString().slice(0, 5)}
+                  value={editingBatch ? editProcessedTime : undefined}
+                  defaultValue={editingBatch ? undefined : new Date().toTimeString().slice(0, 5)}
+                  onChange={(e) => editingBatch && setEditProcessedTime(e.target.value)}
                   data-testid="input-processed-time"
                 />
               </div>

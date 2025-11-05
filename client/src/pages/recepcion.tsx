@@ -166,11 +166,27 @@ export default function Recepcion() {
     .map(item => {
       let processedDateValue = undefined;
       let processedTimeValue = undefined;
+      let displayDateTime = '';
       
       if (item.batch.processedDate) {
         const dt = new Date(item.batch.processedDate);
         processedDateValue = dt.toISOString().split('T')[0];
         processedTimeValue = dt.toTimeString().slice(0, 5);
+        displayDateTime = dt.toLocaleString('es-ES', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        displayDateTime = new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       }
       
       return {
@@ -184,13 +200,7 @@ export default function Recepcion() {
         temperature: parseFloat(item.batch.temperature || '0'),
         truckPlate: item.batch.truckPlate || '-',
         deliveryNote: item.batch.deliveryNote || '-',
-        arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
+        arrivedAt: displayDateTime,
         status: item.batch.status,
         supplierId: item.batch.supplierId,
         productId: item.batch.productId,
