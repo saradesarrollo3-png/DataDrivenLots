@@ -60,15 +60,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Login attempt for email:", req.body.email);
       const { email, password } = loginSchema.parse(req.body);
 
-      const [user] = await db.select().from(users).where(eq(users.email, data.email));
+      const [user] = await db.select().from(users).where(eq(users.email, email));
       if (!user) {
-        console.log("Login failed: User not found for email:", data.email);
+        console.log("Login failed: User not found for email:", email);
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
-      const valid = await comparePassword(data.password, user.password);
+      const valid = await comparePassword(password, user.password);
       if (!valid) {
-        console.log("Login failed: Invalid password for email:", data.email);
+        console.log("Login failed: Invalid password for email:", email);
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
