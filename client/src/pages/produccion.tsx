@@ -213,9 +213,12 @@ export default function Produccion() {
     queryKey: ['/api/batches/status/ASADO'],
   });
 
-  const { data: peladoBatches = [] } = useQuery<any[]>({
+  const { data: peladoBatchesRaw = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/PELADO'],
   });
+
+  // Filtrar lotes de pelado con cantidad mayor a 0
+  const peladoBatches = peladoBatchesRaw.filter(b => parseFloat(b.batch.quantity) > 0);
 
   const { data: envasadoBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ENVASADO'],
