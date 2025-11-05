@@ -370,6 +370,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organizationId: req.user!.organizationId,
       };
       const record = await storage.insertProductionRecord(recordData);
+      
+      // Crear historial con el estado específico de la etapa
+      const stageStatusMap: Record<string, string> = {
+        'ASADO': 'ASADO',
+        'PELADO': 'PELADO',
+        'ENVASADO': 'ENVASADO',
+        'ESTERILIZADO': 'ESTERILIZADO',
+      };
+      const toStatus = stageStatusMap[data.stage] || 'EN_PROCESO';
+      
+      await storage.insertBatchHistory({
+        batchId: data.batchId,
+        action: 'processed',
+        fromStatus: 'RECEPCION',
+        toStatus: toStatus as any,
+        notes: `Procesado en etapa: ${data.stage}`,
+        organizationId: req.user!.organizationId,
+      });
+      
       res.json(record);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al crear el registro de producción" });

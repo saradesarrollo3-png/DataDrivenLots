@@ -8,6 +8,10 @@ import { z } from "zod";
 export const batchStatusEnum = pgEnum("batch_status", [
   "RECEPCION",
   "EN_PROCESO",
+  "ASADO",
+  "PELADO",
+  "ENVASADO",
+  "ESTERILIZADO",
   "RETENIDO",
   "APROBADO",
   "BLOQUEADO",

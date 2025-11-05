@@ -178,10 +178,30 @@ export const storage = {
 
   // Production Records
   async getProductionRecords(organizationId: string) {
-    return db.select().from(productionRecords).where(eq(productionRecords.organizationId, organizationId)).orderBy(desc(productionRecords.createdAt));
+    return db.select({
+      record: productionRecords,
+      batch: batches,
+      product: products
+    })
+    .from(productionRecords)
+    .leftJoin(batches, eq(productionRecords.batchId, batches.id))
+    .leftJoin(products, eq(batches.productId, products.id))
+    .where(eq(productionRecords.organizationId, organizationId))
+    .orderBy(desc(productionRecords.createdAt));
   },
   async getProductionRecordsByStage(stage: string, organizationId: string) {
-    return db.select().from(productionRecords).where(eq(productionRecords.stage, stage), eq(productionRecords.organizationId, organizationId));
+    return db.select({
+      record: productionRecords,
+      batch: batches,
+      product: products
+    })
+    .from(productionRecords)
+    .leftJoin(batches, eq(productionRecords.batchId, batches.id))
+    .leftJoin(products, eq(batches.productId, products.id))
+    .where(
+      sql`${productionRecords.stage} = ${stage} AND ${productionRecords.organizationId} = ${organizationId}`
+    )
+    .orderBy(desc(productionRecords.createdAt));
   },
   async insertProductionRecord(data: typeof productionRecords.$inferInsert) {
     const [record] = await db.insert(productionRecords).values(data).returning();
@@ -267,14 +287,35 @@ export const storage = {
 
   // Product Stock
   async getProductStock(organizationId: string) {
-    return db.select({
-      stock: productStock,
-      product: products
+    // Calcular stock desde lotes en RECEPCION únicamente
+    const result = await db.select({
+      productId: batches.productId,
+      productName: products.name,
+      productCode: products.code,
+      unit: batches.unit,
+      totalQuantity: sql<string>`SUM(CAST(${batches.quantity} AS DECIMAL))`,
     })
-    .from(productStock)
-    .leftJoin(products, eq(productStock.productId, products.id))
-    .where(eq(productStock.organizationId, organizationId))
-    .orderBy(products.name);
+    .from(batches)
+    .leftJoin(products, eq(batches.productId, products.id))
+    .where(
+      sql`${batches.organizationId} = ${organizationId} AND ${batches.status} = 'RECEPCION'`
+    )
+    .groupBy(batches.productId, products.name, products.code, batches.unit);
+
+    return result.map(item => ({
+      stock: {
+        id: item.productId || '',
+        organizationId,
+        productId: item.productId || '',
+        unit: item.unit,
+        quantity: item.totalQuantity || '0',
+        updatedAt: new Date(),
+      },
+      product: {
+        name: item.productName,
+        code: item.productCode,
+      }
+    }));
   },
   
   async updateProductStock(organizationId: string, productId: string, unit: string, quantityChange: number) {

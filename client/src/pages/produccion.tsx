@@ -279,6 +279,15 @@ export default function Produccion() {
     }
 
     try {
+      // Determinar el estado según la etapa
+      const stageStatusMap: Record<string, string> = {
+        'asado': 'ASADO',
+        'pelado': 'PELADO',
+        'envasado': 'ENVASADO',
+        'esterilizado': 'ESTERILIZADO',
+      };
+      const newStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
+
       // Crear lote de salida
       const firstBatch = allBatches.find((b: any) => b.batch.id === selectedBatches[0].batchId);
       const newBatch = await createBatchMutation.mutateAsync({
@@ -286,7 +295,7 @@ export default function Produccion() {
         productId: firstBatch?.batch.productId,
         quantity: finalOutputQuantity.toString(),
         unit: finalUnit,
-        status: 'EN_PROCESO',
+        status: newStatus,
       });
 
       // Crear registros de producción para cada lote de entrada
@@ -308,11 +317,19 @@ export default function Produccion() {
           const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
           if (sourceBatch) {
             const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
+            const stageStatusMap: Record<string, string> = {
+              'asado': 'ASADO',
+              'pelado': 'PELADO',
+              'envasado': 'ENVASADO',
+              'esterilizado': 'ESTERILIZADO',
+            };
+            const processedStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
+            
             await updateBatchMutation.mutateAsync({
               id: selectedBatch.batchId,
               data: {
                 quantity: remainingQuantity.toString(),
-                status: remainingQuantity > 0 ? sourceBatch.batch.status : 'EN_PROCESO',
+                status: remainingQuantity > 0 ? sourceBatch.batch.status : processedStatus,
               },
             });
           }
@@ -332,13 +349,13 @@ export default function Produccion() {
 
   const mapRecords = (records: any[]): ProductionBatch[] => 
     records.map(r => ({
-      id: r.id,
-      code: r.outputBatchCode,
-      product: r.inputBatchCode,
-      quantity: parseFloat(r.outputQuantity),
-      unit: r.unit,
-      stage: r.completedAt ? "Completado" : "Pendiente",
-      createdAt: new Date(r.createdAt).toLocaleDateString('es-ES')
+      id: r.record?.id || r.id,
+      code: r.record?.outputBatchCode || r.outputBatchCode,
+      product: r.record?.inputBatchCode || r.inputBatchCode,
+      quantity: parseFloat(r.record?.outputQuantity || r.outputQuantity),
+      unit: r.record?.unit || r.unit,
+      stage: (r.record?.completedAt || r.completedAt) ? "Completado" : "Pendiente",
+      createdAt: new Date(r.record?.createdAt || r.createdAt).toLocaleDateString('es-ES')
     }));
 
   const asadoBatches = mapRecords(asadoRecords);
