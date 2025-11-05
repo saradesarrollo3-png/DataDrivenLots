@@ -361,9 +361,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/production-records", requireAuth, async (req, res) => {
-    const data = insertProductionRecordSchema.parse(req.body);
-    const record = await storage.insertProductionRecord(data);
-    res.json(record);
+    try {
+      const data = insertProductionRecordSchema.parse(req.body);
+      const recordData = {
+        ...data,
+        completedAt: data.completedAt ? new Date(data.completedAt) : new Date(),
+      };
+      const record = await storage.insertProductionRecord(recordData);
+      res.json(record);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Error al crear el registro de producción" });
+    }
   });
 
   // Quality Checks

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -550,7 +549,7 @@ export default function Produccion() {
             {/* Información de salida */}
             <div className="space-y-4">
               <Label className="text-base font-semibold">Lote de Salida</Label>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="output-code">Código de Lote Salida</Label>

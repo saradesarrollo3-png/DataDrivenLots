@@ -218,7 +218,9 @@ export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, cr
   truckPlate: z.string().optional().nullable(),
   locationId: z.string().optional().nullable(),
 });
-export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true });
+export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true }).extend({
+  completedAt: z.string().datetime().optional().nullable(),
+});
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true });
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true });
