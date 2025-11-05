@@ -140,6 +140,7 @@ export const productionRecords = pgTable("production_records", {
   inputQuantity: decimal("input_quantity", { precision: 10, scale: 2 }).notNull(),
   outputQuantity: decimal("output_quantity", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull(),
+  inputBatchDetails: text("input_batch_details"), // JSON: [{batchId, batchCode, quantity}]
   notes: text("notes"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),

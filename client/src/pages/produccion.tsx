@@ -91,8 +91,15 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
   }
 
   const record = productionRecords[0]?.record;
-  const inputCodes = record?.inputBatchCode?.split(', ') || [];
   const totalInputQty = parseFloat(record?.inputQuantity || '0');
+  
+  // Parsear los detalles de lotes de entrada si existen
+  let inputBatchDetails = [];
+  try {
+    inputBatchDetails = record?.inputBatchDetails ? JSON.parse(record.inputBatchDetails) : [];
+  } catch (e) {
+    console.error('Error parsing inputBatchDetails:', e);
+  }
 
   return (
     <div className="space-y-6">
@@ -129,21 +136,20 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
       <div>
         <h3 className="text-sm font-semibold mb-3">Materia Prima Utilizada</h3>
         <div className="border rounded-lg divide-y">
-          {inputCodes.length === 0 ? (
+          {inputBatchDetails.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground text-center">
               No hay información de materia prima
             </p>
           ) : (
-            inputCodes.map((code: string, index: number) => {
-              const inputBatch = allBatches.find((b: any) => b.batch.batchCode === code.trim());
-              const qtyPerBatch = totalInputQty / inputCodes.length;
+            inputBatchDetails.map((detail: any, index: number) => {
+              const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
               
               return (
                 <div key={index} className="p-4 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono font-medium">{code.trim()}</span>
+                        <span className="font-mono font-medium">{detail.batchCode}</span>
                         <span className="text-sm text-muted-foreground">
                           ({inputBatch?.product?.name || 'Producto desconocido'})
                         </span>
@@ -154,7 +160,7 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
                         </div>
                       )}
                       <div className="text-sm mt-1">
-                        Cantidad utilizada: <span className="font-semibold">{qtyPerBatch.toFixed(2)} {batch.unit}</span>
+                        Cantidad utilizada: <span className="font-semibold">{detail.quantity.toFixed(2)} {batch.unit}</span>
                       </div>
                     </div>
                   </div>
@@ -445,6 +451,15 @@ export default function Produccion() {
         .map(b => b.batchCode)
         .join(', ');
 
+      // Guardar los detalles de cada lote de entrada con sus cantidades
+      const inputBatchDetails = selectedBatches
+        .filter(b => b.selectedQuantity > 0)
+        .map(b => ({
+          batchId: b.batchId,
+          batchCode: b.batchCode,
+          quantity: b.selectedQuantity,
+        }));
+
       await createProductionRecordMutation.mutateAsync({
         batchId: newBatch.id,
         stage: activeStage.toUpperCase(),
@@ -453,6 +468,7 @@ export default function Produccion() {
         inputQuantity: totalInput.toString(),
         outputQuantity: finalOutputQuantity.toString(),
         unit: selectedBatches[0].unit,
+        inputBatchDetails: JSON.stringify(inputBatchDetails),
         notes: notes || null,
         completedAt: new Date().toISOString(),
       });
@@ -550,21 +566,26 @@ export default function Produccion() {
         const records = await response.json();
         if (records.length > 0) {
           const record = records[0].record;
-          const inputCodes = record.inputBatchCode.split(', ');
-          const totalInputQty = parseFloat(record.inputQuantity);
-          const qtyPerBatch = totalInputQty / inputCodes.length; // Cantidad promedio por lote
+          
+          // Parsear los detalles de lotes de entrada
+          let inputBatchDetails = [];
+          try {
+            inputBatchDetails = record.inputBatchDetails ? JSON.parse(record.inputBatchDetails) : [];
+          } catch (e) {
+            console.error('Error parsing inputBatchDetails:', e);
+          }
           
           const inputSelections: BatchSelection[] = [];
-          for (const code of inputCodes) {
-            const inputBatch = allBatches.find((b: any) => b.batch.batchCode === code.trim());
+          for (const detail of inputBatchDetails) {
+            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
             if (inputBatch) {
               inputSelections.push({
                 batchId: inputBatch.batch.id,
                 batchCode: inputBatch.batch.batchCode,
                 productName: inputBatch.product?.name || '-',
-                maxQuantity: parseFloat(inputBatch.batch.quantity) + qtyPerBatch, // Cantidad actual + cantidad usada
+                maxQuantity: parseFloat(inputBatch.batch.quantity) + detail.quantity, // Cantidad actual + cantidad usada
                 unit: inputBatch.batch.unit,
-                selectedQuantity: qtyPerBatch, // Cantidad usada originalmente
+                selectedQuantity: detail.quantity, // Cantidad usada originalmente
               });
             }
           }
