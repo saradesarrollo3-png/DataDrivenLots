@@ -201,7 +201,13 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true,
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true, createdAt: true });
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true });
 export const insertPackageTypeSchema = createInsertSchema(packageTypes).omit({ id: true, createdAt: true });
-export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, createdAt: true });
+export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, createdAt: true }).extend({
+  productId: z.string().optional().nullable(),
+  supplierId: z.string().optional().nullable(),
+  temperature: z.string().optional().nullable(),
+  truckPlate: z.string().optional().nullable(),
+  locationId: z.string().optional().nullable(),
+});
 export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true });
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true });

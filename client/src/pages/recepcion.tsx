@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface Reception {
   id: string;
@@ -58,6 +59,39 @@ export default function Recepcion() {
     queryKey: ['/api/locations'],
   });
 
+  const createReceptionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch('/api/batches', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error al crear recepción');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      setIsDialogOpen(false);
+      toast({
+        title: "Recepción creada",
+        description: "El lote ha sido registrado correctamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la recepción",
+        variant: "destructive",
+      });
+    },
+  });
+
   const receptions: Reception[] = batchesData.map(item => ({
     id: item.batch.id,
     batchCode: item.batch.batchCode,
@@ -78,13 +112,27 @@ export default function Recepcion() {
     status: item.batch.status
   }));
 
-  const handleCreateReception = (e: React.FormEvent) => {
+  const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast({
-      title: "Recepción creada",
-      description: "El lote ha sido registrado correctamente.",
-    });
-    setIsDialogOpen(false);
+    const formData = new FormData(e.currentTarget);
+    
+    // Generar código de lote automáticamente
+    const batchCode = `L-${Date.now().toString().slice(-8)}`;
+    
+    const data: any = {
+      batchCode,
+      supplierId: formData.get('supplierId') || null,
+      productId: formData.get('productId') || null,
+      quantity: formData.get('quantity'),
+      unit: formData.get('unit'),
+      deliveryNote: formData.get('deliveryNote'),
+      temperature: formData.get('temperature') || null,
+      truckPlate: formData.get('truckPlate') || null,
+      locationId: formData.get('locationId') || null,
+      status: 'RECEPCION',
+    };
+
+    createReceptionMutation.mutate(data);
   };
 
   const columns: Column<Reception>[] = [
@@ -257,11 +305,20 @@ export default function Recepcion() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={createReceptionMutation.isPending}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" data-testid="button-submit-reception">
-                  Registrar Recepción
+                <Button 
+                  type="submit" 
+                  data-testid="button-submit-reception"
+                  disabled={createReceptionMutation.isPending}
+                >
+                  {createReceptionMutation.isPending ? "Guardando..." : "Registrar Recepción"}
                 </Button>
               </div>
             </form>
