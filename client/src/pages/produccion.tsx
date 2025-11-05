@@ -381,16 +381,18 @@ export default function Produccion() {
         selectedQuantity: autoQuantity,
       }]);
 
-      // Para esterilizado, establecer automáticamente la cantidad de salida
+      // Para esterilizado, establecer automáticamente la cantidad de salida y el código de lote
       if (activeStage === "esterilizado") {
         setOutputQuantity(batch.availableQuantity.toString());
+        setOutputBatchCode(batch.batchCode);
       }
     } else {
       setSelectedBatches(selectedBatches.filter(b => b.batchId !== batch.id));
 
-      // Si se deselecciona el lote en esterilizado, limpiar la cantidad de salida
+      // Si se deselecciona el lote en esterilizado, limpiar la cantidad de salida y el código
       if (activeStage === "esterilizado") {
         setOutputQuantity("");
+        setOutputBatchCode("");
       }
     }
   };
