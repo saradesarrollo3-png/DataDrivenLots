@@ -100,11 +100,16 @@ export default function Configuracion() {
 
   const createSupplierMutation = useMutation({
     mutationFn: async (data: any) => {
+      const sessionId = localStorage.getItem('sessionId');
       const url = editingSupplier ? `/api/suppliers/${editingSupplier.id}` : '/api/suppliers';
       const method = editingSupplier ? 'PUT' : 'POST';
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (sessionId) {
+        headers['Authorization'] = `Bearer ${sessionId}`;
+      }
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Error al guardar proveedor');
@@ -126,11 +131,16 @@ export default function Configuracion() {
 
   const createProductMutation = useMutation({
     mutationFn: async (data: any) => {
+      const sessionId = localStorage.getItem('sessionId');
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (sessionId) {
+        headers['Authorization'] = `Bearer ${sessionId}`;
+      }
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Error al guardar producto');
@@ -152,11 +162,16 @@ export default function Configuracion() {
 
   const createLocationMutation = useMutation({
     mutationFn: async (data: any) => {
+      const sessionId = localStorage.getItem('sessionId');
       const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations';
       const method = editingLocation ? 'PUT' : 'POST';
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (sessionId) {
+        headers['Authorization'] = `Bearer ${sessionId}`;
+      }
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Error al guardar ubicación');
@@ -178,11 +193,16 @@ export default function Configuracion() {
 
   const createCustomerMutation = useMutation({
     mutationFn: async (data: any) => {
+      const sessionId = localStorage.getItem('sessionId');
       const url = editingCustomer ? `/api/customers/${editingCustomer.id}` : '/api/customers';
       const method = editingCustomer ? 'PUT' : 'POST';
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (sessionId) {
+        headers['Authorization'] = `Bearer ${sessionId}`;
+      }
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Error al guardar cliente');
@@ -204,11 +224,16 @@ export default function Configuracion() {
 
   const createPackageTypeMutation = useMutation({
     mutationFn: async (data: any) => {
+      const sessionId = localStorage.getItem('sessionId');
       const url = editingPackage ? `/api/package-types/${editingPackage.id}` : '/api/package-types';
       const method = editingPackage ? 'PUT' : 'POST';
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (sessionId) {
+        headers['Authorization'] = `Bearer ${sessionId}`;
+      }
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Error al guardar tipo de envase');
@@ -419,7 +444,12 @@ export default function Configuracion() {
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el proveedor ${row.name}?`)) {
-                    fetch(`/api/suppliers/${row.id}`, { method: 'DELETE' })
+                    const sessionId = localStorage.getItem('sessionId');
+                    const headers: HeadersInit = {};
+                    if (sessionId) {
+                      headers['Authorization'] = `Bearer ${sessionId}`;
+                    }
+                    fetch(`/api/suppliers/${row.id}`, { method: 'DELETE', headers })
                       .then(() => {
                         queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
                         toast({ title: "Proveedor eliminado", description: "El proveedor se ha eliminado correctamente." });
@@ -545,7 +575,12 @@ export default function Configuracion() {
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el producto ${row.name}?`)) {
-                    fetch(`/api/products/${row.id}`, { method: 'DELETE' })
+                    const sessionId = localStorage.getItem('sessionId');
+                    const headers: HeadersInit = {};
+                    if (sessionId) {
+                      headers['Authorization'] = `Bearer ${sessionId}`;
+                    }
+                    fetch(`/api/products/${row.id}`, { method: 'DELETE', headers })
                       .then(() => {
                         queryClient.invalidateQueries({ queryKey: ['/api/products'] });
                         toast({ title: "Producto eliminado", description: "El producto se ha eliminado correctamente." });
@@ -667,7 +702,12 @@ export default function Configuracion() {
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar la ubicación ${row.name}?`)) {
-                    fetch(`/api/locations/${row.id}`, { method: 'DELETE' })
+                    const sessionId = localStorage.getItem('sessionId');
+                    const headers: HeadersInit = {};
+                    if (sessionId) {
+                      headers['Authorization'] = `Bearer ${sessionId}`;
+                    }
+                    fetch(`/api/locations/${row.id}`, { method: 'DELETE', headers })
                       .then(() => {
                         queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
                         toast({ title: "Ubicación eliminada", description: "La ubicación se ha eliminado correctamente." });
@@ -783,7 +823,12 @@ export default function Configuracion() {
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el cliente ${row.name}?`)) {
-                    fetch(`/api/customers/${row.id}`, { method: 'DELETE' })
+                    const sessionId = localStorage.getItem('sessionId');
+                    const headers: HeadersInit = {};
+                    if (sessionId) {
+                      headers['Authorization'] = `Bearer ${sessionId}`;
+                    }
+                    fetch(`/api/customers/${row.id}`, { method: 'DELETE', headers })
                       .then(() => {
                         queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
                         toast({ title: "Cliente eliminado", description: "El cliente se ha eliminado correctamente." });
@@ -909,7 +954,12 @@ export default function Configuracion() {
                 }}
                 onDelete={(row) => {
                   if (confirm(`¿Estás seguro de eliminar el tipo de envase ${row.name}?`)) {
-                    fetch(`/api/package-types/${row.id}`, { method: 'DELETE' })
+                    const sessionId = localStorage.getItem('sessionId');
+                    const headers: HeadersInit = {};
+                    if (sessionId) {
+                      headers['Authorization'] = `Bearer ${sessionId}`;
+                    }
+                    fetch(`/api/package-types/${row.id}`, { method: 'DELETE', headers })
                       .then(() => {
                         queryClient.invalidateQueries({ queryKey: ['/api/package-types'] });
                         toast({ title: "Tipo de envase eliminado", description: "El tipo de envase se ha eliminado correctamente." });
