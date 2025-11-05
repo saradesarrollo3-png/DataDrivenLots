@@ -244,7 +244,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/batches", requireAuth, async (req, res) => {
     const { organizationId, ...bodyData } = req.body;
     const data = insertBatchSchema.omit({ organizationId: true }).parse(bodyData);
-    const batch = await storage.insertBatch({ ...data, organizationId: req.user!.organizationId });
+    
+    // Convert processedDate string to Date object if provided
+    const batchData: any = { ...data, organizationId: req.user!.organizationId };
+    if (data.processedDate) {
+      batchData.processedDate = new Date(data.processedDate);
+    }
+    
+    const batch = await storage.insertBatch(batchData);
 
     // Create history entry
     await storage.insertBatchHistory({
@@ -275,7 +282,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/batches/:id", requireAuth, async (req, res) => {
     const oldBatch = await storage.getBatchById(req.params.id, req.user!.organizationId);
-    const batch = await storage.updateBatch(req.params.id, req.body);
+    
+    // Convert processedDate string to Date object if provided
+    const updateData: any = { ...req.body };
+    if (updateData.processedDate) {
+      updateData.processedDate = new Date(updateData.processedDate);
+    }
+    
+    const batch = await storage.updateBatch(req.params.id, updateData);
 
     // Update stock if quantity, unit, or product changed
     // Solo actualizar stock si el lote está en RECEPCION (es materia prima)
@@ -380,11 +394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { organizationId, ...bodyData } = req.body;
       const data = insertProductionRecordSchema.parse(bodyData);
-      const recordData = {
+      const recordData: any = {
         ...data,
         completedAt: data.completedAt ? new Date(data.completedAt) : new Date(),
         organizationId: req.user!.organizationId,
       };
+      
+      // Convert processedDate string to Date object if provided
+      if (data.processedDate) {
+        recordData.processedDate = new Date(data.processedDate);
+      }
+      
       const record = await storage.insertProductionRecord(recordData);
       
       // Crear historial con el estado específico de la etapa
