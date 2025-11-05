@@ -116,15 +116,12 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      setSupplierDialogOpen(false);
+      setEditingSupplier(null);
       toast({ 
         title: editingSupplier ? "Proveedor actualizado" : "Proveedor creado", 
         description: editingSupplier ? "El proveedor se ha actualizado correctamente." : "El proveedor se ha creado correctamente." 
       });
-      // Close dialog after toast to prevent navigation issues
-      setTimeout(() => {
-        setSupplierDialogOpen(false);
-        setEditingSupplier(null);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el proveedor.", variant: "destructive" });
@@ -150,14 +147,12 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      setProductDialogOpen(false);
+      setEditingProduct(null);
       toast({ 
         title: editingProduct ? "Producto actualizado" : "Producto creado", 
         description: editingProduct ? "El producto se ha actualizado correctamente." : "El producto se ha creado correctamente." 
       });
-      setTimeout(() => {
-        setProductDialogOpen(false);
-        setEditingProduct(null);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el producto.", variant: "destructive" });
@@ -183,14 +178,12 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
+      setLocationDialogOpen(false);
+      setEditingLocation(null);
       toast({ 
         title: editingLocation ? "Ubicación actualizada" : "Ubicación creada", 
         description: editingLocation ? "La ubicación se ha actualizado correctamente." : "La ubicación se ha creado correctamente." 
       });
-      setTimeout(() => {
-        setLocationDialogOpen(false);
-        setEditingLocation(null);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar la ubicación.", variant: "destructive" });
@@ -216,14 +209,12 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      setCustomerDialogOpen(false);
+      setEditingCustomer(null);
       toast({ 
         title: editingCustomer ? "Cliente actualizado" : "Cliente creado", 
         description: editingCustomer ? "El cliente se ha actualizado correctamente." : "El cliente se ha creado correctamente." 
       });
-      setTimeout(() => {
-        setCustomerDialogOpen(false);
-        setEditingCustomer(null);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el cliente.", variant: "destructive" });
@@ -249,14 +240,12 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/package-types'] });
+      setPackageDialogOpen(false);
+      setEditingPackage(null);
       toast({ 
         title: editingPackage ? "Tipo de envase actualizado" : "Tipo de envase creado", 
         description: editingPackage ? "El tipo de envase se ha actualizado correctamente." : "El tipo de envase se ha creado correctamente." 
       });
-      setTimeout(() => {
-        setPackageDialogOpen(false);
-        setEditingPackage(null);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el tipo de envase.", variant: "destructive" });
