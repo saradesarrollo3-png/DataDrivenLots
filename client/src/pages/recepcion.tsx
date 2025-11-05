@@ -265,11 +265,6 @@ export default function Recepcion() {
   }));
 
   const stockColumns: Column<ProductStock>[] = [
-    { 
-      key: "productCode", 
-      label: "Código",
-      render: (value) => <span className="font-mono font-medium">{value}</span>
-    },
     { key: "productName", label: "Producto" },
     { 
       key: "quantity", 
