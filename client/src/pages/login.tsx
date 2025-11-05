@@ -43,7 +43,8 @@ export default function Login() {
         title: "¡Bienvenido!",
         description: `Has iniciado sesión correctamente`,
       });
-      setLocation("/");
+      // Forzar recarga completa para que AuthProvider cargue el usuario
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({

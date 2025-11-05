@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -41,10 +40,11 @@ export default function Register() {
       localStorage.setItem("sessionId", data.sessionId);
       localStorage.setItem("user", JSON.stringify(data.user));
       toast({
-        title: "¡Cuenta creada!",
-        description: "Tu organización ha sido configurada exitosamente",
+        title: "¡Registro exitoso!",
+        description: `Bienvenido ${data.user.username}`,
       });
-      setLocation("/");
+      // Forzar recarga completa para que AuthProvider cargue el usuario
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
@@ -128,14 +128,14 @@ export default function Register() {
               </Button>
             </form>
           </Form>
-          
+
           <div className="mt-4 text-center text-sm">
             ¿Ya tienes cuenta?{" "}
             <Link href="/login" className="text-primary hover:underline">
               Inicia sesión aquí
             </Link>
           </div>
-          
+
           <div className="mt-2 text-center text-sm">
             <Link href="/" className="text-muted-foreground hover:underline">
               Volver al inicio
