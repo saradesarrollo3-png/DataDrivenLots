@@ -364,9 +364,9 @@ export default function Produccion() {
       const autoQuantity = (activeStage === "pelado" || activeStage === "envasado" || activeStage === "esterilizado") 
         ? batch.availableQuantity 
         : 0;
-      
+
       console.log("✅ Lote seleccionado:", batch.batchCode, "Cantidad auto:", autoQuantity);
-      
+
       setSelectedBatches([...selectedBatches, {
         batchId: batch.id,
         batchCode: batch.batchCode,
@@ -382,7 +382,7 @@ export default function Produccion() {
       }
     } else {
       setSelectedBatches(selectedBatches.filter(b => b.batchId !== batch.id));
-      
+
       // Si se deselecciona el lote en esterilizado, limpiar la cantidad de salida
       if (activeStage === "esterilizado") {
         setOutputQuantity("");
@@ -458,7 +458,7 @@ export default function Produccion() {
   const handleSubmitProcess = async () => {
     console.log("🚀 handleSubmitProcess - activeStage:", activeStage);
     console.log("🚀 selectedBatches:", selectedBatches);
-    
+
     if (selectedBatches.length === 0) {
       toast({
         title: "Error",
@@ -517,7 +517,7 @@ export default function Produccion() {
 
     const totalInput = calculateTotalInput();
     console.log("🚀 totalInput:", totalInput);
-    
+
     // Para envasado y esterilizado, no requerimos cantidades específicas por lote
     // ya que solo se seleccionan lotes completos
     if (activeStage === "asado" && totalInput === 0) {
@@ -541,7 +541,7 @@ export default function Produccion() {
         });
         return;
       }
-      
+
       const totalPackages = calculateTotalPackageOutput();
       if (totalPackages === 0) {
         toast({
@@ -593,7 +593,7 @@ export default function Produccion() {
       if (activeStage === "envasado") {
         console.log("📦 Procesando envasado - packageOutputs:", packageOutputs);
         console.log("📦 selectedBatches antes de filtrar:", selectedBatches);
-        
+
         // Para envasado con múltiples salidas, crear un lote por cada tipo de envase
         const inputBatchCodes = selectedBatches
           .filter(b => b.selectedQuantity > 0)
@@ -619,7 +619,7 @@ export default function Produccion() {
         for (const pkgOutput of packageOutputs) {
           const pkgType = packageTypes.find((pt: any) => pt.id === pkgOutput.packageTypeId);
           const batchCodeWithPkg = `${outputBatchCode}-${pkgType?.code || pkgOutput.packageTypeName}`;
-          
+
           const batchData: any = {
             batchCode: batchCodeWithPkg,
             productId: firstBatch?.batch.productId,
@@ -646,31 +646,30 @@ export default function Produccion() {
           });
         }
 
-        // Marcar los lotes de PELADO como consumidos completamente
+        // Marcar los lotes de PELADO como consumidos (cantidad 0) sin cambiar estado
+        // Esto hace que desaparezcan de la vista pero mantiene la trazabilidad
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
             await updateBatchMutation.mutateAsync({
               id: selectedBatch.batchId,
               data: {
                 quantity: "0",
-                status: 'ENVASADO',
+                // NO cambiar el estado, permanece en PELADO
               },
             });
           }
         }
-      } else {
-        // Para otras etapas, crear un solo lote consolidado
-        const batchData: any = {
-          batchCode: outputBatchCode,
-          productId: firstBatch?.batch.productId,
-          initialQuantity: outputQuantity.toString(),
-          quantity: outputQuantity.toString(),
-          unit: selectedBatches[0].unit,
-          status: newStatus,
-        };
-
-        const newBatch = await createBatchMutation.mutateAsync(batchData);
-
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo completar el proceso",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (activeStage === "esterilizado") {
+      try {
+        // Para esterilizado, crear lotes duplicados con el mismo código y cantidad
         const inputBatchCodes = selectedBatches
           .filter(b => b.selectedQuantity > 0)
           .map(b => b.batchCode)
@@ -686,44 +685,66 @@ export default function Produccion() {
 
         const totalInput = calculateTotalInput();
 
-        await createProductionRecordMutation.mutateAsync({
-          batchId: newBatch.id,
-          stage: currentStage,
-          inputBatchCode: inputBatchCodes,
-          outputBatchCode: outputBatchCode,
-          inputQuantity: totalInput.toString(),
-          outputQuantity: finalOutputQuantity.toString(),
-          unit: selectedBatches[0].unit,
-          inputBatchDetails: JSON.stringify(inputBatchDetails),
-          notes: notes || null,
-          completedAt: new Date().toISOString(),
-        });
-
-        // Para ASADO: restar cantidad de los lotes de RECEPCIÓN sin cambiar su estado
-        // Para otras etapas: marcar lotes como consumidos
+        // Crear lote esterilizado por cada lote de envasado seleccionado
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
             const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-            
-            if (activeStage === "asado" && sourceBatch?.batch.status === 'RECEPCION') {
-              // Solo restar la cantidad, mantener el estado en RECEPCION
-              const currentQuantity = parseFloat(sourceBatch.batch.quantity);
-              const newQuantity = currentQuantity - selectedBatch.selectedQuantity;
-              
-              await updateBatchMutation.mutateAsync({
-                id: selectedBatch.batchId,
-                data: {
-                  quantity: Math.max(0, newQuantity).toString(),
-                  // NO cambiar el estado, permanece en RECEPCION
-                },
-              });
-            } else {
-              // Para otras etapas, consumir completamente y cambiar estado
+
+            // Crear nuevo lote esterilizado con el mismo código base
+            const batchData: any = {
+              batchCode: outputBatchCode || selectedBatch.batchCode,
+              productId: sourceBatch?.batch.productId,
+              initialQuantity: selectedBatch.selectedQuantity.toString(),
+              quantity: selectedBatch.selectedQuantity.toString(),
+              unit: selectedBatch.unit,
+              status: 'ESTERILIZADO',
+            };
+
+            const newBatch = await createBatchMutation.mutateAsync(batchData);
+
+            // Crear registro de producción
+            await createProductionRecordMutation.mutateAsync({
+              batchId: newBatch.id,
+              stage: 'ESTERILIZADO',
+              inputBatchCode: selectedBatch.batchCode,
+              outputBatchCode: outputBatchCode || selectedBatch.batchCode,
+              inputQuantity: selectedBatch.selectedQuantity.toString(),
+              outputQuantity: selectedBatch.selectedQuantity.toString(),
+              unit: selectedBatch.unit,
+              inputBatchDetails: JSON.stringify([{
+                batchId: selectedBatch.batchId,
+                batchCode: selectedBatch.batchCode,
+                quantity: selectedBatch.selectedQuantity,
+              }]),
+              notes: notes || null,
+              completedAt: new Date().toISOString(),
+            });
+
+            // Marcar lote de ENVASADO como consumido (cantidad 0) sin cambiar estado
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                quantity: "0",
+                // NO cambiar el estado, permanece en ENVASADO
+              },
+            });
+          }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo completar el proceso",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+        // Para asado, consumir completamente y cambiar estado
               await updateBatchMutation.mutateAsync({
                 id: selectedBatch.batchId,
                 data: {
                   quantity: "0",
-                  status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
+                  status: newStatus,
                 },
               });
             }
