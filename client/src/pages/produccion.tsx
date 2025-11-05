@@ -647,6 +647,7 @@ export default function Produccion() {
         }
 
         // Actualizar los lotes de entrada para reflejar el consumo
+        // Los lotes de PELADO se agotan pero mantienen su estado PELADO
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
             const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
@@ -656,7 +657,7 @@ export default function Produccion() {
                 id: selectedBatch.batchId,
                 data: {
                   quantity: remainingQuantity.toString(),
-                  status: newStatus,
+                  // NO cambiar el estado, permanece en PELADO
                 },
               });
             }
