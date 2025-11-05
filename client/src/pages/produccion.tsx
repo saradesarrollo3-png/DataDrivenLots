@@ -689,16 +689,34 @@ export default function Produccion() {
           completedAt: new Date().toISOString(),
         });
 
-        // Marcar los lotes de entrada como consumidos completamente
+        // Para ASADO: restar cantidad de los lotes de RECEPCIÓN sin cambiar su estado
+        // Para otras etapas: marcar lotes como consumidos
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: "0",
-                status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
-              },
-            });
+            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            
+            if (activeStage === "asado" && sourceBatch?.batch.status === 'RECEPCION') {
+              // Solo restar la cantidad, mantener el estado en RECEPCION
+              const currentQuantity = parseFloat(sourceBatch.batch.quantity);
+              const newQuantity = currentQuantity - selectedBatch.selectedQuantity;
+              
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: Math.max(0, newQuantity).toString(),
+                  // NO cambiar el estado, permanece en RECEPCION
+                },
+              });
+            } else {
+              // Para otras etapas, consumir completamente y cambiar estado
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: "0",
+                  status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
+                },
+              });
+            }
           }
         }
       }

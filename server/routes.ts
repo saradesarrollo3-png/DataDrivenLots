@@ -278,6 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const batch = await storage.updateBatch(req.params.id, req.body);
 
     // Update stock if quantity, unit, or product changed
+    // Solo actualizar stock si el lote está en RECEPCION (es materia prima)
     if (oldBatch && oldBatch.batch.productId && oldBatch.batch.quantity && oldBatch.batch.unit) {
       const oldQuantity = parseFloat(oldBatch.batch.quantity);
       const newQuantity = batch.quantity ? parseFloat(batch.quantity) : oldQuantity;
@@ -285,32 +286,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newProductId = batch.productId || oldProductId;
       const oldUnit = oldBatch.batch.unit;
       const newUnit = batch.unit || oldUnit;
+      const oldStatus = oldBatch.batch.status;
+      const newStatus = batch.status || oldStatus;
 
-      // If product or unit changed, we need to subtract from old and add to new
-      if (oldProductId !== newProductId || oldUnit !== newUnit) {
-        // Subtract old quantity from old product/unit
-        await storage.updateProductStock(
-          req.user!.organizationId,
-          oldProductId,
-          oldUnit,
-          -oldQuantity
-        );
-        // Add new quantity to new product/unit
-        await storage.updateProductStock(
-          req.user!.organizationId,
-          newProductId,
-          newUnit,
-          newQuantity
-        );
-      } else if (oldQuantity !== newQuantity) {
-        // Same product/unit, just update the difference
-        const quantityDifference = newQuantity - oldQuantity;
-        await storage.updateProductStock(
-          req.user!.organizationId,
-          oldProductId,
-          oldUnit,
-          quantityDifference
-        );
+      // Solo actualizar stock para lotes en RECEPCION
+      if (oldStatus === 'RECEPCION' && newStatus === 'RECEPCION') {
+        // If product or unit changed, we need to subtract from old and add to new
+        if (oldProductId !== newProductId || oldUnit !== newUnit) {
+          // Subtract old quantity from old product/unit
+          await storage.updateProductStock(
+            req.user!.organizationId,
+            oldProductId,
+            oldUnit,
+            -oldQuantity
+          );
+          // Add new quantity to new product/unit
+          await storage.updateProductStock(
+            req.user!.organizationId,
+            newProductId,
+            newUnit,
+            newQuantity
+          );
+        } else if (oldQuantity !== newQuantity) {
+          // Same product/unit, just update the difference
+          const quantityDifference = newQuantity - oldQuantity;
+          await storage.updateProductStock(
+            req.user!.organizationId,
+            oldProductId,
+            oldUnit,
+            quantityDifference
+          );
+        }
       }
     }
 
