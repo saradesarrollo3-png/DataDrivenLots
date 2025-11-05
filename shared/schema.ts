@@ -179,6 +179,16 @@ export const batchHistory = pgTable("batch_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Product Stock
+export const productStock = pgTable("product_stock", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  unit: text("unit").notNull(),
+  quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull().default("0"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 
@@ -212,6 +222,7 @@ export const insertProductionRecordSchema = createInsertSchema(productionRecords
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true });
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true });
+export const insertProductStockSchema = createInsertSchema(productStock).omit({ id: true, updatedAt: true });
 
 // Types
 export type Organization = typeof organizations.$inferSelect;
@@ -229,3 +240,4 @@ export type ProductionRecord = typeof productionRecords.$inferSelect;
 export type QualityCheck = typeof qualityChecks.$inferSelect;
 export type Shipment = typeof shipments.$inferSelect;
 export type BatchHistory = typeof batchHistory.$inferSelect;
+export type ProductStock = typeof productStock.$inferSelect;

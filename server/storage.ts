@@ -1,9 +1,9 @@
 import { db } from "./db";
 import {
   suppliers, products, locations, customers, packageTypes, batches,
-  productionRecords, qualityChecks, shipments, batchHistory,
+  productionRecords, qualityChecks, shipments, batchHistory, productStock,
   type Supplier, type Product, type Location, type Customer, type PackageType,
-  type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory
+  type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory, type ProductStock
 } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 
@@ -263,5 +263,52 @@ export const storage = {
   async insertBatchHistory(data: typeof batchHistory.$inferInsert) {
     const [history] = await db.insert(batchHistory).values(data).returning();
     return history;
+  },
+
+  // Product Stock
+  async getProductStock(organizationId: string) {
+    return db.select({
+      stock: productStock,
+      product: products
+    })
+    .from(productStock)
+    .leftJoin(products, eq(productStock.productId, products.id))
+    .where(eq(productStock.organizationId, organizationId))
+    .orderBy(products.name);
+  },
+  
+  async updateProductStock(organizationId: string, productId: string, unit: string, quantityChange: number) {
+    // Buscar stock existente
+    const [existingStock] = await db.select()
+      .from(productStock)
+      .where(
+        eq(productStock.organizationId, organizationId),
+        eq(productStock.productId, productId),
+        eq(productStock.unit, unit)
+      );
+
+    if (existingStock) {
+      // Actualizar stock existente
+      const newQuantity = parseFloat(existingStock.quantity) + quantityChange;
+      const [updated] = await db.update(productStock)
+        .set({ 
+          quantity: newQuantity.toString(),
+          updatedAt: new Date()
+        })
+        .where(eq(productStock.id, existingStock.id))
+        .returning();
+      return updated;
+    } else {
+      // Crear nuevo registro de stock
+      const [created] = await db.insert(productStock)
+        .values({
+          organizationId,
+          productId,
+          unit,
+          quantity: quantityChange.toString()
+        })
+        .returning();
+      return created;
+    }
   },
 };

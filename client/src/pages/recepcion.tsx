@@ -4,7 +4,8 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Filter, Download, Package } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,15 @@ interface Reception {
   locationId?: string;
 }
 
+interface ProductStock {
+  id: string;
+  productName: string;
+  productCode: string;
+  quantity: number;
+  unit: string;
+  updatedAt: string;
+}
+
 export default function Recepcion() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,6 +83,10 @@ export default function Recepcion() {
 
   const { data: locationsData = [] } = useQuery<any[]>({
     queryKey: ['/api/locations'],
+  });
+
+  const { data: productStockData = [] } = useQuery<any[]>({
+    queryKey: ['/api/product-stock'],
   });
 
   const createReceptionMutation = useMutation({
@@ -233,13 +247,46 @@ export default function Recepcion() {
     r.product.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const productStock: ProductStock[] = productStockData.map(item => ({
+    id: item.stock.id,
+    productName: item.product?.name || '-',
+    productCode: item.product?.code || '-',
+    quantity: parseFloat(item.stock.quantity),
+    unit: item.stock.unit,
+    updatedAt: new Date(item.stock.updatedAt).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }));
+
+  const stockColumns: Column<ProductStock>[] = [
+    { 
+      key: "productCode", 
+      label: "Código",
+      render: (value) => <span className="font-mono font-medium">{value}</span>
+    },
+    { key: "productName", label: "Producto" },
+    { 
+      key: "quantity", 
+      label: "Cantidad Disponible",
+      render: (value, row) => (
+        <span className="font-semibold">{value.toFixed(2)} {row.unit}</span>
+      )
+    },
+    { key: "unit", label: "Unidad" },
+    { key: "updatedAt", label: "Última Actualización" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Recepción</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestión de entradas de materia prima
+            Gestión de entradas de materia prima e inventario
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -401,34 +448,67 @@ export default function Recepcion() {
         </Dialog>
       </div>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código, proveedor o producto..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-            data-testid="input-search"
-          />
-        </div>
-        <Button variant="outline" data-testid="button-filter">
-          <Filter className="h-4 w-4 mr-2" />
-          Filtros
-        </Button>
-        <Button variant="outline" data-testid="button-export">
-          <Download className="h-4 w-4 mr-2" />
-          Exportar
-        </Button>
-      </div>
+      <Tabs defaultValue="recepciones" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="recepciones">Recepciones</TabsTrigger>
+          <TabsTrigger value="stock">
+            <Package className="h-4 w-4 mr-2" />
+            Stock
+          </TabsTrigger>
+        </TabsList>
 
-      <DataTable
-        columns={columns}
-        data={filteredReceptions}
-        onView={(row) => setViewingReception(row)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+        <TabsContent value="recepciones" className="space-y-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por código, proveedor o producto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+                data-testid="input-search"
+              />
+            </div>
+            <Button variant="outline" data-testid="button-filter">
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
+            </Button>
+            <Button variant="outline" data-testid="button-export">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </div>
+
+          <DataTable
+            columns={columns}
+            data={filteredReceptions}
+            onView={(row) => setViewingReception(row)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </TabsContent>
+
+        <TabsContent value="stock" className="space-y-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar producto..."
+                className="pl-9"
+              />
+            </div>
+            <Button variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Stock
+            </Button>
+          </div>
+
+          <DataTable
+            columns={stockColumns}
+            data={productStock}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog para ver detalles */}
       <Dialog open={!!viewingReception} onOpenChange={(open) => !open && setViewingReception(null)}>

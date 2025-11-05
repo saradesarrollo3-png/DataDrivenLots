@@ -250,6 +250,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       notes: 'Batch created'
     });
 
+    // Update product stock
+    if (batch.productId && batch.quantity && batch.unit) {
+      await storage.updateProductStock(
+        req.user!.organizationId,
+        batch.productId,
+        batch.unit,
+        parseFloat(batch.quantity)
+      );
+    }
+
     res.json(batch);
   });
 
@@ -275,7 +285,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/batches/:id", requireAuth, async (req, res) => {
     try {
+      // Get batch data before deleting to update stock
+      const batchData = await storage.getBatchById(req.params.id, req.user!.organizationId);
+      
       await storage.deleteBatch(req.params.id);
+      
+      // Reduce stock when batch is deleted
+      if (batchData?.batch.productId && batchData.batch.quantity && batchData.batch.unit) {
+        await storage.updateProductStock(
+          req.user!.organizationId,
+          batchData.batch.productId,
+          batchData.batch.unit,
+          -parseFloat(batchData.batch.quantity)
+        );
+      }
+      
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al eliminar el lote" });
@@ -328,18 +352,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/shipments", requireAuth, async (req, res) => {
-    const data = insertShipmentSchema.parse(req.body);
-    const shipment = await storage.insertShipment(data);
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertShipmentSchema.omit({ organizationId: true }).parse(bodyData);
+    const shipment = await storage.insertShipment({ ...data, organizationId: req.user!.organizationId });
 
     // Update batch status to EXPEDIDO
+    const batchData = await storage.getBatchById(data.batchId, req.user!.organizationId);
     await storage.updateBatch(data.batchId, { status: 'EXPEDIDO' });
+
+    // Reduce product stock
+    if (batchData?.batch.productId && data.quantity && data.unit) {
+      await storage.updateProductStock(
+        req.user!.organizationId,
+        batchData.batch.productId,
+        data.unit,
+        -parseFloat(data.quantity)
+      );
+    }
 
     res.json(shipment);
   });
 
+  // Product Stock
+  app.get("/api/product-stock", requireAuth, async (req, res) => {
+    const stock = await storage.getProductStock(req.user!.organizationId);
+    res.json(stock);
+  });
+
   // Batch History
-  app.get("/api/batch-history", requireAuth, async (_req, res) => {
-    const history = await storage.getAllBatchHistory();
+  app.get("/api/batch-history", requireAuth, async (req, res) => {
+    const history = await storage.getAllBatchHistory(req.user!.organizationId);
     res.json(history);
   });
 
