@@ -444,11 +444,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quality-checks", requireAuth, async (req, res) => {
     const data = insertQualityCheckSchema.parse(req.body);
-    const check = await storage.insertQualityCheck(data);
+    const check = await storage.insertQualityCheck({
+      ...data,
+      organizationId: req.user!.organizationId,
+      checkedBy: req.user!.id,
+    });
 
     // Update batch status based on approval
     const newStatus = data.approved === 1 ? 'APROBADO' : data.approved === -1 ? 'BLOQUEADO' : 'RETENIDO';
     await storage.updateBatch(data.batchId, { status: newStatus });
+
+    // Create history entry
+    await storage.insertBatchHistory({
+      batchId: data.batchId,
+      action: 'quality_check',
+      fromStatus: 'ESTERILIZADO',
+      toStatus: newStatus as any,
+      notes: data.approved === 1 ? 'Lote aprobado para venta' : data.approved === -1 ? 'Lote bloqueado' : 'Lote en revisión',
+      performedBy: req.user!.id,
+      organizationId: req.user!.organizationId,
+    });
 
     res.json(check);
   });

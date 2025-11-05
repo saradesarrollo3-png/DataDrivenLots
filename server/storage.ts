@@ -260,7 +260,7 @@ export const storage = {
     })
     .from(batches)
     .leftJoin(products, eq(batches.productId, products.id))
-    .where(eq(batches.status, 'RETENIDO'), eq(batches.organizationId, organizationId));
+    .where(eq(batches.status, 'ESTERILIZADO'), eq(batches.organizationId, organizationId));
   },
   async insertQualityCheck(data: typeof qualityChecks.$inferInsert) {
     const [check] = await db.insert(qualityChecks).values(data).returning();
