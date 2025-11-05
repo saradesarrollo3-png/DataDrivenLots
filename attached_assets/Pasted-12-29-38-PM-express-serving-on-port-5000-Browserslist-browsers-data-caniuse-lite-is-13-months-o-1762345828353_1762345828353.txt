@@ -1,0 +1,67 @@
+12:29:38 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+Getting session: bwd61363htjmhlz4587 Found: false Total sessions: 0
+12:29:43 PM [express] GET /api/auth/me 401 in 3ms :: {"message":"Sesión inválida"}
+Login attempt for email: sara@gmail.com
+Session created in store: 5dc70e3yvilmhlz6jo2 Total sessions: 1
+Session created: 5dc70e3yvilmhlz6jo2
+Login response: {
+  sessionId: '5dc70e3yvilmhlz6jo2',
+  user: {
+    id: '97d3c10a-9bca-4a8a-a20a-87a911635ad5',
+    username: 'Sara',
+    email: 'sara@gmail.com',
+    organizationId: '9ea2b3eb-289f-4270-bf20-73c5975d221b',
+    organizationName: 'Empresa prueba'
+  }
+}
+12:29:51 PM [express] POST /api/auth/login 200 in 2815ms :: {"sessionId":"5dc70e3yvilmhlz6jo2","user"…
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+12:29:51 PM [express] GET /api/auth/me 304 in 122ms :: {"id":"97d3c10a-9bca-4a8a-a20a-87a911635ad5","…
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+12:29:54 PM [express] GET /api/auth/me 200 in 119ms :: {"id":"97d3c10a-9bca-4a8a-a20a-87a911635ad5","…
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+12:29:54 PM [express] GET /api/batches 304 in 133ms :: []
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+12:29:58 PM [express] GET /api/locations 304 in 128ms :: [{"id":"f29ba238-dd50-411f-bcb1-50bcf0f6d5b8…
+12:30:01 PM [express] GET /api/suppliers 304 in 2316ms :: [{"id":"93332eb8-2388-4ec6-86d0-14f81665839…
+12:30:01 PM [express] GET /api/products 304 in 2320ms :: [{"id":"b73e805c-b1d9-4326-9ae7-2b636901b872…
+12:30:01 PM [express] GET /api/product-stock 304 in 2328ms :: []
+Getting session: 5dc70e3yvilmhlz6jo2 Found: true Total sessions: 1
+/home/runner/workspace/node_modules/src/pg-core/columns/timestamp.ts:66
+                return value.toISOString();
+                             ^
+
+
+TypeError: value.toISOString is not a function
+    at PgTimestamp.mapToDriverValue (/home/runner/workspace/node_modules/src/pg-core/columns/timestamp.ts:66:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/sql/sql.ts:223:69)
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (/home/runner/workspace/node_modules/src/sql/sql.ts:148:30)
+    at <anonymous> (/home/runner/workspace/node_modules/src/sql/sql.ts:170:17)
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (/home/runner/workspace/node_modules/src/sql/sql.ts:148:30)
+    at <anonymous> (/home/runner/workspace/node_modules/src/sql/sql.ts:174:17)
+    at Array.map (<anonymous>)
+    at SQL.buildQueryFromSourceParams (/home/runner/workspace/node_modules/src/sql/sql.ts:148:30)
+    at <anonymous> (/home/runner/workspace/node_modules/src/sql/sql.ts:124:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at SQL.toQuery (/home/runner/workspace/node_modules/src/sql/sql.ts:123:17)
+    at PgDialect.sqlToQuery (/home/runner/workspace/node_modules/src/pg-core/dialect.ts:591:14)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/insert.ts:405:19)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at QueryPromise._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/insert.ts:400:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/insert.ts:422:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at QueryPromise.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/insert.ts:421:17)
+    at QueryPromise.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.19.3
