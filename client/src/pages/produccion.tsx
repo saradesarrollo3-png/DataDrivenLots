@@ -646,17 +646,20 @@ export default function Produccion() {
           });
         }
 
-        // Marcar los lotes de PELADO como consumidos (cantidad 0) sin cambiar estado
-        // Esto hace que desaparezcan de la vista pero mantiene la trazabilidad
+        // Actualizar los lotes de entrada para reflejar el consumo
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: "0",
-                // NO cambiar el estado, permanece en PELADO
-              },
-            });
+            const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            if (currentBatch) {
+              const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: remainingQuantity.toString(),
+                  status: newStatus, // Actualizar estado a la nueva etapa
+                },
+              });
+            }
           }
         }
       } catch (error: any) {
@@ -740,18 +743,21 @@ export default function Produccion() {
       }
     } else {
         // Para asado, consumir completamente y cambiar estado
-              await updateBatchMutation.mutateAsync({
-                id: selectedBatch.batchId,
-                data: {
-                  quantity: "0",
-                  status: newStatus,
-                },
-              });
-            }
+        // Se debe iterar sobre selectedBatches porque puede haber múltiples lotes de materia prima
+        for (const selectedBatch of selectedBatches) {
+          if (selectedBatch.selectedQuantity > 0) {
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                quantity: (parseFloat(allBatches.find((b: any) => b.batch.id === selectedBatch.batchId)?.batch.quantity || '0') - selectedBatch.selectedQuantity).toString(),
+                status: newStatus,
+              },
+            });
           }
         }
-      }
+    }
 
+      // Invalidate queries for all stages to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
