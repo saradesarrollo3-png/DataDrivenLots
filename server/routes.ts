@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -17,7 +16,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = registerSchema.parse(req.body);
-      
+
       // Check if user exists
       const [existingUser] = await db.select().from(users).where(eq(users.email, data.email));
       if (existingUser) {
@@ -58,32 +57,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const data = loginSchema.parse(req.body);
-      
+      console.log("Login attempt for email:", req.body.email);
+      const { email, password } = loginSchema.parse(req.body);
+
       const [user] = await db.select().from(users).where(eq(users.email, data.email));
       if (!user) {
+        console.log("Login failed: User not found for email:", data.email);
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
       const valid = await comparePassword(data.password, user.password);
       if (!valid) {
+        console.log("Login failed: Invalid password for email:", data.email);
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
+      const sessionId = createSession(user.id, user.organizationId);
+      console.log("Session created:", sessionId);
       const [org] = await db.select().from(organizations).where(eq(organizations.id, user.organizationId));
 
-      const sessionId = createSession(user.id, user.organizationId);
-      res.json({ 
+      const responseData = {
         sessionId,
         user: {
           id: user.id,
           username: user.username,
           email: user.email,
           organizationId: user.organizationId,
-          organizationName: org.name,
-        }
-      });
+          organizationName: org?.name || '',
+        },
+      };
+      console.log("Login response:", responseData);
+      res.json(responseData);
     } catch (error: any) {
+      console.error("Error during login:", error);
       res.status(400).json({ message: error.message });
     }
   });
@@ -228,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/batches", requireAuth, async (req, res) => {
     const data = insertBatchSchema.parse(req.body);
     const batch = await storage.insertBatch({ ...data, organizationId: req.user!.organizationId });
-    
+
     // Create history entry
     await storage.insertBatchHistory({
       batchId: batch.id,
@@ -237,14 +243,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       toLocation: batch.locationId,
       notes: 'Batch created'
     });
-    
+
     res.json(batch);
   });
 
   app.put("/api/batches/:id", requireAuth, async (req, res) => {
     const oldBatch = await storage.getBatchById(req.params.id);
     const batch = await storage.updateBatch(req.params.id, req.body);
-    
+
     // Create history entry if status or location changed
     if (oldBatch && (oldBatch.batch.status !== batch.status || oldBatch.batch.locationId !== batch.locationId)) {
       await storage.insertBatchHistory({
@@ -257,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: 'Batch updated'
       });
     }
-    
+
     res.json(batch);
   });
 
@@ -292,11 +298,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quality-checks", requireAuth, async (req, res) => {
     const data = insertQualityCheckSchema.parse(req.body);
     const check = await storage.insertQualityCheck(data);
-    
+
     // Update batch status based on approval
     const newStatus = data.approved === 1 ? 'APROBADO' : data.approved === -1 ? 'BLOQUEADO' : 'RETENIDO';
     await storage.updateBatch(data.batchId, { status: newStatus });
-    
+
     res.json(check);
   });
 
@@ -309,10 +315,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/shipments", requireAuth, async (req, res) => {
     const data = insertShipmentSchema.parse(req.body);
     const shipment = await storage.insertShipment(data);
-    
+
     // Update batch status to EXPEDIDO
     await storage.updateBatch(data.batchId, { status: 'EXPEDIDO' });
-    
+
     res.json(shipment);
   });
 

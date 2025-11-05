@@ -37,12 +37,16 @@ export default function Login() {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log("Login successful, data:", data);
       localStorage.setItem("sessionId", data.sessionId);
       localStorage.setItem("user", JSON.stringify(data.user));
+      console.log("SessionId saved:", localStorage.getItem("sessionId"));
+      console.log("User saved:", localStorage.getItem("user"));
       toast({
         title: "¡Bienvenido!",
         description: `Has iniciado sesión correctamente`,
       });
+      console.log("Redirecting to /...");
       // Forzar recarga completa para que AuthProvider cargue el usuario
       window.location.href = "/";
     },

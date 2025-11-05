@@ -36,11 +36,14 @@ export async function comparePassword(password: string, hash: string): Promise<b
 export function createSession(userId: string, organizationId: string): string {
   const sessionId = generateSessionId();
   sessions.set(sessionId, { userId, organizationId });
+  console.log("Session created in store:", sessionId, "Total sessions:", sessions.size);
   return sessionId;
 }
 
 export function getSession(sessionId: string) {
-  return sessions.get(sessionId);
+  const session = sessions.get(sessionId);
+  console.log("Getting session:", sessionId, "Found:", !!session, "Total sessions:", sessions.size);
+  return session;
 }
 
 export function deleteSession(sessionId: string) {

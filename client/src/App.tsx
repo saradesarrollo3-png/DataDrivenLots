@@ -40,24 +40,32 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const sessionId = localStorage.getItem("sessionId");
 
-  const { data: user, refetch } = useQuery({
+  console.log("AuthProvider - sessionId:", sessionId);
+
+  const { data: user, refetch, isLoading, error } = useQuery({
     queryKey: ['/api/auth/me'],
     enabled: !!sessionId,
     retry: false,
     queryFn: async () => {
+      console.log("Fetching user with sessionId:", sessionId);
       const response = await fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${sessionId}`,
         },
       });
       if (!response.ok) {
+        console.log("Auth failed, response:", response.status);
         localStorage.removeItem('sessionId');
         localStorage.removeItem('user');
         throw new Error('Not authenticated');
       }
-      return response.json();
+      const userData = await response.json();
+      console.log("User data fetched:", userData);
+      return userData;
     },
   });
+
+  console.log("AuthProvider - user:", user, "isLoading:", isLoading, "error:", error);
 
   const logout = async () => {
     const sessionId = localStorage.getItem("sessionId");
@@ -90,10 +98,14 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
   const { user } = useAuth();
   const sessionId = localStorage.getItem("sessionId");
 
+  console.log("ProtectedRoute - sessionId:", sessionId, "user:", user);
+
   if (!sessionId || !user) {
+    console.log("ProtectedRoute - Redirecting to /login");
     return <Redirect to="/login" />;
   }
 
+  console.log("ProtectedRoute - Rendering protected component");
   return <Component />;
 }
 
@@ -101,9 +113,14 @@ function Router() {
   const { user } = useAuth();
   const sessionId = localStorage.getItem("sessionId");
 
+  console.log("Router - sessionId:", sessionId, "user:", user);
+
   return (
     <Switch>
-      <Route path="/" component={() => sessionId ? <ProtectedRoute component={Dashboard} /> : <Landing />} />
+      <Route path="/" component={() => {
+        console.log("Route / - sessionId:", sessionId, "user:", user);
+        return sessionId ? <ProtectedRoute component={Dashboard} /> : <Landing />;
+      }} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/recepcion" component={() => <ProtectedRoute component={Recepcion} />} />
