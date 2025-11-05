@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Flame, Scissors, Package as PackageIcon, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,22 +17,37 @@ interface ProductionBatch {
 }
 
 export default function Produccion() {
-  const asadoBatches: ProductionBatch[] = [
-    { id: "1", code: "MP-20250104-0001", product: "Pimiento Asado", quantity: 250, unit: "kg", stage: "Pendiente", createdAt: "2025-01-04" },
-    { id: "2", code: "AS-20250104-0001", product: "Pimiento Asado", quantity: 220, unit: "kg", stage: "Completado", createdAt: "2025-01-04" },
-  ];
+  const { data: asadoRecords = [] } = useQuery<any[]>({
+    queryKey: ['/api/production-records/stage/ASADO'],
+  });
 
-  const peladoBatches: ProductionBatch[] = [
-    { id: "1", code: "AS-20250103-0045", product: "Pimiento Asado", quantity: 195, unit: "kg", stage: "Pendiente", createdAt: "2025-01-03" },
-  ];
+  const { data: peladoRecords = [] } = useQuery<any[]>({
+    queryKey: ['/api/production-records/stage/PELADO'],
+  });
 
-  const envasadoBatches: ProductionBatch[] = [
-    { id: "1", code: "PC-20250103-0040", product: "Pimiento Asado", quantity: 180, unit: "kg", stage: "Pendiente", createdAt: "2025-01-03" },
-  ];
+  const { data: envasadoRecords = [] } = useQuery<any[]>({
+    queryKey: ['/api/production-records/stage/ENVASADO'],
+  });
 
-  const esterilizadoBatches: ProductionBatch[] = [
-    { id: "1", code: "EN-20250102-0038", product: "Pimiento Asado", quantity: 450, unit: "tarros", stage: "Pendiente", createdAt: "2025-01-02" },
-  ];
+  const { data: esterilizadoRecords = [] } = useQuery<any[]>({
+    queryKey: ['/api/production-records/stage/ESTERILIZADO'],
+  });
+
+  const mapRecords = (records: any[]): ProductionBatch[] => 
+    records.map(r => ({
+      id: r.id,
+      code: r.outputBatchCode,
+      product: r.inputBatchCode,
+      quantity: parseFloat(r.outputQuantity),
+      unit: r.unit,
+      stage: r.completedAt ? "Completado" : "Pendiente",
+      createdAt: new Date(r.createdAt).toLocaleDateString('es-ES')
+    }));
+
+  const asadoBatches = mapRecords(asadoRecords);
+  const peladoBatches = mapRecords(peladoRecords);
+  const envasadoBatches = mapRecords(envasadoRecords);
+  const esterilizadoBatches = mapRecords(esterilizadoRecords);
 
   const columns: Column<ProductionBatch>[] = [
     { 

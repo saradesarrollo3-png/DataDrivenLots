@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -41,47 +42,29 @@ export default function Recepcion() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const receptions: Reception[] = [
-    { 
-      id: "1", 
-      batchCode: "MP-20250104-0001", 
-      supplier: "Agrícola del Sur", 
-      product: "Pimiento Asado",
-      quantity: 250, 
-      unit: "kg",
-      temperature: 4.5,
-      truckPlate: "ABC-1234",
-      deliveryNote: "ALB-2025-001",
-      arrivedAt: "2025-01-04 08:30",
-      status: "RECEPCION"
-    },
-    { 
-      id: "2", 
-      batchCode: "MP-20250104-0002", 
-      supplier: "Hortalizas Premium", 
-      product: "Pimiento Rojo",
-      quantity: 180, 
-      unit: "kg",
-      temperature: 5.2,
-      truckPlate: "XYZ-5678",
-      deliveryNote: "ALB-2025-002",
-      arrivedAt: "2025-01-04 10:15",
-      status: "RECEPCION"
-    },
-    { 
-      id: "3", 
-      batchCode: "MP-20250103-0015", 
-      supplier: "Agrícola del Sur", 
-      product: "Pimiento Verde",
-      quantity: 320, 
-      unit: "kg",
-      temperature: 4.8,
-      truckPlate: "DEF-9012",
-      deliveryNote: "ALB-2025-003",
-      arrivedAt: "2025-01-03 14:20",
-      status: "EN_PROCESO"
-    },
-  ];
+  const { data: batchesData = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches'],
+  });
+
+  const receptions: Reception[] = batchesData.map(item => ({
+    id: item.batch.id,
+    batchCode: item.batch.batchCode,
+    supplier: item.supplier?.name || '-',
+    product: item.product?.name || '-',
+    quantity: parseFloat(item.batch.quantity),
+    unit: item.batch.unit,
+    temperature: parseFloat(item.batch.temperature || '0'),
+    truckPlate: item.batch.truckPlate || '-',
+    deliveryNote: item.batch.deliveryNote || '-',
+    arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }),
+    status: item.batch.status
+  }));
 
   const handleCreateReception = (e: React.FormEvent) => {
     e.preventDefault();

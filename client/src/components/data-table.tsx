@@ -22,6 +22,7 @@ interface DataTableProps<T> {
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
   onView?: (row: T) => void;
+  customActions?: (row: T) => React.ReactNode;
   emptyMessage?: string;
   itemsPerPage?: number;
 }
@@ -32,17 +33,18 @@ export function DataTable<T extends { id?: string | number }>({
   onEdit,
   onDelete,
   onView,
+  customActions,
   emptyMessage = "No hay datos disponibles",
   itemsPerPage = 10,
 }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentData = data.slice(startIndex, endIndex);
 
-  const hasActions = onEdit || onDelete || onView;
+  const hasActions = onEdit || onDelete || onView || customActions;
 
   return (
     <div className="space-y-4">
@@ -73,7 +75,7 @@ export function DataTable<T extends { id?: string | number }>({
                     const value = typeof column.key === 'string' && column.key.includes('.')
                       ? column.key.split('.').reduce((obj, key) => obj?.[key], row as any)
                       : row[column.key as keyof T];
-                    
+
                     return (
                       <TableCell key={colIndex}>
                         {column.render ? column.render(value, row) : String(value || '')}
@@ -82,38 +84,42 @@ export function DataTable<T extends { id?: string | number }>({
                   })}
                   {hasActions && (
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {onView && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onView(row)}
-                            data-testid={`button-view-${row.id || rowIndex}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {onEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(row)}
-                            data-testid={`button-edit-${row.id || rowIndex}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {onDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onDelete(row)}
-                            data-testid={`button-delete-${row.id || rowIndex}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      {customActions ? (
+                        customActions(row)
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          {onView && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onView(row)}
+                              data-testid={`button-view-${row.id || rowIndex}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {onEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(row)}
+                              data-testid={`button-edit-${row.id || rowIndex}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {onDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDelete(row)}
+                              data-testid={`button-delete-${row.id || rowIndex}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                   )}
                 </TableRow>

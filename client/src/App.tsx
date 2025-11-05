@@ -7,12 +7,15 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
-import NotFound from "@/pages/not-found";
+import Configuracion from "./pages/configuracion";
+import Trazabilidad from "./pages/trazabilidad";
+import Historial from "./pages/historial";
+import Etiquetas from "./pages/etiquetas";
+import NotFound from "./pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Recepcion from "@/pages/recepcion";
 import Produccion from "@/pages/produccion";
 import Calidad from "@/pages/calidad";
-import Configuracion from "@/pages/configuracion";
 
 function Router() {
   return (
@@ -22,6 +25,9 @@ function Router() {
       <Route path="/produccion" component={Produccion} />
       <Route path="/calidad" component={Calidad} />
       <Route path="/configuracion" component={Configuracion} />
+      <Route path="/trazabilidad" component={Trazabilidad} />
+      <Route path="/historial" component={Historial} />
+      <Route path="/etiquetas" component={Etiquetas} />
       <Route component={NotFound} />
     </Switch>
   );

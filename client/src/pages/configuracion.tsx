@@ -1,8 +1,10 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable, Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 
 interface Supplier {
   id: string;
@@ -29,24 +31,44 @@ interface Location {
   type: string;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+  code: string;
+  contact: string;
+  phone: string;
+  email: string;
+}
+
+interface PackageType {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  capacity: string;
+  unit: string;
+}
+
 export default function Configuracion() {
-  const suppliers: Supplier[] = [
-    { id: "1", name: "Agrícola del Sur", code: "AGR-001", contact: "Juan Pérez", phone: "612345678", email: "contacto@agricolasur.com" },
-    { id: "2", name: "Hortalizas Premium", code: "HOR-002", contact: "María García", phone: "623456789", email: "info@hortalizaspremium.com" },
-  ];
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ['/api/suppliers'],
+  });
 
-  const products: Product[] = [
-    { id: "1", name: "Pimiento Asado", code: "PROD-001", type: "Pimiento", format: "Tarro 370g", shelfLife: 365 },
-    { id: "2", name: "Pimiento Verde", code: "PROD-002", type: "Pimiento", format: "Tarro 370g", shelfLife: 365 },
-    { id: "3", name: "Pimiento Rojo", code: "PROD-003", type: "Pimiento", format: "Tarro 370g", shelfLife: 365 },
-  ];
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ['/api/products'],
+  });
 
-  const locations: Location[] = [
-    { id: "1", name: "Recepción Zona 1", code: "REC-01", type: "RECEPCION" },
-    { id: "2", name: "Producción Principal", code: "PROD-01", type: "PRODUCCION" },
-    { id: "3", name: "Calidad Lab", code: "CAL-01", type: "CALIDAD" },
-    { id: "4", name: "Expedición Muelle A", code: "EXP-01", type: "EXPEDICION" },
-  ];
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ['/api/locations'],
+  });
+
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ['/api/customers'],
+  });
+
+  const { data: packageTypes = [] } = useQuery<PackageType[]>({
+    queryKey: ['/api/package-types'],
+  });
 
   const supplierColumns: Column<Supplier>[] = [
     { key: "code", label: "Código", render: (value) => <span className="font-mono">{value}</span> },
@@ -68,6 +90,25 @@ export default function Configuracion() {
     { key: "code", label: "Código", render: (value) => <span className="font-mono">{value}</span> },
     { key: "name", label: "Nombre" },
     { key: "type", label: "Tipo" },
+  ];
+
+  const customerColumns: Column<Customer>[] = [
+    { key: "code", label: "Código", render: (value) => <span className="font-mono">{value}</span> },
+    { key: "name", label: "Nombre" },
+    { key: "contact", label: "Contacto" },
+    { key: "phone", label: "Teléfono" },
+    { key: "email", label: "Email" },
+  ];
+
+  const packageTypeColumns: Column<PackageType>[] = [
+    { key: "code", label: "Código", render: (value) => <span className="font-mono">{value}</span> },
+    { key: "name", label: "Nombre" },
+    { key: "description", label: "Descripción" },
+    { 
+      key: "capacity", 
+      label: "Capacidad",
+      render: (value, row) => value ? `${value} ${row.unit || ''}` : '-'
+    },
   ];
 
   return (
@@ -181,9 +222,13 @@ export default function Configuracion() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Módulo de clientes pendiente de implementación
-              </p>
+              <DataTable
+                columns={customerColumns}
+                data={customers}
+                onView={(row) => console.log("View customer:", row)}
+                onEdit={(row) => console.log("Edit customer:", row)}
+                onDelete={(row) => console.log("Delete customer:", row)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -203,9 +248,13 @@ export default function Configuracion() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Módulo de tipos de envase pendiente de implementación
-              </p>
+              <DataTable
+                columns={packageTypeColumns}
+                data={packageTypes}
+                onView={(row) => console.log("View package:", row)}
+                onEdit={(row) => console.log("Edit package:", row)}
+                onDelete={(row) => console.log("Delete package:", row)}
+              />
             </CardContent>
           </Card>
         </TabsContent>

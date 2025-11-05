@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -32,35 +33,19 @@ export default function Calidad() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<QualityBatch | null>(null);
 
-  const qualityBatches: QualityBatch[] = [
-    { 
-      id: "1", 
-      code: "EN-20250103-0045", 
-      product: "Pimiento Asado 370g",
-      quantity: 450, 
-      manufactureDate: "2025-01-03",
-      expiryDate: "2026-01-03",
-      status: "RETENIDO"
-    },
-    { 
-      id: "2", 
-      code: "EN-20250103-0046", 
-      product: "Pimiento Verde 370g",
-      quantity: 380, 
-      manufactureDate: "2025-01-03",
-      expiryDate: "2026-01-03",
-      status: "RETENIDO"
-    },
-    { 
-      id: "3", 
-      code: "EN-20250102-0042", 
-      product: "Pimiento Rojo 370g",
-      quantity: 520, 
-      manufactureDate: "2025-01-02",
-      expiryDate: "2026-01-02",
-      status: "APROBADO"
-    },
-  ];
+  const { data: pendingBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/quality-checks/pending'],
+  });
+
+  const qualityBatches: QualityBatch[] = pendingBatches.map(item => ({
+    id: item.batch.id,
+    code: item.batch.batchCode,
+    product: item.product?.name || '-',
+    quantity: parseFloat(item.batch.quantity),
+    manufactureDate: item.batch.manufactureDate ? new Date(item.batch.manufactureDate).toLocaleDateString('es-ES') : '-',
+    expiryDate: item.batch.expiryDate ? new Date(item.batch.expiryDate).toLocaleDateString('es-ES') : '-',
+    status: item.batch.status
+  }));
 
   const handleApprove = (batch: QualityBatch) => {
     toast({
