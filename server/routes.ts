@@ -365,6 +365,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(records);
   });
 
+  app.get("/api/production-records/batch/:batchId", requireAuth, async (req, res) => {
+    const records = await storage.getProductionRecordsByBatch(req.params.batchId, req.user!.organizationId);
+    res.json(records);
+  });
+
   app.post("/api/production-records", requireAuth, async (req, res) => {
     try {
       const { organizationId, ...bodyData } = req.body;

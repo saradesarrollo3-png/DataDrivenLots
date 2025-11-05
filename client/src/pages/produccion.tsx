@@ -413,6 +413,40 @@ export default function Produccion() {
     setEditingBatch(batch);
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
+    
+    // Cargar los registros de producción para obtener los lotes de entrada
+    try {
+      const response = await fetch(`/api/production-records/batch/${batch.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (response.ok) {
+        const records = await response.json();
+        if (records.length > 0) {
+          const inputCodes = records[0].record.inputBatchCode.split(', ');
+          // Marcar los lotes de entrada como seleccionados
+          const inputSelections: BatchSelection[] = [];
+          for (const code of inputCodes) {
+            const inputBatch = allBatches.find((b: any) => b.batch.batchCode === code.trim());
+            if (inputBatch) {
+              inputSelections.push({
+                batchId: inputBatch.batch.id,
+                batchCode: inputBatch.batch.batchCode,
+                productName: inputBatch.product?.name || '-',
+                maxQuantity: parseFloat(inputBatch.batch.quantity),
+                unit: inputBatch.batch.unit,
+                selectedQuantity: 0, // Se puede mejorar guardando las cantidades originales
+              });
+            }
+          }
+          setSelectedBatches(inputSelections);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading production records:', error);
+    }
+    
     setShowNewProcessDialog(true);
   };
 
@@ -567,10 +601,11 @@ export default function Produccion() {
               {editingBatch ? "Editar Proceso" : "Nuevo Proceso"} - {stages.find(s => s.id === activeStage)?.title}
             </DialogTitle>
             <DialogDescription>
-              {activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}
-              {activeStage === "pelado" && "Selecciona lotes que ya pasaron por ASADO"}
-              {activeStage === "envasado" && "Selecciona lotes procesados en PELADO para envasar"}
-              {activeStage === "esterilizado" && "Selecciona lotes envasados para esterilizar"}
+              {editingBatch && "Modificando el lote y sus orígenes"}
+              {!editingBatch && activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}
+              {!editingBatch && activeStage === "pelado" && "Selecciona lotes que ya pasaron por ASADO"}
+              {!editingBatch && activeStage === "envasado" && "Selecciona lotes procesados en PELADO para envasar"}
+              {!editingBatch && activeStage === "esterilizado" && "Selecciona lotes envasados para esterilizar"}
             </DialogDescription>
           </DialogHeader>
 

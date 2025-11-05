@@ -185,9 +185,11 @@ export const storage = {
   },
 
   async deleteBatch(id: string) {
-    // First delete related batch history records
+    // First delete related production records
+    await db.delete(productionRecords).where(eq(productionRecords.batchId, id));
+    // Then delete related batch history records
     await db.delete(batchHistory).where(eq(batchHistory.batchId, id));
-    // Then delete the batch
+    // Finally delete the batch
     await db.delete(batches).where(eq(batches.id, id));
     return { success: true }; // Ensure JSON response
   },
@@ -216,6 +218,20 @@ export const storage = {
     .leftJoin(products, eq(batches.productId, products.id))
     .where(
       sql`${productionRecords.stage} = ${stage} AND ${productionRecords.organizationId} = ${organizationId}`
+    )
+    .orderBy(desc(productionRecords.createdAt));
+  },
+  async getProductionRecordsByBatch(batchId: string, organizationId: string) {
+    return db.select({
+      record: productionRecords,
+      batch: batches,
+      product: products
+    })
+    .from(productionRecords)
+    .leftJoin(batches, eq(productionRecords.batchId, batches.id))
+    .leftJoin(products, eq(batches.productId, products.id))
+    .where(
+      sql`${productionRecords.batchId} = ${batchId} AND ${productionRecords.organizationId} = ${organizationId}`
     )
     .orderBy(desc(productionRecords.createdAt));
   },
