@@ -126,12 +126,6 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
             <Label className="text-muted-foreground">Cantidad Producida</Label>
             <p className="font-medium">{batch.quantity} {batch.unit}</p>
           </div>
-          {batch.initialQuantity !== undefined && (
-            <div>
-              <Label className="text-muted-foreground">Cantidad Inicial</Label>
-              <p className="font-medium">{batch.initialQuantity} {batch.unit}</p>
-            </div>
-          )}
           <div>
             <Label className="text-muted-foreground">Fecha de Creación</Label>
             <p className="font-medium">{batch.createdAt}</p>
@@ -386,10 +380,52 @@ export default function Produccion() {
   };
 
   const handleSubmitProcess = async () => {
-    if (selectedBatches.length === 0 || !outputBatchCode) {
+    if (selectedBatches.length === 0) {
       toast({
         title: "Error",
-        description: "Debes seleccionar al menos un lote de entrada y especificar un código de salida",
+        description: "Debes seleccionar al menos un lote",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Para pelado, solo cambiar estado de los lotes seleccionados
+    if (activeStage === "pelado") {
+      try {
+        for (const selectedBatch of selectedBatches) {
+          await updateBatchMutation.mutateAsync({
+            id: selectedBatch.batchId,
+            data: {
+              status: 'PELADO',
+            },
+          });
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+
+        toast({
+          title: "Proceso completado",
+          description: "Los lotes han sido actualizados a estado PELADO",
+        });
+        handleCloseDialog();
+        return;
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo completar el proceso",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Para otras etapas, validar código de salida
+    if (!outputBatchCode) {
+      toast({
+        title: "Error",
+        description: "Debes especificar un código de salida",
         variant: "destructive",
       });
       return;
@@ -560,11 +596,6 @@ export default function Produccion() {
       key: "quantity", 
       label: "Cantidad",
       render: (value, row) => `${value} ${row.unit}`
-    },
-    { 
-      key: "initialQuantity", 
-      label: "Cant. Inicial",
-      render: (value, row) => value !== undefined ? `${value} ${row.unit}` : '-'
     },
     { key: "createdAt", label: "Fecha" },
     { 
@@ -881,92 +912,94 @@ export default function Produccion() {
               )}
             </div>
 
-            {/* Información de salida */}
-            <div className="space-y-4">
-              <Label className="text-base font-semibold">Lote de Salida</Label>
+            {/* Información de salida - solo para etapas que no sean pelado */}
+            {activeStage !== "pelado" && (
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Lote de Salida</Label>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="output-code">Código de Lote Salida</Label>
-                  <Input
-                    id="output-code"
-                    value={outputBatchCode}
-                    onChange={(e) => setOutputBatchCode(e.target.value)}
-                    placeholder="Ej: ASADO-001"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="output-code">Código de Lote Salida</Label>
+                    <Input
+                      id="output-code"
+                      value={outputBatchCode}
+                      onChange={(e) => setOutputBatchCode(e.target.value)}
+                      placeholder="Ej: ASADO-001"
+                    />
+                  </div>
+
+                  {activeStage === "envasado" ? (
+                    <>
+                      <div>
+                        <Label htmlFor="package-type">Tipo de Envase</Label>
+                        <Select value={selectedPackageType} onValueChange={setSelectedPackageType}>
+                          <SelectTrigger id="package-type">
+                            <SelectValue placeholder="Seleccionar envase" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {packageTypes.map((pt: any) => (
+                              <SelectItem key={pt.id} value={pt.id}>
+                                {pt.name} ({pt.capacity} {pt.unit})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="package-count">Número de Envases</Label>
+                        <Input
+                          id="package-count"
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={packageCount}
+                          onChange={(e) => setPackageCount(e.target.value)}
+                          placeholder="Cantidad de envases"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <Label htmlFor="output-qty">Cantidad de Salida</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="output-qty"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={outputQuantity}
+                          onChange={(e) => setOutputQuantity(e.target.value)}
+                          placeholder="Cantidad producida"
+                        />
+                        {selectedBatches.length > 0 && (
+                          <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
+                            {selectedBatches[0].unit}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {activeStage === "envasado" ? (
-                  <>
-                    <div>
-                      <Label htmlFor="package-type">Tipo de Envase</Label>
-                      <Select value={selectedPackageType} onValueChange={setSelectedPackageType}>
-                        <SelectTrigger id="package-type">
-                          <SelectValue placeholder="Seleccionar envase" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {packageTypes.map((pt: any) => (
-                            <SelectItem key={pt.id} value={pt.id}>
-                              {pt.name} ({pt.capacity} {pt.unit})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="package-count">Número de Envases</Label>
-                      <Input
-                        id="package-count"
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={packageCount}
-                        onChange={(e) => setPackageCount(e.target.value)}
-                        placeholder="Cantidad de envases"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <Label htmlFor="output-qty">Cantidad de Salida</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="output-qty"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={outputQuantity}
-                        onChange={(e) => setOutputQuantity(e.target.value)}
-                        placeholder="Cantidad producida"
-                      />
-                      {selectedBatches.length > 0 && (
-                        <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
-                          {selectedBatches[0].unit}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="notes">Notas (Opcional)</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Observaciones del proceso..."
+                    rows={3}
+                  />
+                </div>
               </div>
-
-              <div>
-                <Label htmlFor="notes">Notas (Opcional)</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Observaciones del proceso..."
-                  rows={3}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button variant="outline" onClick={handleCloseDialog}>
                 Cancelar
               </Button>
               <Button onClick={handleSubmitProcess}>
-                Crear Proceso
+                {activeStage === "pelado" ? "Cambiar Estado a Pelado" : "Crear Proceso"}
               </Button>
             </div>
           </div>

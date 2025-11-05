@@ -308,7 +308,7 @@ export default function Recepcion() {
               Nueva Recepción
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingReception ? "Editar Recepción" : "Nueva Recepción"}</DialogTitle>
               <DialogDescription>
