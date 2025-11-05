@@ -40,6 +40,7 @@ interface Reception {
   batchCode: string;
   supplier: string;
   product: string;
+  initialQuantity: number;
   quantity: number;
   unit: string;
   temperature: number;
@@ -165,6 +166,7 @@ export default function Recepcion() {
       batchCode: item.batch.batchCode,
       supplier: item.supplier?.name || '-',
       product: item.product?.name || '-',
+      initialQuantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
       quantity: parseFloat(item.batch.quantity),
       unit: item.batch.unit,
       temperature: parseFloat(item.batch.temperature || '0'),
@@ -187,11 +189,15 @@ export default function Recepcion() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
+    const entryQuantity = formData.get('initialQuantity') || formData.get('quantity');
+    const availableQuantity = formData.get('quantity');
+    
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
       supplierId: formData.get('supplierId') || null,
       productId: formData.get('productId'),
-      quantity: formData.get('quantity'),
+      initialQuantity: entryQuantity,
+      quantity: availableQuantity,
       unit: formData.get('unit'),
       deliveryNote: formData.get('deliveryNote'),
       temperature: formData.get('temperature') || null,
@@ -227,9 +233,14 @@ export default function Recepcion() {
     { key: "supplier", label: "Proveedor" },
     { key: "product", label: "Producto" },
     { 
+      key: "initialQuantity", 
+      label: "Cantidad de Entrada",
+      render: (value, row) => `${value.toFixed(2)} ${row.unit}`
+    },
+    { 
       key: "quantity", 
-      label: "Cantidad",
-      render: (value, row) => `${value} ${row.unit}`
+      label: "Cantidad Disponible",
+      render: (value, row) => <span className="font-semibold">{value.toFixed(2)} {row.unit}</span>
     },
     { 
       key: "temperature", 
@@ -337,7 +348,20 @@ export default function Recepcion() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad *</Label>
+                  <Label htmlFor="initialQuantity">Cantidad de Entrada *</Label>
+                  <Input
+                    id="initialQuantity"
+                    name="initialQuantity"
+                    type="number"
+                    step="0.01"
+                    placeholder="250.00"
+                    required
+                    defaultValue={editingReception?.initialQuantity || ''}
+                    data-testid="input-initial-quantity"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Cantidad Disponible *</Label>
                   <Input
                     id="quantity"
                     name="quantity"
@@ -349,6 +373,9 @@ export default function Recepcion() {
                     data-testid="input-quantity"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unidad *</Label>
                   <Select name="unit" required defaultValue={editingReception?.unit || ""}>
@@ -362,6 +389,7 @@ export default function Recepcion() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2"></div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -541,13 +569,20 @@ export default function Recepcion() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">Cantidad</Label>
-                  <p className="font-medium">{viewingReception.quantity} {viewingReception.unit}</p>
+                  <Label className="text-muted-foreground">Cantidad de Entrada</Label>
+                  <p className="font-medium">{viewingReception.initialQuantity} {viewingReception.unit}</p>
                 </div>
+                <div>
+                  <Label className="text-muted-foreground">Cantidad Disponible</Label>
+                  <p className="font-medium font-semibold">{viewingReception.quantity} {viewingReception.unit}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Nº Albarán</Label>
                   <p className="font-medium">{viewingReception.deliveryNote}</p>
                 </div>
+                <div></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

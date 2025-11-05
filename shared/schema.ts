@@ -116,6 +116,7 @@ export const batches = pgTable("batches", {
   batchCode: text("batch_code").notNull(),
   supplierId: varchar("supplier_id").references(() => suppliers.id),
   productId: varchar("product_id").references(() => products.id).notNull(),
+  initialQuantity: decimal("initial_quantity", { precision: 10, scale: 2 }).notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unit: text("unit").notNull(),
   temperature: decimal("temperature", { precision: 5, scale: 2 }),
