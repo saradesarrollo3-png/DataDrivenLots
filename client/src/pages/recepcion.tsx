@@ -46,6 +46,18 @@ export default function Recepcion() {
     queryKey: ['/api/batches'],
   });
 
+  const { data: suppliersData = [] } = useQuery<any[]>({
+    queryKey: ['/api/suppliers'],
+  });
+
+  const { data: productsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/products'],
+  });
+
+  const { data: locationsData = [] } = useQuery<any[]>({
+    queryKey: ['/api/locations'],
+  });
+
   const receptions: Reception[] = batchesData.map(item => ({
     id: item.batch.id,
     batchCode: item.batch.batchCode,
@@ -135,37 +147,37 @@ export default function Recepcion() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="supplier">Proveedor *</Label>
-                  <Select required>
+                  <Select name="supplierId" required>
                     <SelectTrigger id="supplier" data-testid="select-supplier">
                       <SelectValue placeholder="Seleccionar proveedor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="agr-sur">Agrícola del Sur</SelectItem>
-                      <SelectItem value="hort-prem">Hortalizas Premium</SelectItem>
-                      <SelectItem value="verd-nat">Verduras Naturales</SelectItem>
+                      {suppliersData.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="product">Producto *</Label>
-                  <Select required>
-                    <SelectTrigger id="product" data-testid="select-product">
-                      <SelectValue placeholder="Seleccionar producto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pim-asado">Pimiento Asado</SelectItem>
-                      <SelectItem value="pim-rojo">Pimiento Rojo</SelectItem>
-                      <SelectItem value="pim-verde">Pimiento Verde</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="deliveryNote">Nº Albarán *</Label>
+                  <Input
+                    id="deliveryNote"
+                    name="deliveryNote"
+                    placeholder="ALB-2025-001"
+                    required
+                    data-testid="input-delivery-note"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad (kg) *</Label>
+                  <Label htmlFor="quantity">Cantidad *</Label>
                   <Input
                     id="quantity"
+                    name="quantity"
                     type="number"
                     step="0.01"
                     placeholder="250.00"
@@ -174,13 +186,44 @@ export default function Recepcion() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="temperature">Temperatura (°C) *</Label>
+                  <Label htmlFor="unit">Unidad *</Label>
+                  <Select name="unit" required>
+                    <SelectTrigger id="unit" data-testid="select-unit">
+                      <SelectValue placeholder="Seleccionar unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">Kilogramos (kg)</SelectItem>
+                      <SelectItem value="L">Litros (L)</SelectItem>
+                      <SelectItem value="unidades">Unidades</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="product">Producto</Label>
+                  <Select name="productId">
+                    <SelectTrigger id="product" data-testid="select-product">
+                      <SelectValue placeholder="Seleccionar producto (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productsData.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="temperature">Temperatura (°C)</Label>
                   <Input
                     id="temperature"
+                    name="temperature"
                     type="number"
                     step="0.1"
                     placeholder="4.5"
-                    required
                     data-testid="input-temperature"
                   />
                 </div>
@@ -188,37 +231,29 @@ export default function Recepcion() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="truckPlate">Matrícula Camión *</Label>
+                  <Label htmlFor="truckPlate">Matrícula Camión</Label>
                   <Input
                     id="truckPlate"
+                    name="truckPlate"
                     placeholder="ABC-1234"
-                    required
                     data-testid="input-truck-plate"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="deliveryNote">Nº Albarán Proveedor *</Label>
-                  <Input
-                    id="deliveryNote"
-                    placeholder="ALB-2025-001"
-                    required
-                    data-testid="input-delivery-note"
-                  />
+                  <Label htmlFor="location">Ubicación Destino</Label>
+                  <Select name="locationId">
+                    <SelectTrigger id="location" data-testid="select-location">
+                      <SelectValue placeholder="Seleccionar ubicación (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locationsData.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Ubicación Destino *</Label>
-                <Select required>
-                  <SelectTrigger id="location" data-testid="select-location">
-                    <SelectValue placeholder="Seleccionar ubicación" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rec-1">Recepción - Zona 1</SelectItem>
-                    <SelectItem value="rec-2">Recepción - Zona 2</SelectItem>
-                    <SelectItem value="prod-1">Producción - Entrada</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
