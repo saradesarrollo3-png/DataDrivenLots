@@ -375,8 +375,18 @@ export default function Produccion() {
         unit: batch.unit,
         selectedQuantity: autoQuantity,
       }]);
+
+      // Para esterilizado, establecer automáticamente la cantidad de salida
+      if (activeStage === "esterilizado") {
+        setOutputQuantity(batch.availableQuantity.toString());
+      }
     } else {
       setSelectedBatches(selectedBatches.filter(b => b.batchId !== batch.id));
+      
+      // Si se deselecciona el lote en esterilizado, limpiar la cantidad de salida
+      if (activeStage === "esterilizado") {
+        setOutputQuantity("");
+      }
     }
   };
 
@@ -1279,6 +1289,7 @@ export default function Produccion() {
                         value={outputQuantity}
                         onChange={(e) => setOutputQuantity(e.target.value)}
                         placeholder="Cantidad producida"
+                        disabled={activeStage === "esterilizado"}
                       />
                       {selectedBatches.length > 0 && (
                         <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
@@ -1286,6 +1297,11 @@ export default function Produccion() {
                         </span>
                       )}
                     </div>
+                    {activeStage === "esterilizado" && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        La cantidad se establece automáticamente según el lote seleccionado
+                      </p>
+                    )}
                   </div>
                 )}
 
