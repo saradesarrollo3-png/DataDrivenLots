@@ -350,6 +350,16 @@ export default function Produccion() {
 
   const handleBatchSelection = (batch: AvailableBatch, isChecked: boolean) => {
     if (isChecked) {
+      // Para esterilizado, solo permitir un lote
+      if (activeStage === "esterilizado" && selectedBatches.length > 0) {
+        toast({
+          title: "Advertencia",
+          description: "Solo se puede seleccionar un lote para esterilizado",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Para envasado y esterilizado, asignar automáticamente la cantidad completa del lote
       const autoQuantity = (activeStage === "envasado" || activeStage === "esterilizado") 
         ? batch.availableQuantity 
@@ -448,16 +458,21 @@ export default function Produccion() {
       return;
     }
 
-    // Para pelado, solo cambiar estado de los lotes seleccionados
+    // Para pelado, consumir las cantidades de los lotes de ASADO y cambiar su estado
     if (activeStage === "pelado") {
       try {
         for (const selectedBatch of selectedBatches) {
-          await updateBatchMutation.mutateAsync({
-            id: selectedBatch.batchId,
-            data: {
-              status: 'PELADO',
-            },
-          });
+          const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+          if (sourceBatch) {
+            // Marcar el lote de ASADO como consumido completamente (cantidad = 0)
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                quantity: "0",
+                status: 'PELADO',
+              },
+            });
+          }
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
@@ -466,7 +481,7 @@ export default function Produccion() {
 
         toast({
           title: "Proceso completado",
-          description: "Los lotes han sido actualizados a estado PELADO",
+          description: "Los lotes han sido procesados y movidos a PELADO",
         });
         handleCloseDialog();
         return;
@@ -621,19 +636,16 @@ export default function Produccion() {
           });
         }
 
-        // Actualizar cantidades disponibles de todos los lotes de entrada (solo una vez)
+        // Marcar los lotes de PELADO como consumidos completamente
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-            if (sourceBatch) {
-              const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
-              await updateBatchMutation.mutateAsync({
-                id: selectedBatch.batchId,
-                data: {
-                  quantity: remainingQuantity.toString(),
-                },
-              });
-            }
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                quantity: "0",
+                status: 'ENVASADO',
+              },
+            });
           }
         }
       } else {
@@ -677,19 +689,16 @@ export default function Produccion() {
           completedAt: new Date().toISOString(),
         });
 
-        // Actualizar cantidades disponibles de todos los lotes de entrada
+        // Marcar los lotes de entrada como consumidos completamente
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-            if (sourceBatch) {
-              const remainingQuantity = parseFloat(sourceBatch.batch.quantity) - selectedBatch.selectedQuantity;
-              await updateBatchMutation.mutateAsync({
-                id: selectedBatch.batchId,
-                data: {
-                  quantity: remainingQuantity.toString(),
-                },
-              });
-            }
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                quantity: "0",
+                status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
+              },
+            });
           }
         }
       }
