@@ -127,6 +127,7 @@ export const batches = pgTable("batches", {
   manufactureDate: timestamp("manufacture_date"),
   expiryDate: timestamp("expiry_date"),
   arrivedAt: timestamp("arrived_at").defaultNow(),
+  processedDate: timestamp("processed_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -143,6 +144,7 @@ export const productionRecords = pgTable("production_records", {
   unit: text("unit").notNull(),
   inputBatchDetails: text("input_batch_details"), // JSON: [{batchId, batchCode, quantity}]
   notes: text("notes"),
+  processedDate: timestamp("processed_date"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -227,9 +229,11 @@ export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, cr
   temperature: z.string().optional().nullable(),
   truckPlate: z.string().optional().nullable(),
   locationId: z.string().optional().nullable(),
+  processedDate: z.string().datetime().optional().nullable(),
 });
 export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true, organizationId: true }).extend({
   completedAt: z.string().datetime().optional().nullable(),
+  processedDate: z.string().datetime().optional().nullable(),
 });
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });

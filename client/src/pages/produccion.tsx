@@ -471,6 +471,12 @@ export default function Produccion() {
       return;
     }
 
+    // Obtener la fecha del formulario
+    const processedDateInput = document.getElementById('processedDate') as HTMLInputElement;
+    const processedDate = processedDateInput?.value 
+      ? new Date(processedDateInput.value).toISOString() 
+      : new Date().toISOString();
+
     // Para pelado, cambiar el estado de los lotes de ASADO a PELADO manteniendo la cantidad
     if (activeStage === "pelado") {
       try {
@@ -482,6 +488,7 @@ export default function Produccion() {
               id: selectedBatch.batchId,
               data: {
                 status: 'PELADO',
+                processedDate: processedDate,
                 // Mantener la cantidad original del lote
               },
             });
@@ -630,6 +637,7 @@ export default function Produccion() {
             quantity: pkgOutput.quantity.toString(),
             unit: `envases ${pkgType?.name || 'unidad'}`,
             status: newStatus,
+            processedDate: processedDate,
           };
 
           const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -645,6 +653,7 @@ export default function Produccion() {
             unit: selectedBatches[0].unit,
             inputBatchDetails: JSON.stringify(inputBatchDetails),
             notes: notes ? `${notes} - Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)` : `Envase: ${pkgType?.name} (${pkgOutput.quantity} unidades)`,
+            processedDate: processedDate,
             completedAt: new Date().toISOString(),
           });
         }
@@ -697,6 +706,7 @@ export default function Produccion() {
               quantity: selectedBatch.selectedQuantity.toString(),
               unit: selectedBatch.unit,
               status: 'ESTERILIZADO',
+              processedDate: processedDate,
             };
 
             const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -716,6 +726,7 @@ export default function Produccion() {
                 quantity: selectedBatch.selectedQuantity,
               }]),
               notes: notes || null,
+              processedDate: processedDate,
               completedAt: new Date().toISOString(),
             });
 
@@ -762,6 +773,7 @@ export default function Produccion() {
           quantity: finalOutputQuantity.toString(),
           unit: finalUnit,
           status: 'ASADO',
+          processedDate: processedDate,
         };
 
         const newBatch = await createBatchMutation.mutateAsync(batchData);
@@ -777,6 +789,7 @@ export default function Produccion() {
           unit: finalUnit,
           inputBatchDetails: JSON.stringify(inputBatchDetails),
           notes: notes || null,
+          processedDate: processedDate,
           completedAt: new Date().toISOString(),
         });
 
@@ -1381,6 +1394,18 @@ export default function Produccion() {
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Observaciones del proceso..."
                     rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="processedDate">Fecha de Proceso *</Label>
+                  <Input
+                    id="processedDate"
+                    name="processedDate"
+                    type="date"
+                    required
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    data-testid="input-processed-date"
                   />
                 </div>
               </div>

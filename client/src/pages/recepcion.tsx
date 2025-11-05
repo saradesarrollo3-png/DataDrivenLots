@@ -51,6 +51,7 @@ interface Reception {
   supplierId?: string;
   productId?: string;
   locationId?: string;
+  processedDate?: string;
 }
 
 interface ProductStock {
@@ -182,7 +183,8 @@ export default function Recepcion() {
       status: item.batch.status,
       supplierId: item.batch.supplierId,
       productId: item.batch.productId,
-      locationId: item.batch.locationId
+      locationId: item.batch.locationId,
+      processedDate: item.batch.processedDate ? new Date(item.batch.processedDate).toISOString().split('T')[0] : undefined
     }));
 
   const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
@@ -190,6 +192,7 @@ export default function Recepcion() {
     const formData = new FormData(e.currentTarget);
     
     const entryQuantity = formData.get('initialQuantity');
+    const processedDate = formData.get('processedDate');
     
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
@@ -203,6 +206,7 @@ export default function Recepcion() {
       truckPlate: formData.get('truckPlate') || null,
       locationId: formData.get('locationId') || null,
       status: editingReception ? editingReception.status : 'RECEPCION',
+      processedDate: processedDate ? new Date(processedDate as string).toISOString() : new Date().toISOString(),
     };
 
     createReceptionMutation.mutate(data);
@@ -449,6 +453,18 @@ export default function Recepcion() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="processedDate">Fecha de Recepción *</Label>
+                <Input
+                  id="processedDate"
+                  name="processedDate"
+                  type="date"
+                  required
+                  defaultValue={editingReception?.processedDate || new Date().toISOString().split('T')[0]}
+                  data-testid="input-processed-date"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
