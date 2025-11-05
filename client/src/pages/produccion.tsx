@@ -458,21 +458,16 @@ export default function Produccion() {
       return;
     }
 
-    // Para pelado, consumir las cantidades de los lotes de ASADO y cambiar su estado
+    // Para pelado, solo cambiar el estado de los lotes de ASADO a PELADO sin consumirlos
     if (activeStage === "pelado") {
       try {
         for (const selectedBatch of selectedBatches) {
-          const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-          if (sourceBatch) {
-            // Marcar el lote de ASADO como consumido completamente (cantidad = 0)
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: "0",
-                status: 'PELADO',
-              },
-            });
-          }
+          await updateBatchMutation.mutateAsync({
+            id: selectedBatch.batchId,
+            data: {
+              status: 'PELADO',
+            },
+          });
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
@@ -481,7 +476,7 @@ export default function Produccion() {
 
         toast({
           title: "Proceso completado",
-          description: "Los lotes han sido procesados y movidos a PELADO",
+          description: "Los lotes han sido movidos a PELADO",
         });
         handleCloseDialog();
         return;
@@ -636,16 +631,21 @@ export default function Produccion() {
           });
         }
 
-        // Marcar los lotes de PELADO como consumidos completamente
+        // Marcar los lotes de PELADO como consumidos (excepto si el origen fue RECEPCION)
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: "0",
-                status: 'ENVASADO',
-              },
-            });
+            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            
+            // Si el lote de origen NO es de RECEPCION, marcarlo como consumido
+            if (sourceBatch && sourceBatch.batch.status !== 'RECEPCION') {
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: "0",
+                  status: 'ENVASADO',
+                },
+              });
+            }
           }
         }
       } else {
@@ -689,16 +689,22 @@ export default function Produccion() {
           completedAt: new Date().toISOString(),
         });
 
-        // Marcar los lotes de entrada como consumidos completamente
+        // Solo marcar como consumidos los lotes que NO sean de RECEPCION
+        // Los lotes de RECEPCION se mantienen intactos
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: "0",
-                status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
-              },
-            });
+            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            
+            // Si el lote de origen NO es de RECEPCION, marcarlo como consumido
+            if (sourceBatch && sourceBatch.batch.status !== 'RECEPCION') {
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: "0",
+                  status: activeStage === "esterilizado" ? 'ESTERILIZADO' : newStatus,
+                },
+              });
+            }
           }
         }
       }
