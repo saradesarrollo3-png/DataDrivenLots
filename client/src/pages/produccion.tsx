@@ -923,6 +923,20 @@ export default function Produccion() {
           if (record.notes) {
             setNotes(record.notes);
           }
+
+          // Cargar fecha y hora desde processedDate
+          if (record.processedDate) {
+            const processedDateTime = new Date(record.processedDate);
+            const dateInput = document.getElementById('processedDate') as HTMLInputElement;
+            const timeInput = document.getElementById('processedTime') as HTMLInputElement;
+            
+            if (dateInput) {
+              dateInput.value = processedDateTime.toISOString().split('T')[0];
+            }
+            if (timeInput) {
+              timeInput.value = processedDateTime.toTimeString().slice(0, 5);
+            }
+          }
         }
       }
     } catch (error) {
@@ -1254,6 +1268,34 @@ export default function Produccion() {
               </div>
             )}
 
+            {/* Campos de fecha y hora para todas las etapas */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="processedDate">Fecha de Proceso *</Label>
+                <Input
+                  id="processedDate"
+                  name="processedDate"
+                  type="date"
+                  required
+                  key={`date-${editingBatch?.id || 'new'}-${activeStage}`}
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                  data-testid="input-processed-date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="processedTime">Hora de Proceso *</Label>
+                <Input
+                  id="processedTime"
+                  name="processedTime"
+                  type="time"
+                  required
+                  key={`time-${editingBatch?.id || 'new'}-${activeStage}`}
+                  defaultValue={new Date().toTimeString().slice(0, 5)}
+                  data-testid="input-processed-time"
+                />
+              </div>
+            </div>
+
             {/* Información de salida - solo para etapas que no sean pelado */}
             {activeStage !== "pelado" && (
               <div className="space-y-4">
@@ -1398,31 +1440,6 @@ export default function Produccion() {
                     placeholder="Observaciones del proceso..."
                     rows={3}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="processedDate">Fecha de Proceso *</Label>
-                    <Input
-                      id="processedDate"
-                      name="processedDate"
-                      type="date"
-                      required
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                      data-testid="input-processed-date"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="processedTime">Hora de Proceso *</Label>
-                    <Input
-                      id="processedTime"
-                      name="processedTime"
-                      type="time"
-                      required
-                      defaultValue={new Date().toTimeString().slice(0, 5)}
-                      data-testid="input-processed-time"
-                    />
-                  </div>
                 </div>
               </div>
             )}

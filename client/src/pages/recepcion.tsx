@@ -644,9 +644,21 @@ export default function Recepcion() {
                   <p className="font-medium">{viewingReception.truckPlate}</p>
                 </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Fecha y Hora de Llegada</Label>
-                <p className="font-medium">{viewingReception.arrivedAt}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Fecha de Recepción</Label>
+                  <p className="font-medium">
+                    {viewingReception.processedDate 
+                      ? new Date(viewingReception.processedDate + 'T' + (viewingReception.processedTime || '00:00')).toLocaleDateString('es-ES')
+                      : new Date(viewingReception.arrivedAt).toLocaleDateString('es-ES')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Hora de Recepción</Label>
+                  <p className="font-medium">
+                    {viewingReception.processedTime || new Date(viewingReception.arrivedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
               </div>
             </div>
           )}
