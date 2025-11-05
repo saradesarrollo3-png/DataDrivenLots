@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +36,7 @@ interface ProductionBatch {
   status: string;
   createdAt: string;
   inputBatchCodes?: string[];
+  initialQuantity?: number; // Added for ZodError
 }
 
 interface AvailableBatch {
@@ -92,7 +93,7 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
 
   const record = productionRecords[0]?.record;
   const totalInputQty = parseFloat(record?.inputQuantity || '0');
-  
+
   // Parsear los detalles de lotes de entrada si existen
   let inputBatchDetails = [];
   try {
@@ -125,6 +126,12 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
             <Label className="text-muted-foreground">Cantidad Producida</Label>
             <p className="font-medium">{batch.quantity} {batch.unit}</p>
           </div>
+          {batch.initialQuantity !== undefined && (
+            <div>
+              <Label className="text-muted-foreground">Cantidad Inicial</Label>
+              <p className="font-medium">{batch.initialQuantity} {batch.unit}</p>
+            </div>
+          )}
           <div>
             <Label className="text-muted-foreground">Fecha de Creación</Label>
             <p className="font-medium">{batch.createdAt}</p>
@@ -143,7 +150,7 @@ function ViewBatchDetails({ batch, allBatches }: ViewBatchDetailsProps) {
           ) : (
             inputBatchDetails.map((detail: any, index: number) => {
               const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-              
+
               return (
                 <div key={index} className="p-4 space-y-2">
                   <div className="flex items-start justify-between">
@@ -434,16 +441,31 @@ export default function Produccion() {
         'esterilizado': 'ESTERILIZADO',
       };
       const newStatus = stageStatusMap[activeStage] || 'EN_PROCESO';
+      const currentStage = activeStage.toUpperCase();
 
       // Crear UN ÚNICO lote de salida consolidado
       const firstBatch = allBatches.find((b: any) => b.batch.id === selectedBatches[0].batchId);
-      const newBatch = await createBatchMutation.mutateAsync({
-        batchCode: outputBatchCode,
-        productId: firstBatch?.batch.productId,
-        quantity: finalOutputQuantity.toString(),
-        unit: finalUnit,
-        status: newStatus,
-      });
+      
+      const batchData: any = {
+          batchCode: outputBatchCode,
+          productId: firstBatch?.batch.productId,
+          initialQuantity: parseFloat(outputQuantity), // Added for ZodError
+          quantity: finalOutputQuantity,
+          unit: finalUnit,
+          status: newStatus,
+      };
+
+      // Set quantity based on stage
+      if (activeStage === "envasado") {
+          batchData.quantity = parseFloat(packageCount);
+          batchData.unit = finalUnit;
+      } else {
+          batchData.quantity = parseFloat(outputQuantity);
+          batchData.unit = selectedBatches[0].unit;
+      }
+      
+
+      const newBatch = await createBatchMutation.mutateAsync(batchData);
 
       // Crear UN registro de producción que consolida todos los lotes de entrada
       const inputBatchCodes = selectedBatches
@@ -462,7 +484,7 @@ export default function Produccion() {
 
       await createProductionRecordMutation.mutateAsync({
         batchId: newBatch.id,
-        stage: activeStage.toUpperCase(),
+        stage: currentStage,
         inputBatchCode: inputBatchCodes,
         outputBatchCode: outputBatchCode,
         inputQuantity: totalInput.toString(),
@@ -495,7 +517,7 @@ export default function Produccion() {
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
-      
+
       toast({
         title: "Proceso creado",
         description: "El lote consolidado se ha creado exitosamente",
@@ -516,6 +538,7 @@ export default function Produccion() {
       batchCode: b.batch.batchCode,
       productName: b.product?.name || '-',
       quantity: parseFloat(b.batch.quantity),
+      initialQuantity: b.batch.initialQuantity !== undefined ? parseFloat(b.batch.initialQuantity) : undefined, // Added for ZodError
       unit: b.batch.unit,
       status: b.batch.status,
       createdAt: new Date(b.batch.createdAt).toLocaleDateString('es-ES'),
@@ -538,6 +561,11 @@ export default function Produccion() {
       label: "Cantidad",
       render: (value, row) => `${value} ${row.unit}`
     },
+    { 
+      key: "initialQuantity", 
+      label: "Cant. Inicial",
+      render: (value, row) => value !== undefined ? `${value} ${row.unit}` : '-'
+    },
     { key: "createdAt", label: "Fecha" },
     { 
       key: "status", 
@@ -554,7 +582,7 @@ export default function Produccion() {
     setEditingBatch(batch);
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
-    
+
     // Cargar los registros de producción para obtener los lotes de entrada con cantidades
     try {
       const response = await fetch(`/api/production-records/batch/${batch.id}`, {
@@ -566,7 +594,7 @@ export default function Produccion() {
         const records = await response.json();
         if (records.length > 0) {
           const record = records[0].record;
-          
+
           // Parsear los detalles de lotes de entrada
           let inputBatchDetails = [];
           try {
@@ -574,7 +602,7 @@ export default function Produccion() {
           } catch (e) {
             console.error('Error parsing inputBatchDetails:', e);
           }
-          
+
           const inputSelections: BatchSelection[] = [];
           for (const detail of inputBatchDetails) {
             const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
@@ -590,7 +618,7 @@ export default function Produccion() {
             }
           }
           setSelectedBatches(inputSelections);
-          
+
           if (record.notes) {
             setNotes(record.notes);
           }
@@ -599,7 +627,7 @@ export default function Produccion() {
     } catch (error) {
       console.error('Error loading production records:', error);
     }
-    
+
     setShowNewProcessDialog(true);
   };
 
@@ -754,7 +782,7 @@ export default function Produccion() {
                     {/* Mostrar lotes seleccionados (en edición) */}
                     {editingBatch && selectedBatches.map((selectedBatch) => {
                       const batchDetails = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-                      
+
                       return (
                         <div key={selectedBatch.batchId} className="p-4 space-y-2 bg-muted/30">
                           <div className="flex items-start gap-3">
@@ -793,7 +821,7 @@ export default function Produccion() {
                         </div>
                       );
                     })}
-                    
+
                     {/* Mostrar lotes disponibles (en nuevo proceso) */}
                     {!editingBatch && availableBatches.map((batch) => {
                       const isSelected = selectedBatches.some(b => b.batchId === batch.id);
