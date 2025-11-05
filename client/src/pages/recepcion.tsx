@@ -189,15 +189,14 @@ export default function Recepcion() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const entryQuantity = formData.get('initialQuantity') || formData.get('quantity');
-    const availableQuantity = formData.get('quantity');
+    const entryQuantity = formData.get('initialQuantity');
     
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
       supplierId: formData.get('supplierId') || null,
       productId: formData.get('productId'),
       initialQuantity: entryQuantity,
-      quantity: availableQuantity,
+      quantity: editingReception ? formData.get('quantity') : entryQuantity, // Al crear, cantidad disponible = cantidad de entrada
       unit: formData.get('unit'),
       deliveryNote: formData.get('deliveryNote'),
       temperature: formData.get('temperature') || null,
@@ -360,19 +359,21 @@ export default function Recepcion() {
                     data-testid="input-initial-quantity"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad Disponible *</Label>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    type="number"
-                    step="0.01"
-                    placeholder="250.00"
-                    required
-                    defaultValue={editingReception?.quantity || ''}
-                    data-testid="input-quantity"
-                  />
-                </div>
+                {editingReception && (
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Cantidad Disponible *</Label>
+                    <Input
+                      id="quantity"
+                      name="quantity"
+                      type="number"
+                      step="0.01"
+                      placeholder="250.00"
+                      required
+                      defaultValue={editingReception?.quantity || ''}
+                      data-testid="input-quantity"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
