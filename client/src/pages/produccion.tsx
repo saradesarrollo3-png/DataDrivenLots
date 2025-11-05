@@ -360,8 +360,8 @@ export default function Produccion() {
         return;
       }
 
-      // Para envasado y esterilizado, asignar automáticamente la cantidad completa del lote
-      const autoQuantity = (activeStage === "envasado" || activeStage === "esterilizado") 
+      // Para pelado, envasado y esterilizado, asignar automáticamente la cantidad completa del lote
+      const autoQuantity = (activeStage === "pelado" || activeStage === "envasado" || activeStage === "esterilizado") 
         ? batch.availableQuantity 
         : 0;
       
@@ -458,18 +458,18 @@ export default function Produccion() {
       return;
     }
 
-    // Para pelado, consumir las cantidades de los lotes de ASADO y cambiar su estado
+    // Para pelado, cambiar el estado de los lotes de ASADO a PELADO manteniendo la cantidad
     if (activeStage === "pelado") {
       try {
         for (const selectedBatch of selectedBatches) {
           const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
           if (sourceBatch) {
-            // Marcar el lote de ASADO como consumido completamente (cantidad = 0)
+            // Cambiar estado a PELADO manteniendo la cantidad original del lote de ASADO
             await updateBatchMutation.mutateAsync({
               id: selectedBatch.batchId,
               data: {
-                quantity: "0",
                 status: 'PELADO',
+                // Mantener la cantidad original del lote
               },
             });
           }
@@ -1103,6 +1103,7 @@ export default function Produccion() {
                     <div className="divide-y">
                       {availableBatches.map((batch) => {
                         const isSelected = selectedBatches.some(b => b.batchId === batch.id);
+                        const selectedBatch = selectedBatches.find(b => b.batchId === batch.id);
                         const batchDetails = allBatches.find((b: any) => b.batch.id === batch.id);
 
                         return (
@@ -1127,6 +1128,22 @@ export default function Produccion() {
                                     Disponible: <span className="font-semibold">{batch.availableQuantity} {batch.unit}</span>
                                   </p>
                                 </div>
+                                {isSelected && activeStage === "envasado" && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Label htmlFor={`qty-${batch.id}`} className="text-sm">Cantidad a usar:</Label>
+                                    <Input
+                                      id={`qty-${batch.id}`}
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      max={batch.availableQuantity}
+                                      value={selectedBatch?.selectedQuantity || ''}
+                                      onChange={(e) => handleQuantityChange(batch.id, e.target.value)}
+                                      className="w-32"
+                                    />
+                                    <span className="text-sm text-muted-foreground">{batch.unit}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1135,6 +1152,11 @@ export default function Produccion() {
                     </div>
                   )}
                 </div>
+                {selectedBatches.length > 0 && activeStage === "envasado" && (
+                  <p className="mt-2 text-sm font-medium">
+                    Total materia prima: {calculateTotalInput().toFixed(2)} {selectedBatches[0]?.unit}
+                  </p>
+                )}
               </div>
             )}
 
