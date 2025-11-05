@@ -350,13 +350,20 @@ export default function Produccion() {
 
   const handleBatchSelection = (batch: AvailableBatch, isChecked: boolean) => {
     if (isChecked) {
+      // Para envasado y esterilizado, asignar automáticamente la cantidad completa del lote
+      const autoQuantity = (activeStage === "envasado" || activeStage === "esterilizado") 
+        ? batch.availableQuantity 
+        : 0;
+      
+      console.log("✅ Lote seleccionado:", batch.batchCode, "Cantidad auto:", autoQuantity);
+      
       setSelectedBatches([...selectedBatches, {
         batchId: batch.id,
         batchCode: batch.batchCode,
         productName: batch.productName,
         maxQuantity: batch.availableQuantity,
         unit: batch.unit,
-        selectedQuantity: 0,
+        selectedQuantity: autoQuantity,
       }]);
     } else {
       setSelectedBatches(selectedBatches.filter(b => b.batchId !== batch.id));
@@ -429,6 +436,9 @@ export default function Produccion() {
   };
 
   const handleSubmitProcess = async () => {
+    console.log("🚀 handleSubmitProcess - activeStage:", activeStage);
+    console.log("🚀 selectedBatches:", selectedBatches);
+    
     if (selectedBatches.length === 0) {
       toast({
         title: "Error",
@@ -481,7 +491,11 @@ export default function Produccion() {
     }
 
     const totalInput = calculateTotalInput();
-    if (totalInput === 0) {
+    console.log("🚀 totalInput:", totalInput);
+    
+    // Para envasado y esterilizado, no requerimos cantidades específicas por lote
+    // ya que solo se seleccionan lotes completos
+    if (activeStage === "asado" && totalInput === 0) {
       toast({
         title: "Error",
         description: "Debes especificar cantidades para los lotes seleccionados",
@@ -552,11 +566,16 @@ export default function Produccion() {
       const firstBatch = allBatches.find((b: any) => b.batch.id === selectedBatches[0].batchId);
 
       if (activeStage === "envasado") {
+        console.log("📦 Procesando envasado - packageOutputs:", packageOutputs);
+        console.log("📦 selectedBatches antes de filtrar:", selectedBatches);
+        
         // Para envasado con múltiples salidas, crear un lote por cada tipo de envase
         const inputBatchCodes = selectedBatches
           .filter(b => b.selectedQuantity > 0)
           .map(b => b.batchCode)
           .join(', ');
+
+        console.log("📦 inputBatchCodes:", inputBatchCodes);
 
         const inputBatchDetails = selectedBatches
           .filter(b => b.selectedQuantity > 0)
@@ -566,7 +585,10 @@ export default function Produccion() {
             quantity: b.selectedQuantity,
           }));
 
+        console.log("📦 inputBatchDetails:", inputBatchDetails);
+
         const totalInput = calculateTotalInput();
+        console.log("📦 totalInput calculado:", totalInput);
 
         // Crear un lote por cada tipo de envase
         for (const pkgOutput of packageOutputs) {
