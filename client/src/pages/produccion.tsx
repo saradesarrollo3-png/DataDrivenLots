@@ -449,18 +449,18 @@ export default function Produccion() {
       const batchData: any = {
           batchCode: outputBatchCode,
           productId: firstBatch?.batch.productId,
-          initialQuantity: parseFloat(outputQuantity), // Added for ZodError
-          quantity: finalOutputQuantity,
+          initialQuantity: outputQuantity.toString(),
+          quantity: finalOutputQuantity.toString(),
           unit: finalUnit,
           status: newStatus,
       };
 
       // Set quantity based on stage
       if (activeStage === "envasado") {
-          batchData.quantity = parseFloat(packageCount);
+          batchData.quantity = packageCount.toString();
           batchData.unit = finalUnit;
       } else {
-          batchData.quantity = parseFloat(outputQuantity);
+          batchData.quantity = outputQuantity.toString();
           batchData.unit = selectedBatches[0].unit;
       }
       
