@@ -307,7 +307,7 @@ export default function Configuracion() {
     createPackageTypeMutation.mutate({
       name: formData.get('name') as string,
       code: formData.get('code') as string,
-      capacity: capacityValue ? parseFloat(capacityValue) : null,
+      capacity: capacityValue || null,
       unit: (formData.get('unit') as string) || null,
       description: (formData.get('description') as string) || null,
     });
@@ -535,7 +535,16 @@ export default function Configuracion() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="type">Tipo *</Label>
-                          <Input id="type" name="type" required placeholder="Conserva" defaultValue={editingProduct?.type || ""} />
+                          <Select name="type" required defaultValue={editingProduct?.type || ""}>
+                            <SelectTrigger id="type">
+                              <SelectValue placeholder="Seleccionar tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="materia prima">Materia Prima</SelectItem>
+                              <SelectItem value="semielaborado">Semielaborado</SelectItem>
+                              <SelectItem value="producto terminado">Producto Terminado</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="format">Formato</Label>
