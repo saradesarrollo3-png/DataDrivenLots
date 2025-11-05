@@ -473,9 +473,7 @@ export default function Produccion() {
 
     // Obtener la fecha del formulario
     const processedDateInput = document.getElementById('processedDate') as HTMLInputElement;
-    const processedDate = processedDateInput?.value 
-      ? new Date(processedDateInput.value).toISOString() 
-      : new Date().toISOString();
+    const processedDate = processedDateInput?.value || undefined;
 
     // Para pelado, cambiar el estado de los lotes de ASADO a PELADO manteniendo la cantidad
     if (activeStage === "pelado") {

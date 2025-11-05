@@ -192,7 +192,7 @@ export default function Recepcion() {
     const formData = new FormData(e.currentTarget);
     
     const entryQuantity = formData.get('initialQuantity');
-    const processedDate = formData.get('processedDate');
+    const processedDateStr = formData.get('processedDate') as string;
     
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
@@ -206,7 +206,7 @@ export default function Recepcion() {
       truckPlate: formData.get('truckPlate') || null,
       locationId: formData.get('locationId') || null,
       status: editingReception ? editingReception.status : 'RECEPCION',
-      processedDate: processedDate ? new Date(processedDate as string).toISOString() : new Date().toISOString(),
+      processedDate: processedDateStr || undefined,
     };
 
     createReceptionMutation.mutate(data);

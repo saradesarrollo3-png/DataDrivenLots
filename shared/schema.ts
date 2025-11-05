@@ -229,11 +229,11 @@ export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, cr
   temperature: z.string().optional().nullable(),
   truckPlate: z.string().optional().nullable(),
   locationId: z.string().optional().nullable(),
-  processedDate: z.string().datetime().optional().nullable(),
+  processedDate: z.string().optional(),
 });
 export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true, organizationId: true }).extend({
-  completedAt: z.string().datetime().optional().nullable(),
-  processedDate: z.string().datetime().optional().nullable(),
+  completedAt: z.string().optional(),
+  processedDate: z.string().optional(),
 });
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });
