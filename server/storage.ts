@@ -169,6 +169,9 @@ export const storage = {
   },
 
   async deleteBatch(id: string) {
+    // First delete related batch history records
+    await db.delete(batchHistory).where(eq(batchHistory.batchId, id));
+    // Then delete the batch
     await db.delete(batches).where(eq(batches.id, id));
     return { success: true }; // Ensure JSON response
   },
