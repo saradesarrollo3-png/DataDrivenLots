@@ -798,119 +798,169 @@ export default function Produccion() {
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Selección de lotes de entrada */}
-            <div>
-              <Label className="text-base font-semibold">
-                {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
-              </Label>
-              <div className="mt-2 border rounded-lg">
-                {availableBatches.length === 0 && selectedBatches.length === 0 ? (
-                  <p className="p-4 text-sm text-muted-foreground text-center">
-                    No hay lotes disponibles para esta etapa
-                  </p>
-                ) : (
-                  <div className="divide-y">
-                    {/* Mostrar lotes seleccionados (en edición) */}
-                    {editingBatch && selectedBatches.map((selectedBatch) => {
-                      const batchDetails = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            {/* Selección de lotes de entrada - solo para asado */}
+            {activeStage === "asado" && (
+              <div>
+                <Label className="text-base font-semibold">
+                  {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
+                </Label>
+                <div className="mt-2 border rounded-lg">
+                  {availableBatches.length === 0 && selectedBatches.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground text-center">
+                      No hay lotes disponibles para esta etapa
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {/* Mostrar lotes seleccionados (en edición) */}
+                      {editingBatch && selectedBatches.map((selectedBatch) => {
+                        const batchDetails = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
 
-                      return (
-                        <div key={selectedBatch.batchId} className="p-4 space-y-2 bg-muted/30">
-                          <div className="flex items-start gap-3">
-                            <Checkbox checked={true} disabled />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <div>
-                                  <p className="font-mono font-medium">{selectedBatch.batchCode}</p>
-                                  <p className="text-sm text-muted-foreground">{selectedBatch.productName}</p>
-                                  {batchDetails?.supplier && (
-                                    <p className="text-sm text-muted-foreground">
-                                      Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
-                                    </p>
-                                  )}
+                        return (
+                          <div key={selectedBatch.batchId} className="p-4 space-y-2 bg-muted/30">
+                            <div className="flex items-start gap-3">
+                              <Checkbox checked={true} disabled />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div>
+                                    <p className="font-mono font-medium">{selectedBatch.batchCode}</p>
+                                    <p className="text-sm text-muted-foreground">{selectedBatch.productName}</p>
+                                    {batchDetails?.supplier && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  <p className="text-sm">
+                                    Disponible: <span className="font-semibold">{selectedBatch.maxQuantity.toFixed(2)} {selectedBatch.unit}</span>
+                                  </p>
                                 </div>
-                                <p className="text-sm">
-                                  Disponible: <span className="font-semibold">{selectedBatch.maxQuantity.toFixed(2)} {selectedBatch.unit}</span>
-                                </p>
-                              </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                <Label htmlFor={`qty-${selectedBatch.batchId}`} className="text-sm">Cantidad utilizada:</Label>
-                                <Input
-                                  id={`qty-${selectedBatch.batchId}`}
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  max={selectedBatch.maxQuantity}
-                                  value={selectedBatch.selectedQuantity || ''}
-                                  onChange={(e) => handleQuantityChange(selectedBatch.batchId, e.target.value)}
-                                  className="w-32"
-                                />
-                                <span className="text-sm text-muted-foreground">{selectedBatch.unit}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Mostrar lotes disponibles (en nuevo proceso) */}
-                    {!editingBatch && availableBatches.map((batch) => {
-                      const isSelected = selectedBatches.some(b => b.batchId === batch.id);
-                      const selectedBatch = selectedBatches.find(b => b.batchId === batch.id);
-                      const batchDetails = allBatches.find((b: any) => b.batch.id === batch.id);
-
-                      return (
-                        <div key={batch.id} className="p-4 space-y-2">
-                          <div className="flex items-start gap-3">
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(checked) => handleBatchSelection(batch, checked as boolean)}
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="font-mono font-medium">{batch.batchCode}</p>
-                                  <p className="text-sm text-muted-foreground">{batch.productName}</p>
-                                  {batchDetails?.supplier && (
-                                    <p className="text-sm text-muted-foreground">
-                                      Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                <p className="text-sm">
-                                  Disponible: <span className="font-semibold">{batch.availableQuantity} {batch.unit}</span>
-                                </p>
-                              </div>
-                              {isSelected && (
                                 <div className="mt-2 flex items-center gap-2">
-                                  <Label htmlFor={`qty-${batch.id}`} className="text-sm">Cantidad a usar:</Label>
+                                  <Label htmlFor={`qty-${selectedBatch.batchId}`} className="text-sm">Cantidad utilizada:</Label>
                                   <Input
-                                    id={`qty-${batch.id}`}
+                                    id={`qty-${selectedBatch.batchId}`}
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    max={batch.availableQuantity}
-                                    value={selectedBatch?.selectedQuantity || ''}
-                                    onChange={(e) => handleQuantityChange(batch.id, e.target.value)}
+                                    max={selectedBatch.maxQuantity}
+                                    value={selectedBatch.selectedQuantity || ''}
+                                    onChange={(e) => handleQuantityChange(selectedBatch.batchId, e.target.value)}
                                     className="w-32"
                                   />
-                                  <span className="text-sm text-muted-foreground">{batch.unit}</span>
+                                  <span className="text-sm text-muted-foreground">{selectedBatch.unit}</span>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+
+                      {/* Mostrar lotes disponibles (en nuevo proceso) */}
+                      {!editingBatch && availableBatches.map((batch) => {
+                        const isSelected = selectedBatches.some(b => b.batchId === batch.id);
+                        const selectedBatch = selectedBatches.find(b => b.batchId === batch.id);
+                        const batchDetails = allBatches.find((b: any) => b.batch.id === batch.id);
+
+                        return (
+                          <div key={batch.id} className="p-4 space-y-2">
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => handleBatchSelection(batch, checked as boolean)}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-mono font-medium">{batch.batchCode}</p>
+                                    <p className="text-sm text-muted-foreground">{batch.productName}</p>
+                                    {batchDetails?.supplier && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  <p className="text-sm">
+                                    Disponible: <span className="font-semibold">{batch.availableQuantity} {batch.unit}</span>
+                                  </p>
+                                </div>
+                                {isSelected && (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <Label htmlFor={`qty-${batch.id}`} className="text-sm">Cantidad a usar:</Label>
+                                    <Input
+                                      id={`qty-${batch.id}`}
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      max={batch.availableQuantity}
+                                      value={selectedBatch?.selectedQuantity || ''}
+                                      onChange={(e) => handleQuantityChange(batch.id, e.target.value)}
+                                      className="w-32"
+                                    />
+                                    <span className="text-sm text-muted-foreground">{batch.unit}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {selectedBatches.length > 0 && (
+                  <p className="mt-2 text-sm font-medium">
+                    Total entrada: {calculateTotalInput().toFixed(2)} {selectedBatches[0]?.unit}
+                  </p>
                 )}
               </div>
-              {selectedBatches.length > 0 && (
-                <p className="mt-2 text-sm font-medium">
-                  Total entrada: {calculateTotalInput().toFixed(2)} {selectedBatches[0]?.unit}
-                </p>
-              )}
-            </div>
+            )}
+
+            {/* Selección de lotes - para pelado, envasado y esterilizado */}
+            {activeStage !== "asado" && (
+              <div>
+                <Label className="text-base font-semibold">Seleccionar Lotes</Label>
+                <div className="mt-2 border rounded-lg">
+                  {availableBatches.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground text-center">
+                      No hay lotes disponibles para esta etapa
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {availableBatches.map((batch) => {
+                        const isSelected = selectedBatches.some(b => b.batchId === batch.id);
+                        const batchDetails = allBatches.find((b: any) => b.batch.id === batch.id);
+
+                        return (
+                          <div key={batch.id} className="p-4 space-y-2">
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => handleBatchSelection(batch, checked as boolean)}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-mono font-medium">{batch.batchCode}</p>
+                                    <p className="text-sm text-muted-foreground">{batch.productName}</p>
+                                    {batchDetails?.supplier && (
+                                      <p className="text-sm text-muted-foreground">
+                                        Proveedor: <span className="font-medium">{batchDetails.supplier.name}</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  <p className="text-sm">
+                                    Disponible: <span className="font-semibold">{batch.availableQuantity} {batch.unit}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Información de salida - solo para etapas que no sean pelado */}
             {activeStage !== "pelado" && (
