@@ -273,6 +273,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(batch);
   });
 
+  app.delete("/api/batches/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteBatch(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Error al eliminar el lote" });
+    }
+  });
+
   // Production Records
   app.get("/api/production-records", requireAuth, async (_req, res) => {
     const records = await storage.getProductionRecords();

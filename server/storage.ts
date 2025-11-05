@@ -26,6 +26,7 @@ export const storage = {
   },
   async deleteSupplier(id: string) {
     await db.delete(suppliers).where(eq(suppliers.id, id));
+    return { success: true }; // Ensure JSON response
   },
 
   // Products
@@ -46,6 +47,7 @@ export const storage = {
   },
   async deleteProduct(id: string, organizationId: string) {
     await db.delete(products).where(eq(products.id, id), eq(products.organizationId, organizationId));
+    return { success: true }; // Ensure JSON response
   },
 
   // Locations
@@ -66,6 +68,7 @@ export const storage = {
   },
   async deleteLocation(id: string, organizationId: string) {
     await db.delete(locations).where(eq(locations.id, id), eq(locations.organizationId, organizationId));
+    return { success: true }; // Ensure JSON response
   },
 
   // Customers
@@ -86,6 +89,7 @@ export const storage = {
   },
   async deleteCustomer(id: string, organizationId: string) {
     await db.delete(customers).where(eq(customers.id, id), eq(customers.organizationId, organizationId));
+    return { success: true }; // Ensure JSON response
   },
 
   // Package Types
@@ -106,6 +110,7 @@ export const storage = {
   },
   async deletePackageType(id: string, organizationId: string) {
     await db.delete(packageTypes).where(eq(packageTypes.id, id), eq(packageTypes.organizationId, organizationId));
+    return { success: true }; // Ensure JSON response
   },
 
   // Batches
@@ -155,9 +160,17 @@ export const storage = {
     const [batch] = await db.insert(batches).values(data).returning();
     return batch;
   },
-  async updateBatch(id: string, data: Partial<typeof batches.$inferInsert>, organizationId: string) {
-    const [batch] = await db.update(batches).set(data).where(eq(batches.id, id), eq(batches.organizationId, organizationId)).returning();
+  async updateBatch(id: string, data: Partial<Batch>) { // Assuming Batch type is available
+    const [batch] = await db.update(batches)
+      .set(data)
+      .where(eq(batches.id, id))
+      .returning();
     return batch;
+  },
+
+  async deleteBatch(id: string) {
+    await db.delete(batches).where(eq(batches.id, id));
+    return { success: true }; // Ensure JSON response
   },
 
   // Production Records
