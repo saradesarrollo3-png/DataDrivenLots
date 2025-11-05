@@ -158,28 +158,30 @@ export default function Recepcion() {
     },
   });
 
-  const receptions: Reception[] = batchesData.map(item => ({
-    id: item.batch.id,
-    batchCode: item.batch.batchCode,
-    supplier: item.supplier?.name || '-',
-    product: item.product?.name || '-',
-    quantity: parseFloat(item.batch.quantity),
-    unit: item.batch.unit,
-    temperature: parseFloat(item.batch.temperature || '0'),
-    truckPlate: item.batch.truckPlate || '-',
-    deliveryNote: item.batch.deliveryNote || '-',
-    arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }),
-    status: item.batch.status,
-    supplierId: item.batch.supplierId,
-    productId: item.batch.productId,
-    locationId: item.batch.locationId
-  }));
+  const receptions: Reception[] = batchesData
+    .filter(item => item.batch.status === 'RECEPCION')
+    .map(item => ({
+      id: item.batch.id,
+      batchCode: item.batch.batchCode,
+      supplier: item.supplier?.name || '-',
+      product: item.product?.name || '-',
+      quantity: parseFloat(item.batch.quantity),
+      unit: item.batch.unit,
+      temperature: parseFloat(item.batch.temperature || '0'),
+      truckPlate: item.batch.truckPlate || '-',
+      deliveryNote: item.batch.deliveryNote || '-',
+      arrivedAt: new Date(item.batch.arrivedAt).toLocaleString('es-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      status: item.batch.status,
+      supplierId: item.batch.supplierId,
+      productId: item.batch.productId,
+      locationId: item.batch.locationId
+    }));
 
   const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -128,6 +128,7 @@ export const batches = pgTable("batches", {
 // Production Records
 export const productionRecords = pgTable("production_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
   batchId: varchar("batch_id").references(() => batches.id).notNull(),
   stage: productionStageEnum("stage").notNull(),
   inputBatchCode: text("input_batch_code").notNull(),
@@ -218,7 +219,7 @@ export const insertBatchSchema = createInsertSchema(batches).omit({ id: true, cr
   truckPlate: z.string().optional().nullable(),
   locationId: z.string().optional().nullable(),
 });
-export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true }).extend({
+export const insertProductionRecordSchema = createInsertSchema(productionRecords).omit({ id: true, createdAt: true, organizationId: true }).extend({
   completedAt: z.string().datetime().optional().nullable(),
 });
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true });

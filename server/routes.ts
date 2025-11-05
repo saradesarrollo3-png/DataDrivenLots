@@ -362,10 +362,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/production-records", requireAuth, async (req, res) => {
     try {
-      const data = insertProductionRecordSchema.parse(req.body);
+      const { organizationId, ...bodyData } = req.body;
+      const data = insertProductionRecordSchema.parse(bodyData);
       const recordData = {
         ...data,
         completedAt: data.completedAt ? new Date(data.completedAt) : new Date(),
+        organizationId: req.user!.organizationId,
       };
       const record = await storage.insertProductionRecord(recordData);
       res.json(record);
