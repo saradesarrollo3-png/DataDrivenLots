@@ -1,4 +1,3 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable, Column } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -59,19 +58,19 @@ interface PackageType {
 export default function Configuracion() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [packageDialogOpen, setPackageDialogOpen] = useState(false);
-  
+
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingPackage, setEditingPackage] = useState<PackageType | null>(null);
-  
+
   const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [viewingLocation, setViewingLocation] = useState<Location | null>(null);
@@ -270,12 +269,11 @@ export default function Configuracion() {
     const formData = new FormData(e.currentTarget);
     const shelfLifeValue = formData.get('shelfLife') as string;
     createProductMutation.mutate({
-      name: formData.get('name'),
-      code: formData.get('code'),
-      type: formData.get('type'),
-      format: formData.get('format') || null,
-      shelfLife: shelfLifeValue ? parseInt(shelfLifeValue) : null,
-      description: formData.get('description') || null,
+      name: formData.get('name') as string,
+      code: formData.get('code') as string,
+      type: formData.get('type') as string,
+      format: (formData.get('format') as string) || null,
+      shelfLife: shelfLifeValue ? parseInt(shelfLifeValue, 10) : 0,
     });
   };
 
@@ -283,9 +281,9 @@ export default function Configuracion() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createLocationMutation.mutate({
-      name: formData.get('name'),
-      code: formData.get('code'),
-      type: formData.get('type'),
+      name: formData.get('name') as string,
+      code: formData.get('code') as string,
+      type: formData.get('type') as string,
     });
   };
 
@@ -293,24 +291,25 @@ export default function Configuracion() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createCustomerMutation.mutate({
-      name: formData.get('name'),
-      code: formData.get('code'),
-      contact: formData.get('contact') || null,
-      phone: formData.get('phone') || null,
-      email: formData.get('email') || null,
-      address: formData.get('address') || null,
+      name: formData.get('name') as string,
+      code: formData.get('code') as string,
+      contact: (formData.get('contact') as string) || null,
+      phone: (formData.get('phone') as string) || null,
+      email: (formData.get('email') as string) || null,
+      address: (formData.get('address') as string) || null,
     });
   };
 
   const handlePackageTypeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const capacityValue = formData.get('capacity') as string;
     createPackageTypeMutation.mutate({
-      name: formData.get('name'),
-      code: formData.get('code'),
-      capacity: formData.get('capacity') || null,
-      unit: formData.get('unit') || null,
-      description: formData.get('description') || null,
+      name: formData.get('name') as string,
+      code: formData.get('code') as string,
+      capacity: capacityValue ? parseFloat(capacityValue) : null,
+      unit: (formData.get('unit') as string) || null,
+      description: (formData.get('description') as string) || null,
     });
   };
 
@@ -460,7 +459,7 @@ export default function Configuracion() {
                   }
                 }}
               />
-              
+
               <Dialog open={!!viewingSupplier} onOpenChange={(open) => !open && setViewingSupplier(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
@@ -545,11 +544,11 @@ export default function Configuracion() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="shelfLife">Vida Útil (días)</Label>
-                        <Input id="shelfLife" name="shelfLife" type="number" placeholder="730" defaultValue={editingProduct?.shelfLife || ""} />
+                        <Input id="shelfLife" name="shelfLife" type="number" placeholder="730" defaultValue={editingProduct?.shelfLife !== undefined && editingProduct?.shelfLife !== null ? editingProduct.shelfLife.toString() : ""} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="prod-description">Descripción</Label>
-                        <Textarea id="prod-description" name="description" placeholder="Descripción del producto..." />
+                        <Textarea id="prod-description" name="description" placeholder="Descripción del producto..." defaultValue={editingProduct?.description || ""} />
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
                         <Button type="button" variant="outline" onClick={() => { setProductDialogOpen(false); setEditingProduct(null); }}>
@@ -591,7 +590,7 @@ export default function Configuracion() {
                   }
                 }}
               />
-              
+
               <Dialog open={!!viewingProduct} onOpenChange={(open) => !open && setViewingProduct(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
@@ -622,6 +621,10 @@ export default function Configuracion() {
                       <div>
                         <Label className="text-muted-foreground">Vida Útil</Label>
                         <p className="font-medium">{viewingProduct.shelfLife ? `${viewingProduct.shelfLife} días` : "-"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Descripción</Label>
+                        <p className="font-medium">{viewingProduct.description || "-"}</p>
                       </div>
                     </div>
                   )}
@@ -718,7 +721,7 @@ export default function Configuracion() {
                   }
                 }}
               />
-              
+
               <Dialog open={!!viewingLocation} onOpenChange={(open) => !open && setViewingLocation(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
@@ -839,7 +842,7 @@ export default function Configuracion() {
                   }
                 }}
               />
-              
+
               <Dialog open={!!viewingCustomer} onOpenChange={(open) => !open && setViewingCustomer(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
@@ -919,7 +922,7 @@ export default function Configuracion() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="capacity">Capacidad</Label>
-                          <Input id="capacity" name="capacity" type="number" step="0.01" placeholder="370" defaultValue={editingPackage?.capacity || ""} />
+                          <Input id="capacity" name="capacity" type="number" step="0.01" placeholder="370" defaultValue={editingPackage?.capacity !== undefined && editingPackage?.capacity !== null ? editingPackage.capacity.toString() : ""} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="unit">Unidad</Label>
@@ -970,7 +973,7 @@ export default function Configuracion() {
                   }
                 }}
               />
-              
+
               <Dialog open={!!viewingPackage} onOpenChange={(open) => !open && setViewingPackage(null)}>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>

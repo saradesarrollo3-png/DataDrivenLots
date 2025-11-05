@@ -20,12 +20,12 @@ export const storage = {
     const [supplier] = await db.insert(suppliers).values(data).returning();
     return supplier;
   },
-  async updateSupplier(id: string, data: Partial<typeof suppliers.$inferInsert>, organizationId: string) {
-    const [supplier] = await db.update(suppliers).set(data).where(eq(suppliers.id, id), eq(suppliers.organizationId, organizationId)).returning();
+  async updateSupplier(id: string, data: Partial<typeof suppliers.$inferInsert>) {
+    const [supplier] = await db.update(suppliers).set(data).where(eq(suppliers.id, id)).returning();
     return supplier;
   },
-  async deleteSupplier(id: string, organizationId: string) {
-    await db.delete(suppliers).where(eq(suppliers.id, id), eq(suppliers.organizationId, organizationId));
+  async deleteSupplier(id: string) {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   },
 
   // Products
