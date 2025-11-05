@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
@@ -66,7 +65,6 @@ export default function Expedicion() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
-      setIsDialogOpen(false);
       toast({
         title: "Expedición creada",
         description: "La expedición se ha registrado correctamente",
@@ -84,9 +82,9 @@ export default function Expedicion() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const selectedBatch = batches.find((b: any) => b.batch.id === formData.get('batchId'));
-    
+
     const data = {
       shipmentCode: formData.get('shipmentCode'),
       customerId: formData.get('customerId'),

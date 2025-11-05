@@ -98,7 +98,7 @@ export default function Configuracion() {
   });
 
   const createSupplierMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<Supplier>) => {
       const sessionId = localStorage.getItem('sessionId');
       const url = editingSupplier ? `/api/suppliers/${editingSupplier.id}` : '/api/suppliers';
       const method = editingSupplier ? 'PUT' : 'POST';
@@ -120,8 +120,11 @@ export default function Configuracion() {
         title: editingSupplier ? "Proveedor actualizado" : "Proveedor creado", 
         description: editingSupplier ? "El proveedor se ha actualizado correctamente." : "El proveedor se ha creado correctamente." 
       });
-      setSupplierDialogOpen(false);
-      setEditingSupplier(null);
+      // Close dialog after toast to prevent navigation issues
+      setTimeout(() => {
+        setSupplierDialogOpen(false);
+        setEditingSupplier(null);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el proveedor.", variant: "destructive" });
@@ -129,7 +132,7 @@ export default function Configuracion() {
   });
 
   const createProductMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<Product>) => {
       const sessionId = localStorage.getItem('sessionId');
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
@@ -151,8 +154,10 @@ export default function Configuracion() {
         title: editingProduct ? "Producto actualizado" : "Producto creado", 
         description: editingProduct ? "El producto se ha actualizado correctamente." : "El producto se ha creado correctamente." 
       });
-      setProductDialogOpen(false);
-      setEditingProduct(null);
+      setTimeout(() => {
+        setProductDialogOpen(false);
+        setEditingProduct(null);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el producto.", variant: "destructive" });
@@ -160,7 +165,7 @@ export default function Configuracion() {
   });
 
   const createLocationMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<Location>) => {
       const sessionId = localStorage.getItem('sessionId');
       const url = editingLocation ? `/api/locations/${editingLocation.id}` : '/api/locations';
       const method = editingLocation ? 'PUT' : 'POST';
@@ -182,8 +187,10 @@ export default function Configuracion() {
         title: editingLocation ? "Ubicación actualizada" : "Ubicación creada", 
         description: editingLocation ? "La ubicación se ha actualizado correctamente." : "La ubicación se ha creado correctamente." 
       });
-      setLocationDialogOpen(false);
-      setEditingLocation(null);
+      setTimeout(() => {
+        setLocationDialogOpen(false);
+        setEditingLocation(null);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar la ubicación.", variant: "destructive" });
@@ -191,7 +198,7 @@ export default function Configuracion() {
   });
 
   const createCustomerMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<Customer>) => {
       const sessionId = localStorage.getItem('sessionId');
       const url = editingCustomer ? `/api/customers/${editingCustomer.id}` : '/api/customers';
       const method = editingCustomer ? 'PUT' : 'POST';
@@ -213,8 +220,10 @@ export default function Configuracion() {
         title: editingCustomer ? "Cliente actualizado" : "Cliente creado", 
         description: editingCustomer ? "El cliente se ha actualizado correctamente." : "El cliente se ha creado correctamente." 
       });
-      setCustomerDialogOpen(false);
-      setEditingCustomer(null);
+      setTimeout(() => {
+        setCustomerDialogOpen(false);
+        setEditingCustomer(null);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el cliente.", variant: "destructive" });
@@ -222,7 +231,7 @@ export default function Configuracion() {
   });
 
   const createPackageTypeMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<PackageType>) => {
       const sessionId = localStorage.getItem('sessionId');
       const url = editingPackage ? `/api/package-types/${editingPackage.id}` : '/api/package-types';
       const method = editingPackage ? 'PUT' : 'POST';
@@ -244,8 +253,10 @@ export default function Configuracion() {
         title: editingPackage ? "Tipo de envase actualizado" : "Tipo de envase creado", 
         description: editingPackage ? "El tipo de envase se ha actualizado correctamente." : "El tipo de envase se ha creado correctamente." 
       });
-      setPackageDialogOpen(false);
-      setEditingPackage(null);
+      setTimeout(() => {
+        setPackageDialogOpen(false);
+        setEditingPackage(null);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Error", description: "No se pudo guardar el tipo de envase.", variant: "destructive" });
@@ -256,11 +267,11 @@ export default function Configuracion() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createSupplierMutation.mutate({
-      name: formData.get('name'),
-      code: formData.get('code'),
-      contact: formData.get('contact') || null,
-      phone: formData.get('phone') || null,
-      email: formData.get('email') || null,
+      name: formData.get('name') as string,
+      code: formData.get('code') as string,
+      contact: (formData.get('contact') as string) || null,
+      phone: (formData.get('phone') as string) || null,
+      email: (formData.get('email') as string) || null,
     });
   };
 
