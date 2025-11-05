@@ -734,17 +734,62 @@ export default function Produccion() {
         return;
       }
     } else {
-        // Para asado, consumir completamente y cambiar estado
-        // Se debe iterar sobre selectedBatches porque puede haber múltiples lotes de materia prima
+        // Para asado, crear nuevo lote y reducir cantidad del lote de recepción
+        const inputBatchCodes = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => b.batchCode)
+          .join(', ');
+
+        const inputBatchDetails = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => ({
+            batchId: b.batchId,
+            batchCode: b.batchCode,
+            quantity: b.selectedQuantity,
+          }));
+
+        const totalInput = calculateTotalInput();
+
+        // Crear lote de ASADO
+        const batchData: any = {
+          batchCode: outputBatchCode,
+          productId: firstBatch?.batch.productId,
+          initialQuantity: finalOutputQuantity.toString(),
+          quantity: finalOutputQuantity.toString(),
+          unit: finalUnit,
+          status: 'ASADO',
+        };
+
+        const newBatch = await createBatchMutation.mutateAsync(batchData);
+
+        // Crear registro de producción
+        await createProductionRecordMutation.mutateAsync({
+          batchId: newBatch.id,
+          stage: 'ASADO',
+          inputBatchCode: inputBatchCodes,
+          outputBatchCode: outputBatchCode,
+          inputQuantity: totalInput.toString(),
+          outputQuantity: finalOutputQuantity.toString(),
+          unit: finalUnit,
+          inputBatchDetails: JSON.stringify(inputBatchDetails),
+          notes: notes || null,
+          completedAt: new Date().toISOString(),
+        });
+
+        // Reducir cantidad de los lotes de RECEPCIÓN sin cambiar su estado
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
-            await updateBatchMutation.mutateAsync({
-              id: selectedBatch.batchId,
-              data: {
-                quantity: (parseFloat(allBatches.find((b: any) => b.batch.id === selectedBatch.batchId)?.batch.quantity || '0') - selectedBatch.selectedQuantity).toString(),
-                status: newStatus,
-              },
-            });
+            const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+            if (currentBatch) {
+              const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
+              await updateBatchMutation.mutateAsync({
+                id: selectedBatch.batchId,
+                data: {
+                  quantity: remainingQuantity.toString(),
+                  // NO cambiar el estado, permanece en RECEPCION
+                },
+              });
+            }
           }
         }
     }
