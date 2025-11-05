@@ -662,15 +662,7 @@ export default function Produccion() {
             }
           }
         }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "No se pudo completar el proceso",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else if (activeStage === "esterilizado") {
+      } else if (activeStage === "esterilizado") {
       try {
         // Para esterilizado, crear lotes duplicados con el mismo código y cantidad
         const inputBatchCodes = selectedBatches
