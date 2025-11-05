@@ -28,17 +28,29 @@ export const productionStageEnum = pgEnum("production_stage", [
   "ESTERILIZADO"
 ]);
 
+// Organizations
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Users
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
+  username: text("username").notNull(),
+  email: text("email").notNull(),
   password: text("password").notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Suppliers
 export const suppliers = pgTable("suppliers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   contact: text("contact"),
   phone: text("phone"),
@@ -49,7 +61,8 @@ export const suppliers = pgTable("suppliers", {
 // Products
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
   format: text("format"),
@@ -60,7 +73,8 @@ export const products = pgTable("products", {
 // Locations
 export const locations = pgTable("locations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   type: locationTypeEnum("type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -69,7 +83,8 @@ export const locations = pgTable("locations", {
 // Customers
 export const customers = pgTable("customers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   contact: text("contact"),
   phone: text("phone"),
@@ -81,7 +96,8 @@ export const customers = pgTable("customers", {
 // Package Types
 export const packageTypes = pgTable("package_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   capacity: decimal("capacity", { precision: 10, scale: 2 }),
@@ -92,7 +108,8 @@ export const packageTypes = pgTable("package_types", {
 // Batches
 export const batches = pgTable("batches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  batchCode: text("batch_code").notNull().unique(),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  batchCode: text("batch_code").notNull(),
   supplierId: varchar("supplier_id").references(() => suppliers.id),
   productId: varchar("product_id").references(() => products.id).notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
@@ -163,9 +180,20 @@ export const batchHistory = pgTable("batch_history", {
 });
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+
+export const registerSchema = z.object({
+  username: z.string().min(3),
+  email: z.string().email(),
+  password: z.string().min(6),
+  organizationName: z.string().min(3),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
 });
 
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true, createdAt: true });
@@ -180,8 +208,11 @@ export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: tru
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true });
 
 // Types
+export type Organization = typeof organizations.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type RegisterData = z.infer<typeof registerSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
 export type Supplier = typeof suppliers.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Location = typeof locations.$inferSelect;

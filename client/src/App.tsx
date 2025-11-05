@@ -1,12 +1,16 @@
-import { Switch, Route } from "wouter";
+
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { LogOut, User } from "lucide-react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import Configuracion from "./pages/configuracion";
 import Trazabilidad from "./pages/trazabilidad";
 import Historial from "./pages/historial";
@@ -17,48 +21,162 @@ import Recepcion from "@/pages/recepcion";
 import Produccion from "@/pages/produccion";
 import Calidad from "@/pages/calidad";
 import Expedicion from "@/pages/expedicion";
+import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
+import { useToast } from "@/hooks/use-toast";
+
+interface AuthContextType {
+  user: any | null;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({ user: null, logout: () => {} });
+
+export const useAuth = () => useContext(AuthContext);
+
+function AuthProvider({ children }: { children: ReactNode }) {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const sessionId = localStorage.getItem("sessionId");
+
+  const { data: user, refetch } = useQuery({
+    queryKey: ['/api/auth/me'],
+    enabled: !!sessionId,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${sessionId}`,
+        },
+      });
+      if (!response.ok) {
+        localStorage.removeItem('sessionId');
+        localStorage.removeItem('user');
+        throw new Error('Not authenticated');
+      }
+      return response.json();
+    },
+  });
+
+  const logout = async () => {
+    const sessionId = localStorage.getItem("sessionId");
+    if (sessionId) {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionId}`,
+        },
+      });
+    }
+    localStorage.removeItem('sessionId');
+    localStorage.removeItem('user');
+    queryClient.clear();
+    toast({
+      title: "Sesión cerrada",
+      description: "Has cerrado sesión correctamente",
+    });
+    setLocation('/');
+  };
+
+  return (
+    <AuthContext.Provider value={{ user: user || null, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function ProtectedRoute({ component: Component }: { component: () => JSX.Element }) {
+  const { user } = useAuth();
+  const sessionId = localStorage.getItem("sessionId");
+
+  if (!sessionId || !user) {
+    return <Redirect to="/login" />;
+  }
+
+  return <Component />;
+}
 
 function Router() {
+  const { user } = useAuth();
+  const sessionId = localStorage.getItem("sessionId");
+
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/recepcion" component={Recepcion} />
-      <Route path="/produccion" component={Produccion} />
-      <Route path="/calidad" component={Calidad} />
-      <Route path="/expedicion" component={Expedicion} />
-      <Route path="/configuracion" component={Configuracion} />
-      <Route path="/trazabilidad" component={Trazabilidad} />
-      <Route path="/historial" component={Historial} />
-      <Route path="/etiquetas" component={Etiquetas} />
+      <Route path="/" component={() => sessionId ? <ProtectedRoute component={Dashboard} /> : <Landing />} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/recepcion" component={() => <ProtectedRoute component={Recepcion} />} />
+      <Route path="/produccion" component={() => <ProtectedRoute component={Produccion} />} />
+      <Route path="/calidad" component={() => <ProtectedRoute component={Calidad} />} />
+      <Route path="/expedicion" component={() => <ProtectedRoute component={Expedicion} />} />
+      <Route path="/configuracion" component={() => <ProtectedRoute component={Configuracion} />} />
+      <Route path="/trazabilidad" component={() => <ProtectedRoute component={Trazabilidad} />} />
+      <Route path="/historial" component={() => <ProtectedRoute component={Historial} />} />
+      <Route path="/etiquetas" component={() => <ProtectedRoute component={Etiquetas} />} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-export default function App() {
+function AppContent() {
+  const { user, logout } = useAuth();
+  const [location] = useLocation();
+  const isAuthPage = ['/login', '/register'].includes(location);
+  const isLanding = location === '/' && !user;
+
+  if (isAuthPage || isLanding) {
+    return <Router />;
+  }
+
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
   return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              {user && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>{user.username}</span>
+                  <span className="text-xs">({user.organizationName})</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              {user && (
+                <Button variant="ghost" size="sm" onClick={logout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Cerrar Sesión
+                </Button>
+              )}
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto p-6">
+            <Router />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+export default function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between px-6 py-4 border-b">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto p-6">
-                  <Router />
-                </main>
-              </div>
-            </div>
-          </SidebarProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
