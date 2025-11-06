@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DataTable, Column } from "@/components/data-table";
@@ -21,9 +22,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Truck, Plus } from "lucide-react";
+import { Truck, Plus, Package, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 interface Shipment {
   shipmentCode: string;
@@ -36,8 +40,38 @@ interface Shipment {
   shippedAt: string;
 }
 
+interface ApprovedBatch {
+  id: string;
+  batchCode: string;
+  productId: string;
+  productName: string;
+  availableQuantity: number;
+  unit: string;
+  expiryDate: string;
+  manufactureDate: string;
+  daysToExpiry: number;
+}
+
+interface ShipmentLine {
+  id: string;
+  batchId: string;
+  batchCode: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  expiryDate: string;
+  maxQuantity: number;
+}
+
 export default function Expedicion() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [shipmentCode, setShipmentCode] = useState("");
+  const [truckPlate, setTruckPlate] = useState("");
+  const [deliveryNote, setDeliveryNote] = useState("");
+  const [shipmentLines, setShipmentLines] = useState<ShipmentLine[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   const { data: shipments = [] } = useQuery({
@@ -53,22 +87,40 @@ export default function Expedicion() {
   });
 
   const createShipmentMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/shipments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Error al crear expedición');
-      return response.json();
+    mutationFn: async (lines: ShipmentLine[]) => {
+      // Crear un shipment por cada línea
+      const promises = lines.map(line => 
+        fetch('/api/shipments', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+          },
+          body: JSON.stringify({
+            shipmentCode: shipmentCode,
+            customerId: selectedCustomer,
+            batchId: line.batchId,
+            quantity: line.quantity.toString(),
+            unit: line.unit,
+            truckPlate: truckPlate,
+            deliveryNote: deliveryNote,
+          }),
+        }).then(res => {
+          if (!res.ok) throw new Error('Error al crear expedición');
+          return res.json();
+        })
+      );
+      return Promise.all(promises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       toast({
         title: "Expedición creada",
-        description: "La expedición se ha registrado correctamente",
+        description: "El albarán se ha registrado correctamente y el stock se ha actualizado",
       });
+      handleCloseDialog();
     },
     onError: () => {
       toast({
@@ -79,23 +131,103 @@ export default function Expedicion() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+  // Obtener lotes aprobados con ordenación FEFO
+  const approvedBatches: ApprovedBatch[] = batches
+    .filter((b: any) => b.batch.status === 'APROBADO' && parseFloat(b.batch.quantity) > 0)
+    .map((item: any) => {
+      const expiryDate = item.batch.expiryDate ? new Date(item.batch.expiryDate) : null;
+      const today = new Date();
+      const daysToExpiry = expiryDate 
+        ? Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        : 999999;
 
-    const selectedBatch = batches.find((b: any) => b.batch.id === formData.get('batchId'));
+      return {
+        id: item.batch.id,
+        batchCode: item.batch.batchCode,
+        productId: item.batch.productId,
+        productName: item.product?.name || '-',
+        availableQuantity: parseFloat(item.batch.quantity),
+        unit: item.batch.unit,
+        expiryDate: expiryDate ? expiryDate.toLocaleDateString('es-ES') : '-',
+        manufactureDate: item.batch.manufactureDate 
+          ? new Date(item.batch.manufactureDate).toLocaleDateString('es-ES') 
+          : '-',
+        daysToExpiry,
+      };
+    })
+    .sort((a, b) => a.daysToExpiry - b.daysToExpiry); // FEFO: ordenar por caducidad más próxima primero
 
-    const data = {
-      shipmentCode: formData.get('shipmentCode'),
-      customerId: formData.get('customerId'),
-      batchId: formData.get('batchId'),
-      quantity: parseFloat(formData.get('quantity') as string),
-      unit: selectedBatch?.batch.unit || 'kg',
-      truckPlate: formData.get('truckPlate'),
-      deliveryNote: formData.get('deliveryNote'),
+  // Obtener productos únicos del stock aprobado
+  const availableProducts = Array.from(
+    new Map(
+      approvedBatches.map(b => [b.productId, { id: b.productId, name: b.productName }])
+    ).values()
+  );
+
+  // Filtrar lotes por producto seleccionado
+  const filteredBatches = selectedProduct
+    ? approvedBatches.filter(b => b.productId === selectedProduct)
+    : approvedBatches;
+
+  const handleSubmit = () => {
+    if (!selectedCustomer || !shipmentCode || !deliveryNote || shipmentLines.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debes completar todos los campos y añadir al menos un producto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createShipmentMutation.mutate(shipmentLines);
+  };
+
+  const handleAddLine = (batch: ApprovedBatch) => {
+    // Verificar si ya existe una línea con este lote
+    const existingLine = shipmentLines.find(line => line.batchId === batch.id);
+    if (existingLine) {
+      toast({
+        title: "Advertencia",
+        description: "Este lote ya está añadido al albarán",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newLine: ShipmentLine = {
+      id: `line-${Date.now()}`,
+      batchId: batch.id,
+      batchCode: batch.batchCode,
+      productName: batch.productName,
+      quantity: 0,
+      unit: batch.unit,
+      expiryDate: batch.expiryDate,
+      maxQuantity: batch.availableQuantity,
     };
 
-    createShipmentMutation.mutate(data);
+    setShipmentLines([...shipmentLines, newLine]);
+  };
+
+  const handleRemoveLine = (lineId: string) => {
+    setShipmentLines(shipmentLines.filter(line => line.id !== lineId));
+  };
+
+  const handleUpdateLineQuantity = (lineId: string, quantity: number) => {
+    setShipmentLines(shipmentLines.map(line => 
+      line.id === lineId 
+        ? { ...line, quantity: Math.min(quantity, line.maxQuantity) }
+        : line
+    ));
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedCustomer("");
+    setShipmentCode("");
+    setTruckPlate("");
+    setDeliveryNote("");
+    setShipmentLines([]);
+    setSelectedProduct("");
   };
 
   const processedShipments: Shipment[] = shipments.map((item: any) => ({
@@ -109,9 +241,7 @@ export default function Expedicion() {
     shippedAt: new Date(item.shipment.shippedAt).toLocaleDateString('es-ES'),
   }));
 
-  const approvedBatches = batches.filter((b: any) => b.batch.status === 'APROBADO');
-
-  const columns: Column<Shipment>[] = [
+  const shipmentsColumns: Column<Shipment>[] = [
     { 
       key: "shipmentCode", 
       label: "Código Expedición",
@@ -133,41 +263,86 @@ export default function Expedicion() {
     { key: "shippedAt", label: "Fecha Expedición" },
   ];
 
+  const stockColumns: Column<ApprovedBatch>[] = [
+    { 
+      key: "batchCode", 
+      label: "Código Lote",
+      render: (value) => <span className="font-mono font-medium">{value}</span>
+    },
+    { key: "productName", label: "Producto" },
+    { 
+      key: "availableQuantity", 
+      label: "Cantidad Disponible",
+      render: (value, row) => (
+        <span className="font-semibold">{value.toFixed(2)} {row.unit}</span>
+      )
+    },
+    { key: "manufactureDate", label: "Fabricación" },
+    { 
+      key: "expiryDate", 
+      label: "Caducidad",
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <span>{value}</span>
+          {row.daysToExpiry < 30 && row.daysToExpiry >= 0 && (
+            <Badge variant="destructive" className="text-xs">
+              {row.daysToExpiry} días
+            </Badge>
+          )}
+          {row.daysToExpiry < 0 && (
+            <Badge variant="destructive" className="text-xs">
+              Caducado
+            </Badge>
+          )}
+        </div>
+      )
+    },
+  ];
+
+  const filteredStockBatches = approvedBatches.filter(b => 
+    b.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.productName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalLines = shipmentLines.reduce((sum, line) => sum + line.quantity, 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Expedición</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestión de expediciones a clientes
+            Gestión de expediciones a clientes con criterio FEFO
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-new-shipment">
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Expedición
+              Nuevo Albarán
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Registrar Nueva Expedición</DialogTitle>
+              <DialogTitle>Crear Nuevo Albarán de Expedición</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            
+            <div className="space-y-6">
+              {/* Datos del albarán */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="shipmentCode">Código Expedición *</Label>
+                  <Label htmlFor="shipmentCode">Código Albarán *</Label>
                   <Input
                     id="shipmentCode"
-                    name="shipmentCode"
                     placeholder="EXP-20250104-0001"
-                    required
+                    value={shipmentCode}
+                    onChange={(e) => setShipmentCode(e.target.value)}
                     data-testid="input-shipment-code"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="customerId">Cliente *</Label>
-                  <Select name="customerId" required>
+                  <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                     <SelectTrigger id="customerId" data-testid="select-customer">
                       <SelectValue placeholder="Seleccionar cliente" />
                     </SelectTrigger>
@@ -184,42 +359,12 @@ export default function Expedicion() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="batchId">Lote a Expedir *</Label>
-                  <Select name="batchId" required>
-                    <SelectTrigger id="batchId" data-testid="select-batch">
-                      <SelectValue placeholder="Seleccionar lote" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {approvedBatches.map((item: any) => (
-                        <SelectItem key={item.batch.id} value={item.batch.id}>
-                          {item.batch.batchCode} - {item.product?.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad *</Label>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    required
-                    data-testid="input-quantity"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <Label htmlFor="truckPlate">Matrícula Camión *</Label>
                   <Input
                     id="truckPlate"
-                    name="truckPlate"
                     placeholder="ABC-1234"
-                    required
+                    value={truckPlate}
+                    onChange={(e) => setTruckPlate(e.target.value)}
                     data-testid="input-truck-plate"
                   />
                 </div>
@@ -227,46 +372,216 @@ export default function Expedicion() {
                   <Label htmlFor="deliveryNote">Nº Albarán *</Label>
                   <Input
                     id="deliveryNote"
-                    name="deliveryNote"
                     placeholder="ALB-2025-001"
-                    required
+                    value={deliveryNote}
+                    onChange={(e) => setDeliveryNote(e.target.value)}
                     data-testid="input-delivery-note"
                   />
                 </div>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Los lotes se muestran ordenados por caducidad (FEFO). Prioriza los que caducan antes.
+                </AlertDescription>
+              </Alert>
+
+              {/* Selector de producto */}
+              <div className="space-y-2">
+                <Label htmlFor="productFilter">Filtrar por Producto</Label>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger id="productFilter">
+                    <SelectValue placeholder="Todos los productos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos los productos</SelectItem>
+                    {availableProducts.map((product: any) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lotes disponibles */}
+              <div className="space-y-2">
+                <Label>Lotes Disponibles (Stock Aprobado - Orden FEFO)</Label>
+                <div className="border rounded-lg max-h-60 overflow-y-auto">
+                  {filteredBatches.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground text-center">
+                      No hay stock aprobado disponible
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {filteredBatches.map((batch) => (
+                        <div key={batch.id} className="p-3 flex items-center justify-between hover:bg-muted/50">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-medium">{batch.batchCode}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {batch.productName}
+                              </span>
+                              {batch.daysToExpiry < 30 && batch.daysToExpiry >= 0 && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Caduca en {batch.daysToExpiry} días
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Disponible: <span className="font-semibold">{batch.availableQuantity.toFixed(2)} {batch.unit}</span>
+                              {' • '}
+                              Caducidad: {batch.expiryDate}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleAddLine(batch)}
+                            disabled={shipmentLines.some(line => line.batchId === batch.id)}
+                          >
+                            Añadir
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Líneas del albarán */}
+              <div className="space-y-2">
+                <Label>Líneas del Albarán ({shipmentLines.length})</Label>
+                {shipmentLines.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground text-center border rounded-lg">
+                    No hay productos añadidos. Selecciona lotes del listado superior.
+                  </p>
+                ) : (
+                  <div className="border rounded-lg divide-y">
+                    {shipmentLines.map((line) => (
+                      <div key={line.id} className="p-3 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-mono font-medium">{line.batchCode}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {line.productName} • Caduca: {line.expiryDate}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveLine(line.id)}
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm">Cantidad:</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max={line.maxQuantity}
+                            value={line.quantity || ''}
+                            onChange={(e) => handleUpdateLineQuantity(line.id, parseFloat(e.target.value) || 0)}
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            / {line.maxQuantity.toFixed(2)} {line.unit}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="p-3 bg-muted/30">
+                      <p className="text-sm font-semibold">
+                        Total líneas: {shipmentLines.length} • Total cantidad: {totalLines.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={handleCloseDialog}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" data-testid="button-submit">
-                  Registrar Expedición
+                <Button 
+                  type="button"
+                  onClick={handleSubmit} 
+                  data-testid="button-submit"
+                  disabled={createShipmentMutation.isPending || shipmentLines.length === 0}
+                >
+                  {createShipmentMutation.isPending ? "Registrando..." : "Confirmar Expedición"}
                 </Button>
               </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Truck className="h-4 w-4" />
-            Expediciones Registradas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            columns={columns}
-            data={processedShipments}
-            onView={(row) => console.log("View shipment:", row)}
-          />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="shipments" className="w-full">
+        <TabsList>
+          <TabsTrigger value="shipments">
+            <Truck className="h-4 w-4 mr-2" />
+            Expediciones
+          </TabsTrigger>
+          <TabsTrigger value="stock">
+            <Package className="h-4 w-4 mr-2" />
+            Stock Aprobado
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="shipments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Expediciones Registradas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={shipmentsColumns}
+                data={processedShipments}
+                onView={(row) => console.log("View shipment:", row)}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="stock" className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Buscar por lote o producto..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Stock Aprobado para Expedición (Orden FEFO)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={stockColumns}
+                data={filteredStockBatches}
+                emptyMessage="No hay stock aprobado disponible"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
