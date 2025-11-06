@@ -11,7 +11,8 @@ import {
   Truck, 
   Search,
   ChevronRight,
-  CheckCircle
+  CheckCircle,
+  FileText
 } from "lucide-react";
 import { useState } from "react";
 
@@ -149,6 +150,23 @@ const steps = [
     ],
     link: "/trazabilidad",
     linkText: "Ir a Trazabilidad"
+  },
+  {
+    id: 9,
+    title: "9. Auditoría y Reportes",
+    icon: FileText,
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-100 dark:bg-slate-900/30",
+    description: "Genera reportes en PDF para auditorías y análisis",
+    details: [
+      "Descarga reportes completos de historial de lotes",
+      "Genera informes de registros de producción por etapas",
+      "Exporta controles de calidad realizados",
+      "Obtén reportes de expediciones a clientes",
+      "Descarga trazabilidad completa y estado de stock en PDF"
+    ],
+    link: "/admin/auditoria",
+    linkText: "Ir a Auditoría"
   }
 ];
 
