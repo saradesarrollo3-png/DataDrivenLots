@@ -11,6 +11,7 @@ import {
 import { requireAuth, hashPassword, comparePassword, createSession, deleteSession } from "./auth";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import PDFDocument from "pdfkit";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -804,7 +805,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/audit/pdf", requireAuth, async (req, res) => {
     try {
       const { type, startDate, endDate } = req.query;
-      const PDFDocument = require('pdfkit');
       
       // Create PDF document
       const doc = new PDFDocument({ margin: 50 });

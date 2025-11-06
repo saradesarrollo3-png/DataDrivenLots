@@ -3,7 +3,7 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Printer, QrCode } from "lucide-react";
+import { Search, Printer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -244,26 +244,15 @@ export default function Etiquetas() {
             onView={(row) => setSelectedBatch(row)}
             emptyMessage="No hay lotes aprobados disponibles para etiquetar"
             customActions={(row) => (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePrintLabel(row)}
-                  data-testid="button-print-label"
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Etiqueta
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePrintQR(row)}
-                  data-testid="button-print-qr"
-                >
-                  <QrCode className="h-4 w-4 mr-1" />
-                  QR
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePrintLabel(row)}
+                data-testid="button-print-label"
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Etiqueta
+              </Button>
             )}
           />
 
@@ -320,26 +309,15 @@ export default function Etiquetas() {
             onView={(row) => setSelectedReceptionBatch(row)}
             emptyMessage="No hay lotes recepcionados disponibles para etiquetar"
             customActions={(row) => (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePrintReceptionLabel(row)}
-                  data-testid="button-print-reception-label"
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Etiqueta
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePrintReceptionQR(row)}
-                  data-testid="button-print-reception-qr"
-                >
-                  <QrCode className="h-4 w-4 mr-1" />
-                  QR
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePrintReceptionLabel(row)}
+                data-testid="button-print-reception-label"
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Etiqueta
+              </Button>
             )}
           />
 
