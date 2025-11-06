@@ -509,54 +509,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/shipments", requireAuth, async (req, res) => {
-    const { organizationId, ...bodyData } = req.body;
-    const data = insertShipmentSchema.omit({ organizationId: true }).parse(bodyData);
-    const shipment = await storage.insertShipment({ ...data, organizationId: req.user!.organizationId });
+    try {
+      const { organizationId, ...bodyData } = req.body;
+      const data = insertShipmentSchema.omit({ organizationId: true }).parse(bodyData);
+      const shipment = await storage.insertShipment({ ...data, organizationId: req.user!.organizationId });
 
-    // Get batch data
-    const batchData = await storage.getBatchById(data.batchId, req.user!.organizationId);
-    
-    if (batchData) {
-      const currentQuantity = parseFloat(batchData.batch.quantity);
-      const shippedQuantity = parseFloat(data.quantity);
-      const remainingQuantity = currentQuantity - shippedQuantity;
+      // Get batch data
+      const batchData = await storage.getBatchById(data.batchId, req.user!.organizationId);
+      
+      if (batchData) {
+        const currentQuantity = parseFloat(batchData.batch.quantity);
+        const shippedQuantity = parseFloat(data.quantity);
+        const remainingQuantity = currentQuantity - shippedQuantity;
 
-      // Update batch quantity - reduce by shipped amount
-      if (remainingQuantity > 0) {
-        // Partial shipment - keep batch in APROBADO status with reduced quantity
-        await storage.updateBatch(data.batchId, { 
-          quantity: remainingQuantity.toFixed(2)
-        });
-      } else {
-        // Full shipment - mark as EXPEDIDO
-        await storage.updateBatch(data.batchId, { 
-          quantity: "0",
-          status: 'EXPEDIDO' 
+        // Update batch quantity - reduce by shipped amount
+        if (remainingQuantity > 0) {
+          // Partial shipment - keep batch in APROBADO status with reduced quantity
+          await storage.updateBatch(data.batchId, { 
+            quantity: remainingQuantity.toFixed(2)
+          });
+        } else {
+          // Full shipment - mark as EXPEDIDO
+          await storage.updateBatch(data.batchId, { 
+            quantity: "0",
+            status: 'EXPEDIDO' 
+          });
+        }
+
+        // Reduce product stock
+        if (batchData.batch.productId && data.quantity && data.unit) {
+          await storage.updateProductStock(
+            req.user!.organizationId,
+            batchData.batch.productId,
+            data.unit,
+            -shippedQuantity
+          );
+        }
+
+        // Create history entry
+        await storage.insertBatchHistory({
+          batchId: data.batchId,
+          action: 'shipped',
+          fromStatus: batchData.batch.status,
+          toStatus: remainingQuantity > 0 ? batchData.batch.status : 'EXPEDIDO',
+          notes: `Expedición parcial: ${shippedQuantity} ${data.unit}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
+          organizationId: req.user!.organizationId,
         });
       }
 
-      // Reduce product stock
-      if (batchData.batch.productId && data.quantity && data.unit) {
-        await storage.updateProductStock(
-          req.user!.organizationId,
-          batchData.batch.productId,
-          data.unit,
-          -shippedQuantity
-        );
+      res.json(shipment);
+    } catch (error: any) {
+      // Manejar error de código duplicado
+      if (error.code === '23505' && error.constraint === 'shipments_shipment_code_unique') {
+        return res.status(400).json({ 
+          message: `El código de expedición "${req.body.shipmentCode}" ya existe. Por favor, usa un código diferente.` 
+        });
       }
-
-      // Create history entry
-      await storage.insertBatchHistory({
-        batchId: data.batchId,
-        action: 'shipped',
-        fromStatus: batchData.batch.status,
-        toStatus: remainingQuantity > 0 ? batchData.batch.status : 'EXPEDIDO',
-        notes: `Expedición parcial: ${shippedQuantity} ${data.unit}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
-        organizationId: req.user!.organizationId,
-      });
+      res.status(400).json({ message: error.message || "Error al crear la expedición" });
     }
-
-    res.json(shipment);
   });
 
   // Product Stock

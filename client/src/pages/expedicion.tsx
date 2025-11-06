@@ -88,16 +88,21 @@ export default function Expedicion() {
 
   const createShipmentMutation = useMutation({
     mutationFn: async (lines: ShipmentLine[]) => {
-      // Crear un shipment por cada línea
-      const promises = lines.map(line => 
-        fetch('/api/shipments', {
+      // Crear un shipment por cada línea con código único
+      const promises = lines.map((line, index) => {
+        // Generar código único: código base + sufijo si hay múltiples líneas
+        const uniqueCode = lines.length > 1 
+          ? `${shipmentCode}-${(index + 1).toString().padStart(3, '0')}`
+          : shipmentCode;
+        
+        return fetch('/api/shipments', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
           },
           body: JSON.stringify({
-            shipmentCode: shipmentCode,
+            shipmentCode: uniqueCode,
             customerId: selectedCustomer,
             batchId: line.batchId,
             quantity: line.quantity.toString(),
@@ -105,11 +110,14 @@ export default function Expedicion() {
             truckPlate: truckPlate,
             deliveryNote: deliveryNote,
           }),
-        }).then(res => {
-          if (!res.ok) throw new Error('Error al crear expedición');
+        }).then(async res => {
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Error al crear expedición');
+          }
           return res.json();
-        })
-      );
+        });
+      });
       return Promise.all(promises);
     },
     onSuccess: () => {
@@ -122,10 +130,10 @@ export default function Expedicion() {
       });
       handleCloseDialog();
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: "No se pudo crear la expedición",
+        title: "Error al crear expedición",
+        description: error.message || "No se pudo crear la expedición. Verifica que el código del albarán no esté duplicado.",
         variant: "destructive",
       });
     },
