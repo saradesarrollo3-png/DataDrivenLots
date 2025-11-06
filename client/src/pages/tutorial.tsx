@@ -14,7 +14,7 @@ import {
   CheckCircle,
   FileText
 } from "lucide-react";
-import { useState } from "react";
+
 
 const steps = [
   {
@@ -171,15 +171,6 @@ const steps = [
 ];
 
 export default function Tutorial() {
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
-  const toggleStep = (stepId: number) => {
-    setCompletedSteps(prev => 
-      prev.includes(stepId) 
-        ? prev.filter(id => id !== stepId)
-        : [...prev, stepId]
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -207,12 +198,11 @@ export default function Tutorial() {
       <div className="space-y-4">
         {steps.map((step, index) => {
           const Icon = step.icon;
-          const isCompleted = completedSteps.includes(step.id);
 
           return (
             <Card 
               key={step.id}
-              className={`transition-all ${isCompleted ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20' : ''}`}
+              className="transition-all"
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -221,11 +211,8 @@ export default function Tutorial() {
                       <Icon className={`h-6 w-6 ${step.color}`} />
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-lg mb-2 flex items-center gap-2">
+                      <CardTitle className="text-lg mb-2">
                         {step.title}
-                        {isCompleted && (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        )}
                       </CardTitle>
                       <CardDescription className="text-base mb-3">
                         {step.description}
@@ -243,19 +230,11 @@ export default function Tutorial() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
-                  <Link href={step.link}>
-                    <Button>
-                      {step.linkText}
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    onClick={() => toggleStep(step.id)}
-                  >
-                    {isCompleted ? 'Marcar como pendiente' : 'Marcar como completado'}
+                <Link href={step.link}>
+                  <Button>
+                    {step.linkText}
                   </Button>
-                </div>
+                </Link>
               </CardContent>
             </Card>
           );
