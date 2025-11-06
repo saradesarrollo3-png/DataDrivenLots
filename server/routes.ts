@@ -845,9 +845,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const batches = await storage.getAllBatchHistory(req.user!.organizationId);
           doc.fontSize(12);
           batches.forEach((item, index) => {
-            doc.text(`${index + 1}. Lote ${item.batchCode} - ${item.action} - ${new Date(item.timestamp).toLocaleDateString('es-ES')}`);
-            doc.fontSize(10).text(`   Estado: ${item.fromStatus || '-'} → ${item.toStatus || '-'}`);
-            if (item.notes) doc.text(`   Notas: ${item.notes}`);
+            const history = item.history || item;
+            const batch = item.batch;
+            
+            const batchCode = batch?.batchCode || item.batchCode || '-';
+            const action = history.action || '-';
+            const timestamp = history.createdAt || item.timestamp;
+            const fromStatus = history.fromStatus || '-';
+            const toStatus = history.toStatus || '-';
+            const notes = history.notes;
+            
+            doc.text(`${index + 1}. Lote ${batchCode} - ${action} - ${new Date(timestamp).toLocaleDateString('es-ES')}`);
+            doc.fontSize(10).text(`   Estado: ${fromStatus} → ${toStatus}`);
+            if (notes) doc.text(`   Notas: ${notes}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
@@ -855,11 +865,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'production':
           const records = await storage.getProductionRecords(req.user!.organizationId);
           doc.fontSize(12);
-          records.forEach((record, index) => {
-            doc.text(`${index + 1}. Lote ${record.batchCode} - ${record.stage}`);
-            doc.fontSize(10).text(`   Fecha: ${new Date(record.completedAt).toLocaleDateString('es-ES')}`);
-            doc.text(`   Entrada: ${record.inputQuantity} ${record.unit} → Salida: ${record.outputQuantity} ${record.unit}`);
-            if (record.notes) doc.text(`   Notas: ${record.notes}`);
+          records.forEach((item, index) => {
+            const record = item.record || item;
+            const batch = item.batch;
+            
+            const batchCode = batch?.batchCode || item.batchCode || '-';
+            const stage = record.stage || '-';
+            const completedAt = record.completedAt || record.createdAt;
+            const inputQuantity = record.inputQuantity || '0';
+            const outputQuantity = record.outputQuantity || '0';
+            const unit = record.unit || '-';
+            const notes = record.notes;
+            
+            doc.text(`${index + 1}. Lote ${batchCode} - ${stage}`);
+            doc.fontSize(10).text(`   Fecha: ${new Date(completedAt).toLocaleDateString('es-ES')}`);
+            doc.text(`   Entrada: ${inputQuantity} ${unit} → Salida: ${outputQuantity} ${unit}`);
+            if (notes) doc.text(`   Notas: ${notes}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
@@ -867,11 +888,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'quality':
           const checks = await storage.getQualityChecks(req.user!.organizationId);
           doc.fontSize(12);
-          checks.forEach((check, index) => {
+          checks.forEach((item, index) => {
+            const check = item.qualityCheck || item;
+            const batch = item.batch;
+            
             const approved = check.approved === 1 ? 'Aprobado' : check.approved === -1 ? 'Rechazado' : 'Pendiente';
-            doc.text(`${index + 1}. Lote ${check.batchCode} - ${approved}`);
-            doc.fontSize(10).text(`   Fecha: ${new Date(check.checkedAt).toLocaleDateString('es-ES')}`);
-            if (check.notes) doc.text(`   Notas: ${check.notes}`);
+            const batchCode = batch?.batchCode || item.batchCode || '-';
+            const checkedAt = check.checkedAt;
+            const notes = check.notes;
+            
+            doc.text(`${index + 1}. Lote ${batchCode} - ${approved}`);
+            doc.fontSize(10).text(`   Fecha: ${new Date(checkedAt).toLocaleDateString('es-ES')}`);
+            if (notes) doc.text(`   Notas: ${notes}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
@@ -879,12 +907,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case 'shipments':
           const shipments = await storage.getShipments(req.user!.organizationId);
           doc.fontSize(12);
-          shipments.forEach((shipment, index) => {
-            doc.text(`${index + 1}. ${shipment.shipmentCode} - Cliente: ${shipment.customerName}`);
-            doc.fontSize(10).text(`   Lote: ${shipment.batchCode}`);
-            doc.text(`   Cantidad: ${shipment.quantity} ${shipment.unit}`);
-            doc.text(`   Fecha: ${new Date(shipment.shippedAt).toLocaleDateString('es-ES')}`);
-            if (shipment.deliveryNote) doc.text(`   Albarán: ${shipment.deliveryNote}`);
+          shipments.forEach((item, index) => {
+            const shipment = item.shipment || item;
+            const customer = item.customer;
+            const batch = item.batch;
+            
+            const shipmentCode = shipment.shipmentCode || '-';
+            const customerName = customer?.name || item.customerName || '-';
+            const batchCode = batch?.batchCode || item.batchCode || '-';
+            const quantity = shipment.quantity || '0';
+            const unit = shipment.unit || '-';
+            const shippedAt = shipment.shippedAt || shipment.createdAt;
+            const deliveryNote = shipment.deliveryNote;
+            
+            doc.text(`${index + 1}. ${shipmentCode} - Cliente: ${customerName}`);
+            doc.fontSize(10).text(`   Lote: ${batchCode}`);
+            doc.text(`   Cantidad: ${quantity} ${unit}`);
+            doc.text(`   Fecha: ${new Date(shippedAt).toLocaleDateString('es-ES')}`);
+            if (deliveryNote) doc.text(`   Albarán: ${deliveryNote}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
@@ -906,8 +946,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const stock = await storage.getProductStock(req.user!.organizationId);
           doc.fontSize(12);
           stock.forEach((item, index) => {
-            doc.text(`${index + 1}. ${item.productName}`);
-            doc.fontSize(10).text(`   Stock: ${item.totalQuantity} ${item.unit}`);
+            const productName = item.productName || item.product?.name || 'Sin nombre';
+            const quantity = item.totalQuantity || item.quantity || '0';
+            const unit = item.unit || '-';
+            doc.text(`${index + 1}. ${productName}`);
+            doc.fontSize(10).text(`   Stock: ${quantity} ${unit}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
