@@ -2,8 +2,10 @@ import { db } from "./db";
 import {
   suppliers, products, locations, customers, packageTypes, batches,
   productionRecords, qualityChecks, shipments, batchHistory, productStock,
+  qualityChecklistTemplates,
   type Supplier, type Product, type Location, type Customer, type PackageType,
-  type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory, type ProductStock
+  type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory, type ProductStock,
+  type QualityChecklistTemplate
 } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 
@@ -238,6 +240,28 @@ export const storage = {
   async insertProductionRecord(data: typeof productionRecords.$inferInsert) {
     const [record] = await db.insert(productionRecords).values(data).returning();
     return record;
+  },
+
+  // Quality Checklist Templates
+  async getQualityChecklistTemplates(organizationId: string) {
+    return db.select().from(qualityChecklistTemplates)
+      .where(eq(qualityChecklistTemplates.organizationId, organizationId))
+      .orderBy(qualityChecklistTemplates.order);
+  },
+  async insertQualityChecklistTemplate(data: typeof qualityChecklistTemplates.$inferInsert) {
+    const [template] = await db.insert(qualityChecklistTemplates).values(data).returning();
+    return template;
+  },
+  async updateQualityChecklistTemplate(id: string, data: Partial<QualityChecklistTemplate>) {
+    const [template] = await db.update(qualityChecklistTemplates)
+      .set(data)
+      .where(eq(qualityChecklistTemplates.id, id))
+      .returning();
+    return template;
+  },
+  async deleteQualityChecklistTemplate(id: string) {
+    await db.delete(qualityChecklistTemplates).where(eq(qualityChecklistTemplates.id, id));
+    return { success: true };
   },
 
   // Quality Checks

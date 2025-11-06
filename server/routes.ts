@@ -5,7 +5,8 @@ import {
   insertSupplierSchema, insertProductSchema, insertLocationSchema,
   insertCustomerSchema, insertPackageTypeSchema, insertBatchSchema,
   insertProductionRecordSchema, insertQualityCheckSchema, insertShipmentSchema,
-  insertBatchHistorySchema, registerSchema, loginSchema, organizations, users
+  insertBatchHistorySchema, registerSchema, loginSchema, organizations, users,
+  insertQualityChecklistTemplateSchema
 } from "@shared/schema";
 import { requireAuth, hashPassword, comparePassword, createSession, deleteSession } from "./auth";
 import { db } from "./db";
@@ -429,6 +430,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al crear el registro de producción" });
     }
+  });
+
+  // Quality Checklist Templates
+  app.get("/api/quality-checklist-templates", requireAuth, async (req, res) => {
+    const templates = await storage.getQualityChecklistTemplates(req.user!.organizationId);
+    res.json(templates);
+  });
+
+  app.post("/api/quality-checklist-templates", requireAuth, async (req, res) => {
+    const { organizationId, ...bodyData } = req.body;
+    const data = insertQualityChecklistTemplateSchema.omit({ organizationId: true }).parse(bodyData);
+    const template = await storage.insertQualityChecklistTemplate({ 
+      ...data, 
+      organizationId: req.user!.organizationId 
+    });
+    res.json(template);
+  });
+
+  app.put("/api/quality-checklist-templates/:id", requireAuth, async (req, res) => {
+    const template = await storage.updateQualityChecklistTemplate(req.params.id, req.body);
+    res.json(template);
+  });
+
+  app.delete("/api/quality-checklist-templates/:id", requireAuth, async (req, res) => {
+    await storage.deleteQualityChecklistTemplate(req.params.id);
+    res.json({ success: true });
   });
 
   // Quality Checks

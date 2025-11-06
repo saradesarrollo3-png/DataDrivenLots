@@ -149,6 +149,16 @@ export const productionRecords = pgTable("production_records", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Quality Checklist Templates
+export const qualityChecklistTemplates = pgTable("quality_checklist_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  label: text("label").notNull(),
+  order: integer("order").notNull().default(0),
+  isActive: integer("is_active").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Quality Checks
 export const qualityChecks = pgTable("quality_checks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -235,6 +245,7 @@ export const insertProductionRecordSchema = createInsertSchema(productionRecords
   completedAt: z.string().optional(),
   processedDate: z.string().optional(),
 });
+export const insertQualityChecklistTemplateSchema = createInsertSchema(qualityChecklistTemplates).omit({ id: true, createdAt: true });
 export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true });
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true, organizationId: true });
@@ -253,6 +264,7 @@ export type Customer = typeof customers.$inferSelect;
 export type PackageType = typeof packageTypes.$inferSelect;
 export type Batch = typeof batches.$inferSelect;
 export type ProductionRecord = typeof productionRecords.$inferSelect;
+export type QualityChecklistTemplate = typeof qualityChecklistTemplates.$inferSelect;
 export type QualityCheck = typeof qualityChecks.$inferSelect;
 export type Shipment = typeof shipments.$inferSelect;
 export type BatchHistory = typeof batchHistory.$inferSelect;
