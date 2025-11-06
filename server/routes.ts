@@ -804,27 +804,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/audit/pdf", requireAuth, async (req, res) => {
     try {
       const { type, startDate, endDate } = req.query;
+      const PDFDocument = require('pdfkit');
       
-      // For now, return a simple text response
-      // In production, you would use a PDF library like pdfkit or puppeteer
+      // Create PDF document
+      const doc = new PDFDocument({ margin: 50 });
+      
+      // Set response headers
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=auditoria_${type}_${new Date().toISOString().split('T')[0]}.pdf`);
       
-      // Simple placeholder - in production, generate actual PDF
-      const pdfContent = `Reporte de Auditoría
-Tipo: ${type}
-Fecha de generación: ${new Date().toLocaleDateString('es-ES')}
-${startDate ? `Desde: ${startDate}` : ''}
-${endDate ? `Hasta: ${endDate}` : ''}
-
-Este es un reporte de ejemplo.
-En producción, aquí se generaría un PDF completo con los datos solicitados.`;
+      // Pipe PDF to response
+      doc.pipe(res);
       
-      res.send(Buffer.from(pdfContent));
+      // Add content
+      doc.fontSize(20).text('Reporte de Auditoría', { align: 'center' });
+      doc.moveDown();
+      
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, req.user!.organizationId));
+      doc.fontSize(12).text(`Organización: ${org.name}`);
+      doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES', { 
+        year: 'numeric', month: 'long', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+      })}`);
+      
+      if (startDate) {
+        doc.text(`Desde: ${new Date(startDate as string).toLocaleDateString('es-ES')}`);
+      }
+      if (endDate) {
+        doc.text(`Hasta: ${new Date(endDate as string).toLocaleDateString('es-ES')}`);
+      }
+      
+      doc.moveDown();
+      doc.fontSize(16).text(getReportTitle(type as string));
+      doc.moveDown();
+      
+      // Get data based on report type
+      let data: any[] = [];
+      switch (type) {
+        case 'batches':
+          const batches = await storage.getAllBatchHistory(req.user!.organizationId);
+          doc.fontSize(12);
+          batches.forEach((item, index) => {
+            doc.text(`${index + 1}. Lote ${item.batchCode} - ${item.action} - ${new Date(item.timestamp).toLocaleDateString('es-ES')}`);
+            doc.fontSize(10).text(`   Estado: ${item.fromStatus || '-'} → ${item.toStatus || '-'}`);
+            if (item.notes) doc.text(`   Notas: ${item.notes}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+          
+        case 'production':
+          const records = await storage.getProductionRecords(req.user!.organizationId);
+          doc.fontSize(12);
+          records.forEach((record, index) => {
+            doc.text(`${index + 1}. Lote ${record.batchCode} - ${record.stage}`);
+            doc.fontSize(10).text(`   Fecha: ${new Date(record.completedAt).toLocaleDateString('es-ES')}`);
+            doc.text(`   Entrada: ${record.inputQuantity} ${record.unit} → Salida: ${record.outputQuantity} ${record.unit}`);
+            if (record.notes) doc.text(`   Notas: ${record.notes}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+          
+        case 'quality':
+          const checks = await storage.getQualityChecks(req.user!.organizationId);
+          doc.fontSize(12);
+          checks.forEach((check, index) => {
+            const approved = check.approved === 1 ? 'Aprobado' : check.approved === -1 ? 'Rechazado' : 'Pendiente';
+            doc.text(`${index + 1}. Lote ${check.batchCode} - ${approved}`);
+            doc.fontSize(10).text(`   Fecha: ${new Date(check.checkedAt).toLocaleDateString('es-ES')}`);
+            if (check.notes) doc.text(`   Notas: ${check.notes}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+          
+        case 'shipments':
+          const shipments = await storage.getShipments(req.user!.organizationId);
+          doc.fontSize(12);
+          shipments.forEach((shipment, index) => {
+            doc.text(`${index + 1}. ${shipment.shipmentCode} - Cliente: ${shipment.customerName}`);
+            doc.fontSize(10).text(`   Lote: ${shipment.batchCode}`);
+            doc.text(`   Cantidad: ${shipment.quantity} ${shipment.unit}`);
+            doc.text(`   Fecha: ${new Date(shipment.shippedAt).toLocaleDateString('es-ES')}`);
+            if (shipment.deliveryNote) doc.text(`   Albarán: ${shipment.deliveryNote}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+          
+        case 'traceability':
+          const events = await storage.getTraceabilityEvents(req.user!.organizationId);
+          doc.fontSize(12);
+          events.forEach((event, index) => {
+            doc.text(`${index + 1}. ${event.eventType} - ${new Date(event.performedAt).toLocaleDateString('es-ES')}`);
+            doc.fontSize(10).text(`   Etapa: ${event.fromStage || '-'} → ${event.toStage || '-'}`);
+            if (event.outputBatchCode) doc.text(`   Lote: ${event.outputBatchCode}`);
+            if (event.productName) doc.text(`   Producto: ${event.productName}`);
+            if (event.notes) doc.text(`   Notas: ${event.notes}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+          
+        case 'stock':
+          const stock = await storage.getProductStock(req.user!.organizationId);
+          doc.fontSize(12);
+          stock.forEach((item, index) => {
+            doc.text(`${index + 1}. ${item.productName}`);
+            doc.fontSize(10).text(`   Stock: ${item.totalQuantity} ${item.unit}`);
+            doc.fontSize(12).moveDown(0.5);
+          });
+          break;
+      }
+      
+      // Finalize PDF
+      doc.end();
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   });
+
+  function getReportTitle(type: string): string {
+    const titles: Record<string, string> = {
+      'batches': 'Historial de Lotes',
+      'production': 'Registros de Producción',
+      'quality': 'Controles de Calidad',
+      'shipments': 'Expediciones',
+      'traceability': 'Trazabilidad Completa',
+      'stock': 'Stock de Productos',
+    };
+    return titles[type] || 'Reporte';
+  }
 
   const httpServer = createServer(app);
   return httpServer;
