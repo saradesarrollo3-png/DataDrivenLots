@@ -119,7 +119,7 @@ export default function Etiquetas() {
       batchCode: item.batch.batchCode,
       product: item.product?.name || '-',
       supplier: item.supplier?.name || '-',
-      quantity: parseFloat(item.batch.quantity), // Display initialQuantity for reception labels
+      quantity: parseFloat(item.batch.initialQuantity || item.batch.quantity), // Use initialQuantity for reception labels
       unit: item.batch.unit,
       temperature: item.batch.temperature === 0 ? null : parseFloat(item.batch.temperature || '0'), // Fix bug: 0 should be null
       truckPlate: item.batch.truckPlate || null, // Handle null truckPlate
