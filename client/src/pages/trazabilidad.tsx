@@ -41,18 +41,37 @@ export default function Trazabilidad() {
     : null;
 
   const buildTraceability = (shipmentId: string): TraceabilityStep[] => {
+    console.log("🔍 buildTraceability - shipmentId:", shipmentId);
+    console.log("🔍 Total eventos de trazabilidad:", traceabilityEvents.length);
+    
     const steps: TraceabilityStep[] = [];
 
     // Obtener todos los eventos relacionados con esta expedición
     const shipmentEvents = traceabilityEvents.filter((e: any) => e.shipmentId === shipmentId);
+    console.log("🔍 Eventos relacionados con shipmentId:", shipmentEvents.length);
 
-    if (shipmentEvents.length === 0) return [];
+    if (shipmentEvents.length === 0) {
+      console.warn("⚠️ No se encontraron eventos de trazabilidad para shipmentId:", shipmentId);
+      console.log("📋 Todos los eventos disponibles:", traceabilityEvents.map((e: any) => ({
+        id: e.id,
+        eventType: e.eventType,
+        shipmentId: e.shipmentId,
+        outputBatchCode: e.outputBatchCode
+      })));
+      return [];
+    }
 
     // Ordenar eventos por fecha para asegurar el orden cronológico correcto
     shipmentEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
+    console.log("🔍 Eventos ordenados:", shipmentEvents.map((e: any) => ({
+      eventType: e.eventType,
+      outputBatchCode: e.outputBatchCode,
+      performedAt: e.performedAt
+    })));
 
     // 1. Evento de EXPEDICION
     const expedicionEvent = shipmentEvents.find((e: any) => e.eventType === 'EXPEDICION');
+    console.log("📦 Evento EXPEDICION encontrado:", !!expedicionEvent, expedicionEvent?.outputBatchCode);
     if (expedicionEvent) {
       steps.push({
         id: 'shipment',
@@ -82,11 +101,13 @@ export default function Trazabilidad() {
 
       // Obtener el código del lote expedido para rastrear hacia atrás
       const batchCode = expedicionEvent.outputBatchCode;
+      console.log("🔍 Buscando trazabilidad para lote:", batchCode);
 
       // 2. Buscar evento de CALIDAD para este lote
       const calidadEvent = traceabilityEvents.find((e: any) =>
         e.eventType === 'CALIDAD' && e.outputBatchCode === batchCode
       );
+      console.log("✅ Evento CALIDAD encontrado:", !!calidadEvent);
 
       if (calidadEvent) {
         steps.push({
@@ -117,6 +138,7 @@ export default function Trazabilidad() {
       const esterilizadoEvent = traceabilityEvents.find((e: any) =>
         e.eventType === 'ESTERILIZADO' && e.outputBatchCode === batchCode
       );
+      console.log("🔥 Evento ESTERILIZADO encontrado:", !!esterilizadoEvent);
 
       if (esterilizadoEvent) {
         const inputCodes = esterilizadoEvent.inputBatchCodes ? JSON.parse(esterilizadoEvent.inputBatchCodes) : [];
@@ -149,6 +171,7 @@ export default function Trazabilidad() {
         const envasadoEvents = traceabilityEvents.filter((e: any) =>
           e.eventType === 'ENVASADO' && inputCodes.includes(e.outputBatchCode)
         );
+        console.log("📦 Eventos ENVASADO encontrados:", envasadoEvents.length, "para códigos:", inputCodes);
 
         if (envasadoEvents.length > 0) {
           const envasadoItems: any[] = [];
@@ -190,10 +213,12 @@ export default function Trazabilidad() {
           const peladoInputCodes = envasadoEvents.flatMap((e: any) =>
             e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
           );
+          console.log("✂️ Buscando eventos PELADO para códigos:", peladoInputCodes);
 
           const peladoEvents = traceabilityEvents.filter((e: any) =>
             e.eventType === 'PELADO' && peladoInputCodes.includes(e.outputBatchCode)
           );
+          console.log("✂️ Eventos PELADO encontrados:", peladoEvents.length);
 
           if (peladoEvents.length > 0) {
             const peladoItems: any[] = [];
@@ -241,10 +266,12 @@ export default function Trazabilidad() {
             const asadoInputCodes = peladoEvents.flatMap((e: any) =>
               e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
             );
+            console.log("🔥 Buscando eventos ASADO para códigos:", asadoInputCodes);
 
             const asadoEvents = traceabilityEvents.filter((e: any) =>
               e.eventType === 'ASADO' && asadoInputCodes.includes(e.outputBatchCode)
             );
+            console.log("🔥 Eventos ASADO encontrados:", asadoEvents.length);
 
             if (asadoEvents.length > 0) {
               const asadoItems: any[] = [];
@@ -291,10 +318,12 @@ export default function Trazabilidad() {
               const recepcionCodes = asadoEvents.flatMap((e: any) =>
                 e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
               );
+              console.log("📥 Buscando eventos RECEPCION para códigos:", recepcionCodes);
 
               const recepcionEvents = traceabilityEvents.filter((e: any) =>
                 e.eventType === 'RECEPCION' && recepcionCodes.includes(e.outputBatchCode)
               );
+              console.log("📥 Eventos RECEPCION encontrados:", recepcionEvents.length);
 
               if (recepcionEvents.length > 0) {
                 const recepcionItems: any[] = [];
@@ -343,6 +372,8 @@ export default function Trazabilidad() {
       }
     }
 
+    console.log("✅ Trazabilidad construida - Total de pasos:", steps.length);
+    console.log("📋 Pasos:", steps.map(s => s.stage));
     return steps;
   };
 

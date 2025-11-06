@@ -221,6 +221,8 @@ export default function Produccion() {
 
   // Filtrar lotes de pelado con cantidad mayor a 0
   const peladoBatches = peladoBatchesRaw.filter(b => parseFloat(b.batch.quantity) > 0);
+  
+  console.log("📦 Lotes PELADO filtrados (cantidad > 0):", peladoBatches.length, "de", peladoBatchesRaw.length);
 
   const { data: envasadoBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ENVASADO'],
@@ -337,6 +339,7 @@ export default function Produccion() {
         break;
       case "envasado":
         filteredBatches = allBatches.filter(b => b.batch.status === "PELADO" && parseFloat(b.batch.quantity) > 0);
+        console.log("📦 Lotes disponibles para ENVASADO (PELADO con cantidad > 0):", filteredBatches.length);
         break;
       case "esterilizado":
         filteredBatches = allBatches.filter(b => b.batch.status === "ENVASADO" && parseFloat(b.batch.quantity) > 0);
