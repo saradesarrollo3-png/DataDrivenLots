@@ -911,32 +911,34 @@ export default function Produccion() {
   };
 
   const mapBatchesToTable = (batches: any[]): ProductionBatch[] => 
-    batches.map(b => {
-      let displayDateTime = '';
-      if (b.batch.processedDate) {
-        const dt = new Date(b.batch.processedDate);
-        displayDateTime = dt.toLocaleString('es-ES', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-      } else {
-        displayDateTime = new Date(b.batch.createdAt).toLocaleDateString('es-ES');
-      }
-      
-      return {
-        id: b.batch.id,
-        batchCode: b.batch.batchCode,
-        productName: b.product?.name || '-',
-        quantity: parseFloat(b.batch.quantity),
-        initialQuantity: b.batch.initialQuantity !== undefined ? parseFloat(b.batch.initialQuantity) : undefined,
-        unit: b.batch.unit,
-        status: b.batch.status,
-        createdAt: displayDateTime,
-      };
-    });
+    batches
+      .filter(b => parseFloat(b.batch.quantity) > 0) // Filtrar lotes con cantidad 0
+      .map(b => {
+        let displayDateTime = '';
+        if (b.batch.processedDate) {
+          const dt = new Date(b.batch.processedDate);
+          displayDateTime = dt.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } else {
+          displayDateTime = new Date(b.batch.createdAt).toLocaleDateString('es-ES');
+        }
+        
+        return {
+          id: b.batch.id,
+          batchCode: b.batch.batchCode,
+          productName: b.product?.name || '-',
+          quantity: parseFloat(b.batch.quantity),
+          initialQuantity: b.batch.initialQuantity !== undefined ? parseFloat(b.batch.initialQuantity) : undefined,
+          unit: b.batch.unit,
+          status: b.batch.status,
+          createdAt: displayDateTime,
+        };
+      });
 
   const asadoTableData = mapBatchesToTable(asadoBatches);
   const peladoTableData = mapBatchesToTable(peladoBatches);
