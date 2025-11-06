@@ -492,10 +492,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inputBatchCodes = data.inputBatchCode.split(',').map((c: string) => c.trim());
       }
 
+      // Determinar fromStage según el tipo de proceso
+      let fromStage: string = 'RECEPCION';
+      if (data.stage === 'PELADO') {
+        fromStage = 'ASADO';
+      } else if (data.stage === 'ENVASADO') {
+        fromStage = 'PELADO';
+      } else if (data.stage === 'ESTERILIZADO') {
+        fromStage = 'ENVASADO';
+      }
+
       await storage.insertTraceabilityEvent({
         organizationId: req.user!.organizationId,
         eventType: data.stage,
-        fromStage: 'RECEPCION',
+        fromStage: fromStage as any,
         toStage: toStatus as any,
         inputBatchIds: inputBatchIds.length > 0 ? JSON.stringify(inputBatchIds) : null,
         inputBatchCodes: inputBatchCodes.length > 0 ? JSON.stringify(inputBatchCodes) : null,
