@@ -18,6 +18,7 @@ interface ShippedBatch {
   unit: string;
   shippedAt: string;
   shipmentCode: string;
+  shipmentId: string;
 }
 
 interface TraceabilityStep {
@@ -38,7 +39,7 @@ interface TraceabilityStep {
 
 export default function Trazabilidad() {
   const [searchCode, setSearchCode] = useState("");
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
 
   const { data: shipments = [] } = useQuery<any[]>({
     queryKey: ['/api/shipments'],
@@ -74,247 +75,237 @@ export default function Trazabilidad() {
         minute: '2-digit'
       }),
       shipmentCode: item.shipment.shipmentCode,
+      shipmentId: item.shipment.id,
     };
   });
 
-  const selectedBatch = selectedBatchId 
-    ? shippedBatches.find(b => b.id === selectedBatchId)
+  const selectedShipment = selectedShipmentId 
+    ? shipments.find(s => s.shipment.id === selectedShipmentId)
     : null;
 
-  const buildTraceability = (batchId: string): TraceabilityStep[] => {
-    const batch = allBatches.find((b: any) => b.batch.id === batchId);
-    if (!batch) return [];
+  const selectedBatch = selectedShipment
+    ? shippedBatches.find(b => b.shipmentId === selectedShipmentId)
+    : null;
+
+  const buildTraceability = (shipmentId: string): TraceabilityStep[] => {
+    const shipment = shipments.find((s: any) => s.shipment.id === shipmentId);
+    if (!shipment) return [];
 
     const steps: TraceabilityStep[] = [];
+    const shippedBatch = allBatches.find((b: any) => b.batch.id === shipment.shipment.batchId);
+    if (!shippedBatch) return [];
 
-    // Función recursiva para encontrar todos los registros de producción hacia atrás
-    const getAllProductionSteps = (currentBatchId: string, visitedBatches: Set<string> = new Set()): any[] => {
-      if (visitedBatches.has(currentBatchId)) return [];
-      visitedBatches.add(currentBatchId);
+    const shippedBatchCode = shippedBatch.batch.batchCode;
 
-      const allSteps: any[] = [];
+    // 1. EXPEDICIÓN
+    steps.push({
+      id: 'shipment',
+      stage: 'Expedición',
+      icon: Truck,
+      color: 'text-indigo-600',
+      timestamp: new Date(shipment.shipment.shippedAt).toLocaleString('es-ES', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      status: 'EXPEDIDO',
+      items: [{
+        title: 'Detalles de Expedición',
+        details: [
+          { label: 'Código Expedición', value: shipment.shipment.shipmentCode },
+          { label: 'Cliente', value: shipment.customer?.name || '-' },
+          { label: 'Lote Expedido', value: shippedBatchCode },
+          { label: 'Cantidad', value: `${shipment.shipment.quantity} ${shipment.shipment.unit}` },
+          { label: 'Matrícula', value: shipment.shipment.truckPlate || '-' },
+          { label: 'Albarán', value: shipment.shipment.deliveryNote || '-' },
+        ]
+      }]
+    });
 
-      // Buscar todos los registros de producción donde este lote es el output
-      const records = productionRecords.filter((pr: any) => pr.record.batchId === currentBatchId);
-
-      for (const record of records) {
-        allSteps.push(record);
-
-        // Si tiene lotes de entrada, rastrearlos recursivamente
-        if (record.record.inputBatchDetails) {
-          try {
-            const inputBatchDetails = JSON.parse(record.record.inputBatchDetails);
-            
-            for (const detail of inputBatchDetails) {
-              const deeperSteps = getAllProductionSteps(detail.batchId, visitedBatches);
-              allSteps.push(...deeperSteps);
-            }
-          } catch (e) {
-            console.error('Error parsing inputBatchDetails:', e);
-          }
-        }
-      }
-
-      return allSteps;
-    };
-
-    // Obtener todos los pasos de producción
-    const allProductionSteps = getAllProductionSteps(batchId);
-
-    // Encontrar todos los lotes de materia prima (sin duplicados)
-    const rawMaterialBatchIds = new Set<string>();
-    
-    for (const record of allProductionSteps) {
-      if (record.record.inputBatchDetails) {
-        try {
-          const inputBatchDetails = JSON.parse(record.record.inputBatchDetails);
-          for (const detail of inputBatchDetails) {
-            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-            if (inputBatch && (inputBatch.batch.status === 'RECEPCION' || inputBatch.batch.supplierId)) {
-              rawMaterialBatchIds.add(detail.batchId);
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing inputBatchDetails:', e);
-        }
-      }
-    }
-
-    // 1. RECEPCIÓN DE MATERIA PRIMA (mostrar todas en paralelo)
-    if (rawMaterialBatchIds.size > 0) {
-      const receptionItems: any[] = [];
-      
-      rawMaterialBatchIds.forEach((rawBatchId: string) => {
-        const rawBatch = allBatches.find((b: any) => b.batch.id === rawBatchId);
-        if (rawBatch) {
-          // Encontrar cuánta cantidad se usó de esta materia prima
-          let usedQuantity = 0;
-          for (const record of allProductionSteps) {
-            if (record.record.inputBatchDetails) {
-              try {
-                const inputBatchDetails = JSON.parse(record.record.inputBatchDetails);
-                const detail = inputBatchDetails.find((d: any) => d.batchId === rawBatchId);
-                if (detail) {
-                  usedQuantity += parseFloat(detail.quantity);
-                }
-              } catch (e) {
-                console.error('Error parsing inputBatchDetails:', e);
-              }
-            }
-          }
-
-          receptionItems.push({
-            title: rawBatch.product?.name || '-',
-            details: [
-              { label: 'Lote', value: rawBatch.batch.batchCode },
-              { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
-              { label: 'Cantidad Utilizada', value: `${usedQuantity} ${rawBatch.batch.unit}` },
-              { label: 'Cantidad Total Disponible', value: `${rawBatch.batch.quantity} ${rawBatch.batch.unit}` },
-              { label: 'Temperatura', value: rawBatch.batch.temperature ? `${parseFloat(rawBatch.batch.temperature).toFixed(1)}°C` : '-' },
-              { label: 'Albarán', value: rawBatch.batch.deliveryNote || '-' },
-              { label: 'Fecha Recepción', value: new Date(rawBatch.batch.arrivedAt).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }) },
-            ]
-          });
-        }
-      });
-
-      // Usar la fecha más reciente de las recepciones
-      const latestReception = Array.from(rawMaterialBatchIds)
-        .map(id => allBatches.find((b: any) => b.batch.id === id))
-        .filter(b => b)
-        .sort((a, b) => new Date(b.batch.arrivedAt).getTime() - new Date(a.batch.arrivedAt).getTime())[0];
-
+    // 2. CONTROL DE CALIDAD - del lote expedido
+    const qualityCheck = qualityChecks.find((qc: any) => qc.check.batchId === shipment.shipment.batchId);
+    if (qualityCheck) {
+      const approved = qualityCheck.check.approved === 1;
       steps.push({
-        id: 'reception',
-        stage: 'Recepción de Materia Prima',
-        icon: Package,
-        color: 'text-blue-600',
-        timestamp: latestReception ? new Date(latestReception.batch.arrivedAt).toLocaleString('es-ES', {
+        id: 'quality',
+        stage: 'Control de Calidad',
+        icon: ClipboardCheck,
+        color: 'text-green-600',
+        timestamp: new Date(qualityCheck.check.checkedAt).toLocaleString('es-ES', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit'
-        }) : '-',
-        status: 'RECEPCION',
-        items: receptionItems
-      });
-    }
-
-    // 2. ASADO (mostrar todas las entradas en paralelo si hay múltiples)
-    const asadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ASADO');
-    if (asadoRecords.length > 0) {
-      // Agrupar por lote de salida
-      const asadoGroups = new Map<string, any[]>();
-      asadoRecords.forEach(record => {
-        const outputCode = record.record.outputBatchCode;
-        if (!asadoGroups.has(outputCode)) {
-          asadoGroups.set(outputCode, []);
-        }
-        asadoGroups.get(outputCode)?.push(record);
-      });
-
-      asadoGroups.forEach((records, outputCode) => {
-        const firstRecord = records[0];
-        const asadoItems: any[] = [];
-
-        // Información general del proceso
-        asadoItems.push({
-          title: 'Producción',
+        }),
+        status: 'APROBADO',
+        items: [{
+          title: shippedBatchCode,
           details: [
-            { label: 'Lote Salida', value: outputCode },
-            { label: 'Cantidad Salida', value: `${firstRecord.record.outputQuantity} ${firstRecord.record.unit}` },
-            { label: 'Notas', value: firstRecord.record.notes || '-' },
+            { label: 'Resultado', value: approved ? 'Aprobado ✓' : 'Rechazado ✗' },
+            { label: 'Producto', value: shippedBatch.product?.name || '-' },
+            { label: 'Fecha Caducidad', value: shippedBatch.batch.expiryDate ? new Date(shippedBatch.batch.expiryDate).toLocaleDateString('es-ES') : '-' },
+            { label: 'Notas', value: qualityCheck.check.notes || '-' },
           ]
-        });
-
-        // Materias primas utilizadas (en paralelo)
-        if (firstRecord.record.inputBatchDetails) {
-          try {
-            const inputBatchDetails = JSON.parse(firstRecord.record.inputBatchDetails);
-            
-            inputBatchDetails.forEach((detail: any) => {
-              const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-              if (inputBatch) {
-                asadoItems.push({
-                  title: inputBatch.product?.name || detail.batchCode,
-                  details: [
-                    { label: 'Lote', value: detail.batchCode },
-                    { label: 'Proveedor', value: inputBatch.supplier?.name || '-' },
-                    { label: 'Cantidad Disponible', value: `${inputBatch.batch.quantity} ${inputBatch.batch.unit}` },
-                    { label: 'Cantidad Consumida', value: `${detail.quantity} ${inputBatch.batch.unit}` },
-                  ]
-                });
-              }
-            });
-          } catch (e) {
-            console.error('Error parsing inputBatchDetails:', e);
-          }
-        }
-
-        steps.push({
-          id: `asado-${outputCode}`,
-          stage: 'Asado',
-          icon: Flame,
-          color: 'text-orange-600',
-          timestamp: firstRecord.record.processedDate
-            ? new Date(firstRecord.record.processedDate).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            : new Date(firstRecord.record.completedAt || firstRecord.record.createdAt).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-          status: 'ASADO',
-          items: asadoItems
-        });
+        }]
       });
     }
 
-    // 3. PELADO (mostrar todas las entradas en paralelo si hay múltiples)
-    const peladoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'PELADO');
-    if (peladoRecords.length > 0) {
-      const peladoGroups = new Map<string, any[]>();
-      peladoRecords.forEach(record => {
-        const outputCode = record.record.outputBatchCode;
-        if (!peladoGroups.has(outputCode)) {
-          peladoGroups.set(outputCode, []);
-        }
-        peladoGroups.get(outputCode)?.push(record);
+    // 3. ESTERILIZADO - que generó este lote expedido
+    const esterilizadoRecord = productionRecords.find((pr: any) => 
+      pr.record.stage === 'ESTERILIZADO' && pr.record.outputBatchCode === shippedBatchCode
+    );
+
+    if (esterilizadoRecord) {
+      steps.push({
+        id: 'esterilizado',
+        stage: 'Esterilizado',
+        icon: Droplets,
+        color: 'text-purple-600',
+        timestamp: esterilizadoRecord.record.processedDate
+          ? new Date(esterilizadoRecord.record.processedDate).toLocaleString('es-ES', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : new Date(esterilizadoRecord.record.completedAt || esterilizadoRecord.record.createdAt).toLocaleString('es-ES', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+        status: 'ESTERILIZADO',
+        items: [{
+          title: 'Información del Proceso',
+          details: [
+            { label: 'Lote Entrada', value: esterilizadoRecord.record.inputBatchCode },
+            { label: 'Lote Salida', value: esterilizadoRecord.record.outputBatchCode },
+            { label: 'Cantidad Procesada', value: `${esterilizadoRecord.record.outputQuantity} ${esterilizadoRecord.record.unit}` },
+            { label: 'Notas', value: esterilizadoRecord.record.notes || '-' },
+          ]
+        }]
+      });
+    }
+
+    // 4. ENVASADO - buscar el registro que generó el lote de entrada del esterilizado
+    const inputBatchCodeForSterilization = esterilizadoRecord?.record.inputBatchCode || shippedBatchCode;
+    const baseCodeEnvasado = inputBatchCodeForSterilization.includes('-') && inputBatchCodeForSterilization.match(/-[A-Z]+$/i)
+      ? inputBatchCodeForSterilization.substring(0, inputBatchCodeForSterilization.lastIndexOf('-'))
+      : inputBatchCodeForSterilization;
+
+    // Encontrar todos los registros de envasado que comparten el mismo lote base
+    const envasadoRecords = productionRecords.filter((pr: any) => {
+      if (pr.record.stage !== 'ENVASADO') return false;
+      const outputCode = pr.record.outputBatchCode;
+      const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i)
+        ? outputCode.substring(0, outputCode.lastIndexOf('-'))
+        : outputCode;
+      return baseCode === baseCodeEnvasado;
+    });
+
+    if (envasadoRecords.length > 0) {
+      const firstEnvasado = envasadoRecords[0];
+      const envasadoItems: any[] = [];
+
+      // Información general del envasado
+      envasadoItems.push({
+        title: 'Entrada',
+        details: [
+          { label: 'Lote Base', value: baseCodeEnvasado },
+          { label: 'Lotes Entrada', value: firstEnvasado.record.inputBatchCode },
+          { label: 'Cantidad Entrada', value: `${firstEnvasado.record.inputQuantity} ${firstEnvasado.record.unit}` },
+          { label: 'Notas', value: firstEnvasado.record.notes || '-' },
+        ]
       });
 
-      peladoGroups.forEach((records, outputCode) => {
-        const firstRecord = records[0];
+      // Cada tipo de envase generado
+      let totalEnvases = 0;
+      envasadoRecords.forEach((envRecord: any) => {
+        const outputQuantity = parseFloat(envRecord.record.outputQuantity);
+        totalEnvases += outputQuantity;
+        const tipoEnvase = envRecord.record.outputBatchCode.split('-').pop() || 'Estándar';
+        
+        // Determinar si este sublote específico fue expedido en ESTE envío
+        const isInThisShipment = envRecord.record.outputBatchCode === shippedBatchCode;
+        
+        const itemDetails: any[] = [
+          { label: 'Lote', value: envRecord.record.outputBatchCode },
+          { label: 'Cantidad Generada', value: `${outputQuantity} frascos` },
+        ];
+
+        if (isInThisShipment) {
+          itemDetails.push({ 
+            label: 'En Esta Expedición', 
+            value: `${shipment.shipment.quantity} ${shipment.shipment.unit} ✓` 
+          });
+        }
+
+        envasadoItems.push({
+          title: `Tipo ${tipoEnvase}${isInThisShipment ? ' (EXPEDIDO)' : ''}`,
+          details: itemDetails
+        });
+      });
+
+      // Totales
+      envasadoItems.push({
+        title: 'Total Producción',
+        details: [
+          { label: 'Total Envases', value: `${totalEnvases} frascos` },
+          { label: 'Tipos Diferentes', value: `${envasadoRecords.length}` },
+        ]
+      });
+
+      steps.push({
+        id: 'envasado',
+        stage: 'Envasado',
+        icon: PackageIcon,
+        color: 'text-green-600',
+        timestamp: firstEnvasado.record.processedDate
+          ? new Date(firstEnvasado.record.processedDate).toLocaleString('es-ES', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : new Date(firstEnvasado.record.completedAt || firstEnvasado.record.createdAt).toLocaleString('es-ES', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+        status: 'ENVASADO',
+        items: envasadoItems
+      });
+
+      // 5. PELADO - buscar el lote que alimentó el envasado
+      const inputBatchCodeEnvasado = firstEnvasado.record.inputBatchCode;
+      const peladoRecord = productionRecords.find((pr: any) =>
+        pr.record.stage === 'PELADO' && pr.record.outputBatchCode === inputBatchCodeEnvasado
+      );
+
+      if (peladoRecord) {
         const peladoItems: any[] = [];
 
-        // Información general del proceso
         peladoItems.push({
           title: 'Producción',
           details: [
-            { label: 'Lote Salida', value: outputCode },
-            { label: 'Cantidad Salida', value: `${firstRecord.record.outputQuantity} ${firstRecord.record.unit}` },
-            { label: 'Notas', value: firstRecord.record.notes || '-' },
+            { label: 'Lote Salida', value: peladoRecord.record.outputBatchCode },
+            { label: 'Cantidad Salida', value: `${peladoRecord.record.outputQuantity} ${peladoRecord.record.unit}` },
+            { label: 'Notas', value: peladoRecord.record.notes || '-' },
           ]
         });
 
-        // Lotes de entrada (en paralelo)
-        if (firstRecord.record.inputBatchDetails) {
+        // Lotes de entrada del pelado
+        if (peladoRecord.record.inputBatchDetails) {
           try {
-            const inputBatchDetails = JSON.parse(firstRecord.record.inputBatchDetails);
-            
+            const inputBatchDetails = JSON.parse(peladoRecord.record.inputBatchDetails);
             inputBatchDetails.forEach((detail: any) => {
               const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
               if (inputBatch) {
@@ -333,19 +324,19 @@ export default function Trazabilidad() {
         }
 
         steps.push({
-          id: `pelado-${outputCode}`,
+          id: 'pelado',
           stage: 'Pelado y Corte',
           icon: Scissors,
           color: 'text-blue-600',
-          timestamp: firstRecord.record.processedDate
-            ? new Date(firstRecord.record.processedDate).toLocaleString('es-ES', {
+          timestamp: peladoRecord.record.processedDate
+            ? new Date(peladoRecord.record.processedDate).toLocaleString('es-ES', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
               })
-            : new Date(firstRecord.record.completedAt || firstRecord.record.createdAt).toLocaleString('es-ES', {
+            : new Date(peladoRecord.record.completedAt || peladoRecord.record.createdAt).toLocaleString('es-ES', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -355,286 +346,129 @@ export default function Trazabilidad() {
           status: 'PELADO',
           items: peladoItems
         });
-      });
-    }
 
-    // 4. ENVASADO (mostrar todos los tipos de frasco en paralelo)
-    const envasadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ENVASADO');
-    if (envasadoRecords.length > 0) {
-      // Agrupar por lote base
-      const envasadoGroups = new Map<string, any[]>();
-      
-      envasadoRecords.forEach((envRecord: any) => {
-        const outputCode = envRecord.record.outputBatchCode;
-        const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i) 
-          ? outputCode.substring(0, outputCode.lastIndexOf('-'))
-          : outputCode;
-        
-        if (!envasadoGroups.has(baseCode)) {
-          envasadoGroups.set(baseCode, []);
-        }
-        envasadoGroups.get(baseCode)?.push(envRecord);
-      });
+        // 6. ASADO - buscar el lote que alimentó el pelado
+        const inputBatchCodePelado = peladoRecord.record.inputBatchCode;
+        const asadoRecord = productionRecords.find((pr: any) =>
+          pr.record.stage === 'ASADO' && pr.record.outputBatchCode === inputBatchCodePelado
+        );
 
-      envasadoGroups.forEach((groupRecords, baseCode) => {
-        const firstRecord = groupRecords[0];
-        const envasadoItems: any[] = [];
+        if (asadoRecord) {
+          const asadoItems: any[] = [];
 
-        // Información general
-        envasadoItems.push({
-          title: 'Entrada',
-          details: [
-            { label: 'Lote Base', value: baseCode },
-            { label: 'Lotes Entrada', value: firstRecord.record.inputBatchCode },
-            { label: 'Cantidad Entrada', value: `${firstRecord.record.inputQuantity} ${firstRecord.record.unit}` },
-            { label: 'Notas', value: firstRecord.record.notes || '-' },
-          ]
-        });
+          asadoItems.push({
+            title: 'Producción',
+            details: [
+              { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
+              { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
+              { label: 'Notas', value: asadoRecord.record.notes || '-' },
+            ]
+          });
 
-        // Cada tipo de frasco (en paralelo)
-        let totalEnvases = 0;
-        groupRecords.forEach((envRecord: any) => {
-          const outputBatch = allBatches.find((b: any) => b.batch.batchCode === envRecord.record.outputBatchCode);
-          const outputQuantity = parseFloat(envRecord.record.outputQuantity);
-          totalEnvases += outputQuantity;
-          
-          const tipoEnvase = envRecord.record.outputBatchCode.split('-').pop() || 'Estándar';
-          
-          const itemDetails: any[] = [
-            { label: 'Lote', value: envRecord.record.outputBatchCode },
-            { label: 'Cantidad', value: `${outputQuantity} frascos` },
-          ];
-
-          if (outputBatch) {
-            const shipment = shipments.find((s: any) => s.shipment.batchId === outputBatch.batch.id);
-            
-            if (shipment) {
-              itemDetails.push({ label: 'Estado', value: 'EXPEDIDO ✓' });
-              itemDetails.push({ label: 'Expedido', value: new Date(shipment.shipment.shippedAt).toLocaleDateString('es-ES') });
-              itemDetails.push({ label: 'Cliente', value: shipment.customer?.name || '-' });
-              itemDetails.push({ label: 'Cantidad Expedida', value: `${shipment.shipment.quantity} ${shipment.shipment.unit}` });
-            } else {
-              itemDetails.push({ label: 'Estado', value: outputBatch.batch.status });
-              itemDetails.push({ label: 'Disponible', value: `${outputBatch.batch.quantity} ${outputBatch.batch.unit}` });
+          // Materias primas utilizadas en el asado
+          if (asadoRecord.record.inputBatchDetails) {
+            try {
+              const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
+              inputBatchDetails.forEach((detail: any) => {
+                const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+                if (inputBatch) {
+                  asadoItems.push({
+                    title: inputBatch.product?.name || detail.batchCode,
+                    details: [
+                      { label: 'Lote', value: detail.batchCode },
+                      { label: 'Proveedor', value: inputBatch.supplier?.name || '-' },
+                      { label: 'Cantidad Disponible', value: `${inputBatch.batch.quantity} ${inputBatch.batch.unit}` },
+                      { label: 'Cantidad Consumida', value: `${detail.quantity} ${inputBatch.batch.unit}` },
+                    ]
+                  });
+                }
+              });
+            } catch (e) {
+              console.error('Error parsing inputBatchDetails:', e);
             }
           }
 
-          envasadoItems.push({
-            title: `Tipo ${tipoEnvase}`,
-            details: itemDetails
+          steps.push({
+            id: 'asado',
+            stage: 'Asado',
+            icon: Flame,
+            color: 'text-orange-600',
+            timestamp: asadoRecord.record.processedDate
+              ? new Date(asadoRecord.record.processedDate).toLocaleString('es-ES', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : new Date(asadoRecord.record.completedAt || asadoRecord.record.createdAt).toLocaleString('es-ES', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+            status: 'ASADO',
+            items: asadoItems
           });
-        });
 
-        // Totales
-        envasadoItems.push({
-          title: 'Total',
-          details: [
-            { label: 'Total Envases', value: `${totalEnvases} frascos` },
-            { label: 'Tipos Diferentes', value: `${groupRecords.length}` },
-          ]
-        });
+          // 7. RECEPCIÓN - mostrar las materias primas utilizadas
+          if (asadoRecord.record.inputBatchDetails) {
+            try {
+              const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
+              const receptionItems: any[] = [];
+              let latestReceptionDate: Date | null = null;
 
-        steps.push({
-          id: `envasado-${baseCode}`,
-          stage: 'Envasado',
-          icon: PackageIcon,
-          color: 'text-green-600',
-          timestamp: firstRecord.record.processedDate
-            ? new Date(firstRecord.record.processedDate).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            : new Date(firstRecord.record.completedAt || firstRecord.record.createdAt).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-          status: 'ENVASADO',
-          items: envasadoItems
-        });
-      });
-    }
+              inputBatchDetails.forEach((detail: any) => {
+                const rawBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+                if (rawBatch) {
+                  const arrivedAt = new Date(rawBatch.batch.arrivedAt);
+                  if (!latestReceptionDate || arrivedAt > latestReceptionDate) {
+                    latestReceptionDate = arrivedAt;
+                  }
 
-    // 5. ESTERILIZADO (mostrar todas las variantes en paralelo)
-    const esterilizadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ESTERILIZADO');
-    if (esterilizadoRecords.length > 0) {
-      const esterilizadoGroups = new Map<string, any[]>();
-      esterilizadoRecords.forEach(record => {
-        const outputCode = record.record.outputBatchCode;
-        const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i) 
-          ? outputCode.substring(0, outputCode.lastIndexOf('-'))
-          : outputCode;
-        
-        if (!esterilizadoGroups.has(baseCode)) {
-          esterilizadoGroups.set(baseCode, []);
+                  receptionItems.push({
+                    title: rawBatch.product?.name || '-',
+                    details: [
+                      { label: 'Lote', value: rawBatch.batch.batchCode },
+                      { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
+                      { label: 'Cantidad Utilizada', value: `${detail.quantity} ${rawBatch.batch.unit}` },
+                      { label: 'Cantidad Total Disponible', value: `${rawBatch.batch.quantity} ${rawBatch.batch.unit}` },
+                      { label: 'Temperatura', value: rawBatch.batch.temperature ? `${parseFloat(rawBatch.batch.temperature).toFixed(1)}°C` : '-' },
+                      { label: 'Albarán', value: rawBatch.batch.deliveryNote || '-' },
+                      { label: 'Fecha Recepción', value: arrivedAt.toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) },
+                    ]
+                  });
+                }
+              });
+
+              steps.push({
+                id: 'reception',
+                stage: 'Recepción de Materia Prima',
+                icon: Package,
+                color: 'text-blue-600',
+                timestamp: latestReceptionDate ? latestReceptionDate.toLocaleString('es-ES', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : '-',
+                status: 'RECEPCION',
+                items: receptionItems
+              });
+            } catch (e) {
+              console.error('Error parsing inputBatchDetails:', e);
+            }
+          }
         }
-        esterilizadoGroups.get(baseCode)?.push(record);
-      });
-
-      esterilizadoGroups.forEach((records, baseCode) => {
-        const firstRecord = records[0];
-        const esterilizadoItems: any[] = [];
-
-        // Información general
-        esterilizadoItems.push({
-          title: 'Información General',
-          details: [
-            { label: 'Lote Base', value: baseCode },
-            { label: 'Notas', value: firstRecord.record.notes || '-' },
-          ]
-        });
-
-        // Cada variante en paralelo
-        records.forEach((record: any) => {
-          const inputBatch = allBatches.find((b: any) => b.batch.batchCode === record.record.inputBatchCode);
-          const tipo = record.record.outputBatchCode.split('-').pop() || 'Estándar';
-
-          esterilizadoItems.push({
-            title: `Tipo ${tipo}`,
-            details: [
-              { label: 'Lote Entrada', value: record.record.inputBatchCode },
-              { label: 'Lote Salida', value: record.record.outputBatchCode },
-              { label: 'Cantidad', value: `${record.record.outputQuantity} ${record.record.unit}` },
-            ]
-          });
-        });
-
-        steps.push({
-          id: `esterilizado-${baseCode}`,
-          stage: 'Esterilizado',
-          icon: Droplets,
-          color: 'text-purple-600',
-          timestamp: firstRecord.record.processedDate
-            ? new Date(firstRecord.record.processedDate).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            : new Date(firstRecord.record.completedAt || firstRecord.record.createdAt).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-          status: 'ESTERILIZADO',
-          items: esterilizadoItems
-        });
-      });
-    }
-
-    // 6. CONTROL DE CALIDAD (mostrar todas las variantes si hay múltiples)
-    const qualityChecksForBatch = qualityChecks.filter((qc: any) => {
-      const qcBatch = allBatches.find((b: any) => b.batch.id === qc.check.batchId);
-      if (!qcBatch) return false;
-      
-      // Verificar si este lote está relacionado con el lote expedido
-      return qcBatch.batch.id === batchId || 
-             qcBatch.batch.batchCode.startsWith(batch.batch.batchCode.split('-')[0]);
-    });
-    
-    if (qualityChecksForBatch.length > 0) {
-      const qualityItems: any[] = [];
-      
-      qualityChecksForBatch.forEach((qc: any) => {
-        const qcBatch = allBatches.find((b: any) => b.batch.id === qc.check.batchId);
-        const approved = qc.check.approved === 1;
-        
-        if (qcBatch) {
-          qualityItems.push({
-            title: qcBatch.batch.batchCode,
-            details: [
-              { label: 'Resultado', value: approved ? 'Aprobado ✓' : 'Rechazado ✗' },
-              { label: 'Producto', value: qcBatch.product?.name || '-' },
-              { label: 'Fecha Caducidad', value: qcBatch.batch.expiryDate ? new Date(qcBatch.batch.expiryDate).toLocaleDateString('es-ES') : '-' },
-              { label: 'Notas', value: qc.check.notes || '-' },
-            ]
-          });
-        }
-      });
-
-      const latestCheck = qualityChecksForBatch.sort((a, b) => 
-        new Date(b.check.checkedAt).getTime() - new Date(a.check.checkedAt).getTime()
-      )[0];
-
-      steps.push({
-        id: 'quality',
-        stage: 'Control de Calidad',
-        icon: ClipboardCheck,
-        color: 'text-green-600',
-        timestamp: new Date(latestCheck.check.checkedAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        status: 'APROBADO',
-        items: qualityItems
-      });
-    }
-
-    // 7. EXPEDICIÓN (mostrar todas las expediciones si hay múltiples)
-    const shipmentsForBatch = shipments.filter((s: any) => {
-      const shipBatch = allBatches.find((b: any) => b.batch.id === s.shipment.batchId);
-      if (!shipBatch) return false;
-      
-      // Verificar si este lote está relacionado con el lote expedido
-      return shipBatch.batch.id === batchId || 
-             shipBatch.batch.batchCode.startsWith(batch.batch.batchCode.split('-')[0]);
-    });
-    
-    if (shipmentsForBatch.length > 0) {
-      const expedicionItems: any[] = [];
-      
-      shipmentsForBatch.forEach((shipment: any) => {
-        const shipBatch = allBatches.find((b: any) => b.batch.id === shipment.shipment.batchId);
-        
-        expedicionItems.push({
-          title: shipBatch?.batch.batchCode || shipment.shipment.shipmentCode,
-          details: [
-            { label: 'Código Expedición', value: shipment.shipment.shipmentCode },
-            { label: 'Cliente', value: shipment.customer?.name || '-' },
-            { label: 'Cantidad', value: `${shipment.shipment.quantity} ${shipment.shipment.unit}` },
-            { label: 'Matrícula', value: shipment.shipment.truckPlate || '-' },
-            { label: 'Albarán', value: shipment.shipment.deliveryNote || '-' },
-            { label: 'Fecha', value: new Date(shipment.shipment.shippedAt).toLocaleString('es-ES', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            }) },
-          ]
-        });
-      });
-
-      const latestShipment = shipmentsForBatch.sort((a, b) => 
-        new Date(b.shipment.shippedAt).getTime() - new Date(a.shipment.shippedAt).getTime()
-      )[0];
-
-      steps.push({
-        id: 'shipment',
-        stage: 'Expedición',
-        icon: Truck,
-        color: 'text-indigo-600',
-        timestamp: new Date(latestShipment.shipment.shippedAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        status: 'EXPEDIDO',
-        items: expedicionItems
-      });
+      }
     }
 
     return steps;
@@ -643,19 +477,19 @@ export default function Trazabilidad() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchCode.trim()) {
-      const found = shippedBatches.find(b => 
-        b.batchCode.toLowerCase().includes(searchCode.toLowerCase()) ||
-        b.shipmentCode.toLowerCase().includes(searchCode.toLowerCase())
+      const found = shipments.find(s => 
+        s.shipment.shipmentCode.toLowerCase().includes(searchCode.toLowerCase()) ||
+        s.batch?.batchCode?.toLowerCase().includes(searchCode.toLowerCase())
       );
       if (found) {
-        setSelectedBatchId(found.id);
+        setSelectedShipmentId(found.shipment.id);
       } else {
-        setSelectedBatchId(null);
+        setSelectedShipmentId(null);
       }
     }
   };
 
-  const traceabilitySteps = selectedBatchId ? buildTraceability(selectedBatchId) : [];
+  const traceabilitySteps = selectedShipmentId ? buildTraceability(selectedShipmentId) : [];
 
   const filteredBatches = searchCode.trim()
     ? shippedBatches.filter(b => 
@@ -671,7 +505,7 @@ export default function Trazabilidad() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Trazabilidad de Lotes Expedidos</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Consulta el historial completo de cualquier lote expedido desde materia prima hasta cliente
+          Consulta el historial completo de cualquier expedición desde materia prima hasta cliente
         </p>
       </div>
 
@@ -692,12 +526,12 @@ export default function Trazabilidad() {
       </form>
 
       {/* Lista de lotes expedidos */}
-      {!selectedBatchId && (
+      {!selectedShipmentId && (
         <Card>
           <CardHeader>
             <CardTitle>Lotes Expedidos ({shippedBatches.length})</CardTitle>
             <CardDescription>
-              Haz clic en un lote para ver su trazabilidad completa
+              Haz clic en una expedición para ver su trazabilidad completa
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -709,8 +543,8 @@ export default function Trazabilidad() {
               ) : (
                 filteredBatches.map((batch) => (
                   <button
-                    key={batch.id}
-                    onClick={() => setSelectedBatchId(batch.id)}
+                    key={batch.shipmentId}
+                    onClick={() => setSelectedShipmentId(batch.shipmentId)}
                     className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -737,12 +571,12 @@ export default function Trazabilidad() {
       )}
 
       {/* Trazabilidad completa */}
-      {selectedBatchId && selectedBatch && (
+      {selectedShipmentId && selectedBatch && (
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => setSelectedBatchId(null)}
+              onClick={() => setSelectedShipmentId(null)}
             >
               ← Volver a lista
             </Button>
@@ -750,25 +584,25 @@ export default function Trazabilidad() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Información del Lote Expedido</CardTitle>
+              <CardTitle>Información de la Expedición</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Código de Lote</p>
-                  <p className="font-medium font-mono">{selectedBatch.batchCode}</p>
+                  <p className="text-sm text-muted-foreground">Código de Expedición</p>
+                  <p className="font-medium font-mono">{selectedBatch.shipmentCode}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Producto</p>
-                  <p className="font-medium">{selectedBatch.product}</p>
+                  <p className="text-sm text-muted-foreground">Lote Expedido</p>
+                  <p className="font-medium font-mono">{selectedBatch.batchCode}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Cliente</p>
                   <p className="font-medium">{selectedBatch.customer}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Código Expedición</p>
-                  <p className="font-medium font-mono">{selectedBatch.shipmentCode}</p>
+                  <p className="text-sm text-muted-foreground">Producto</p>
+                  <p className="font-medium">{selectedBatch.product}</p>
                 </div>
               </div>
             </CardContent>
@@ -778,13 +612,13 @@ export default function Trazabilidad() {
             <CardHeader>
               <CardTitle>Historial de Trazabilidad Completo</CardTitle>
               <CardDescription>
-                Flujo completo desde materia prima hasta expedición ({traceabilitySteps.length} pasos)
+                Flujo completo desde expedición hasta materia prima ({traceabilitySteps.length} pasos)
               </CardDescription>
             </CardHeader>
             <CardContent>
               {traceabilitySteps.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No hay historial de trazabilidad para este lote
+                  No hay historial de trazabilidad para esta expedición
                 </p>
               ) : (
                 <div className="relative">
