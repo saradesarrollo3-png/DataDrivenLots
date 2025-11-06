@@ -185,6 +185,40 @@ export default function Trazabilidad() {
     // 2. ASADO
     const asadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ASADO');
     asadoRecords.forEach((asadoRecord: any) => {
+      const details: any[] = [
+        { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
+        { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
+      ];
+
+      // Árbol de composición de materias primas
+      if (asadoRecord.record.inputBatchDetails) {
+        try {
+          const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
+          
+          details.push({ label: '─────────────────', value: '─────────────────' });
+          details.push({ label: 'COMPOSICIÓN DE ENTRADA', value: `${inputBatchDetails.length} materia(s) prima(s)` });
+          
+          inputBatchDetails.forEach((detail: any, idx: number) => {
+            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+            if (inputBatch) {
+              details.push({ label: '─────────────────', value: '─────────────────' });
+              details.push({ label: `MP ${idx + 1}: Lote`, value: detail.batchCode });
+              details.push({ label: `MP ${idx + 1}: Producto`, value: inputBatch.product?.name || '-' });
+              details.push({ label: `MP ${idx + 1}: Proveedor`, value: inputBatch.supplier?.name || '-' });
+              details.push({ label: `MP ${idx + 1}: Cantidad Total Disp.`, value: `${inputBatch.batch.quantity} ${inputBatch.batch.unit}` });
+              details.push({ label: `MP ${idx + 1}: Cantidad Consumida`, value: `${detail.quantity} ${inputBatch.batch.unit}` });
+            }
+          });
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails:', e);
+        }
+      }
+
+      if (asadoRecord.record.notes) {
+        details.push({ label: '─────────────────', value: '─────────────────' });
+        details.push({ label: 'Notas', value: asadoRecord.record.notes });
+      }
+
       steps.push({
         id: `asado-${asadoRecord.record.id}`,
         stage: 'Asado',
@@ -206,19 +240,45 @@ export default function Trazabilidad() {
               minute: '2-digit'
             }),
         status: 'ASADO',
-        details: [
-          { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
-          { label: 'Lotes Entrada', value: asadoRecord.record.inputBatchCode },
-          { label: 'Cantidad Entrada', value: `${asadoRecord.record.inputQuantity} ${asadoRecord.record.unit}` },
-          { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
-          { label: 'Notas', value: asadoRecord.record.notes || '-' },
-        ]
+        details
       });
     });
 
     // 3. PELADO
     const peladoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'PELADO');
     peladoRecords.forEach((peladoRecord: any) => {
+      const details: any[] = [
+        { label: 'Lote Salida', value: peladoRecord.record.outputBatchCode },
+        { label: 'Cantidad Salida', value: `${peladoRecord.record.outputQuantity} ${peladoRecord.record.unit}` },
+      ];
+
+      // Árbol de composición de entradas
+      if (peladoRecord.record.inputBatchDetails) {
+        try {
+          const inputBatchDetails = JSON.parse(peladoRecord.record.inputBatchDetails);
+          
+          details.push({ label: '─────────────────', value: '─────────────────' });
+          details.push({ label: 'COMPOSICIÓN DE ENTRADA', value: `${inputBatchDetails.length} lote(s)` });
+          
+          inputBatchDetails.forEach((detail: any, idx: number) => {
+            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+            if (inputBatch) {
+              details.push({ label: '─────────────────', value: '─────────────────' });
+              details.push({ label: `Lote ${idx + 1}: Código`, value: detail.batchCode });
+              details.push({ label: `Lote ${idx + 1}: Producto`, value: inputBatch.product?.name || '-' });
+              details.push({ label: `Lote ${idx + 1}: Cantidad Consumida`, value: `${detail.quantity} ${inputBatch.batch.unit}` });
+            }
+          });
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails:', e);
+        }
+      }
+
+      if (peladoRecord.record.notes) {
+        details.push({ label: '─────────────────', value: '─────────────────' });
+        details.push({ label: 'Notas', value: peladoRecord.record.notes });
+      }
+
       steps.push({
         id: `pelado-${peladoRecord.record.id}`,
         stage: 'Pelado y Corte',
@@ -240,33 +300,118 @@ export default function Trazabilidad() {
               minute: '2-digit'
             }),
         status: 'PELADO',
-        details: [
-          { label: 'Lote Salida', value: peladoRecord.record.outputBatchCode },
-          { label: 'Lotes Entrada', value: peladoRecord.record.inputBatchCode },
-          { label: 'Cantidad Entrada', value: `${peladoRecord.record.inputQuantity} ${peladoRecord.record.unit}` },
-          { label: 'Cantidad Salida', value: `${peladoRecord.record.outputQuantity} ${peladoRecord.record.unit}` },
-          { label: 'Notas', value: peladoRecord.record.notes || '-' },
-        ]
+        details
       });
     });
 
     // 4. ENVASADO
     const envasadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ENVASADO');
+    
+    // Agrupar registros de envasado por lote base (sin sufijo de tipo de envase)
+    const envasadoGroups = new Map<string, any[]>();
+    
     envasadoRecords.forEach((envRecord: any) => {
+      // Extraer el código base (antes del último guión si existe)
+      const outputCode = envRecord.record.outputBatchCode;
+      const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i) 
+        ? outputCode.substring(0, outputCode.lastIndexOf('-'))
+        : outputCode;
+      
+      if (!envasadoGroups.has(baseCode)) {
+        envasadoGroups.set(baseCode, []);
+      }
+      envasadoGroups.get(baseCode)?.push(envRecord);
+    });
+
+    // Crear un paso por cada grupo de envasado
+    envasadoGroups.forEach((groupRecords, baseCode) => {
+      const firstRecord = groupRecords[0];
+      
+      const details: any[] = [
+        { label: 'Lote Base', value: baseCode },
+        { label: 'Lotes Entrada', value: firstRecord.record.inputBatchCode },
+        { label: 'Cantidad Entrada', value: `${firstRecord.record.inputQuantity} ${firstRecord.record.unit}` },
+      ];
+
+      // Árbol de composición de entradas
+      if (firstRecord.record.inputBatchDetails) {
+        try {
+          const inputBatchDetails = JSON.parse(firstRecord.record.inputBatchDetails);
+          
+          details.push({ label: '─────────────────', value: '─────────────────' });
+          details.push({ label: 'COMPOSICIÓN DE ENTRADA', value: `${inputBatchDetails.length} lote(s) procesado(s)` });
+          
+          inputBatchDetails.forEach((detail: any, idx: number) => {
+            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+            if (inputBatch) {
+              details.push({ label: '─────────────────', value: '─────────────────' });
+              details.push({ label: `Entrada ${idx + 1}: Lote`, value: detail.batchCode });
+              details.push({ label: `Entrada ${idx + 1}: Producto`, value: inputBatch.product?.name || '-' });
+              details.push({ label: `Entrada ${idx + 1}: Cantidad Consumida`, value: `${detail.quantity} ${inputBatch.batch.unit}` });
+            }
+          });
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails:', e);
+        }
+      }
+
+      // Árbol de salidas por tipo de envase
+      details.push({ label: '─────────────────', value: '─────────────────' });
+      details.push({ label: 'SALIDAS POR TIPO DE ENVASE', value: `${groupRecords.length} tipo(s)` });
+      
+      let totalEnvases = 0;
+      groupRecords.forEach((envRecord: any, idx: number) => {
+        const outputBatch = allBatches.find((b: any) => b.batch.batchCode === envRecord.record.outputBatchCode);
+        const outputQuantity = parseFloat(envRecord.record.outputQuantity);
+        totalEnvases += outputQuantity;
+        
+        // Determinar tipo de envase del código o de la unidad
+        const tipoEnvase = envRecord.record.outputBatchCode.split('-').pop() || 'Estándar';
+        
+        details.push({ label: '─────────────────', value: '─────────────────' });
+        details.push({ label: `Tipo ${idx + 1}: Envase`, value: tipoEnvase });
+        details.push({ label: `Tipo ${idx + 1}: Lote`, value: envRecord.record.outputBatchCode });
+        details.push({ label: `Tipo ${idx + 1}: Cantidad`, value: `${outputQuantity} frascos` });
+        
+        if (outputBatch) {
+          // Verificar si fue expedido
+          const shipment = shipments.find((s: any) => s.shipment.batchId === outputBatch.batch.id);
+          
+          if (shipment) {
+            details.push({ label: `Tipo ${idx + 1}: Estado`, value: 'EXPEDIDO ✓' });
+            details.push({ label: `Tipo ${idx + 1}: Expedido el`, value: new Date(shipment.shipment.shippedAt).toLocaleDateString('es-ES') });
+            details.push({ label: `Tipo ${idx + 1}: Cliente`, value: shipment.customer?.name || '-' });
+            details.push({ label: `Tipo ${idx + 1}: Albarán`, value: shipment.shipment.deliveryNote || '-' });
+            details.push({ label: `Tipo ${idx + 1}: Cantidad Expedida`, value: `${shipment.shipment.quantity} ${shipment.shipment.unit}` });
+          } else {
+            details.push({ label: `Tipo ${idx + 1}: Estado`, value: outputBatch.batch.status });
+            details.push({ label: `Tipo ${idx + 1}: Disponible`, value: `${outputBatch.batch.quantity} ${outputBatch.batch.unit}` });
+          }
+        }
+      });
+
+      details.push({ label: '─────────────────', value: '─────────────────' });
+      details.push({ label: 'TOTAL ENVASES GENERADOS', value: `${totalEnvases} frascos` });
+
+      if (firstRecord.record.notes) {
+        details.push({ label: '─────────────────', value: '─────────────────' });
+        details.push({ label: 'Notas', value: firstRecord.record.notes });
+      }
+
       steps.push({
-        id: `envasado-${envRecord.record.id}`,
+        id: `envasado-${baseCode}`,
         stage: 'Envasado',
         icon: PackageIcon,
         color: 'text-green-600',
-        timestamp: envRecord.record.processedDate
-          ? new Date(envRecord.record.processedDate).toLocaleString('es-ES', {
+        timestamp: firstRecord.record.processedDate
+          ? new Date(firstRecord.record.processedDate).toLocaleString('es-ES', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
               hour: '2-digit',
               minute: '2-digit'
             })
-          : new Date(envRecord.record.completedAt || envRecord.record.createdAt).toLocaleString('es-ES', {
+          : new Date(firstRecord.record.completedAt || firstRecord.record.createdAt).toLocaleString('es-ES', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
@@ -274,19 +419,45 @@ export default function Trazabilidad() {
               minute: '2-digit'
             }),
         status: 'ENVASADO',
-        details: [
-          { label: 'Lote Salida', value: envRecord.record.outputBatchCode },
-          { label: 'Lotes Entrada', value: envRecord.record.inputBatchCode },
-          { label: 'Cantidad Entrada', value: `${envRecord.record.inputQuantity} ${envRecord.record.unit}` },
-          { label: 'Cantidad Salida', value: `${envRecord.record.outputQuantity} envases` },
-          { label: 'Notas', value: envRecord.record.notes || '-' },
-        ]
+        details
       });
     });
 
     // 5. ESTERILIZADO
     const esterilizadoRecords = allProductionSteps.filter((pr: any) => pr.record.stage === 'ESTERILIZADO');
     esterilizadoRecords.forEach((esterilizadoRecord: any) => {
+      const details: any[] = [
+        { label: 'Lote Salida', value: esterilizadoRecord.record.outputBatchCode },
+        { label: 'Cantidad Salida', value: `${esterilizadoRecord.record.outputQuantity} ${esterilizadoRecord.record.unit}` },
+      ];
+
+      // Árbol de composición de entradas
+      if (esterilizadoRecord.record.inputBatchDetails) {
+        try {
+          const inputBatchDetails = JSON.parse(esterilizadoRecord.record.inputBatchDetails);
+          
+          details.push({ label: '─────────────────', value: '─────────────────' });
+          details.push({ label: 'COMPOSICIÓN DE ENTRADA', value: `${inputBatchDetails.length} lote(s)` });
+          
+          inputBatchDetails.forEach((detail: any, idx: number) => {
+            const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+            if (inputBatch) {
+              details.push({ label: '─────────────────', value: '─────────────────' });
+              details.push({ label: `Lote ${idx + 1}: Código`, value: detail.batchCode });
+              details.push({ label: `Lote ${idx + 1}: Producto`, value: inputBatch.product?.name || '-' });
+              details.push({ label: `Lote ${idx + 1}: Cantidad Consumida`, value: `${detail.quantity} ${inputBatch.batch.unit}` });
+            }
+          });
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails:', e);
+        }
+      }
+
+      if (esterilizadoRecord.record.notes) {
+        details.push({ label: '─────────────────', value: '─────────────────' });
+        details.push({ label: 'Notas', value: esterilizadoRecord.record.notes });
+      }
+
       steps.push({
         id: `esterilizado-${esterilizadoRecord.record.id}`,
         stage: 'Esterilizado',
@@ -308,12 +479,7 @@ export default function Trazabilidad() {
               minute: '2-digit'
             }),
         status: 'ESTERILIZADO',
-        details: [
-          { label: 'Lote Salida', value: esterilizadoRecord.record.outputBatchCode },
-          { label: 'Lote Entrada', value: esterilizadoRecord.record.inputBatchCode },
-          { label: 'Cantidad', value: `${esterilizadoRecord.record.outputQuantity} ${esterilizadoRecord.record.unit}` },
-          { label: 'Notas', value: esterilizadoRecord.record.notes || '-' },
-        ]
+        details
       });
     });
 
