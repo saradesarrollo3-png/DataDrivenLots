@@ -59,6 +59,23 @@ export default function Historial() {
     return translations[action] || action.replace('_', ' ');
   };
 
+  const translateStatus = (status: string): string => {
+    const translations: Record<string, string> = {
+      'received': 'Recibido',
+      'asado': 'Asado',
+      'pelado': 'Pelado',
+      'envasado': 'Envasado',
+      'esterilizado': 'Esterilizado',
+      'quality_check': 'Control de Calidad',
+      'approved': 'Aprobado',
+      'rejected': 'Rechazado',
+      'shipped': 'Expedido',
+      'in_transit': 'En Tránsito',
+      'delivered': 'Entregado',
+    };
+    return translations[status] || status;
+  };
+
   const columns: Column<HistoryEntry>[] = [
     { 
       key: "createdAt", 
@@ -78,12 +95,12 @@ export default function Historial() {
     { 
       key: "fromStatus", 
       label: "Estado Anterior",
-      render: (value) => value !== '-' ? <StatusBadge status={value} /> : '-'
+      render: (value) => value !== '-' ? <StatusBadge status={value} label={translateStatus(value)} /> : '-'
     },
     { 
       key: "toStatus", 
       label: "Nuevo Estado",
-      render: (value) => value !== '-' ? <StatusBadge status={value} /> : '-'
+      render: (value) => value !== '-' ? <StatusBadge status={value} label={translateStatus(value)} /> : '-'
     },
     { key: "notes", label: "Notas" },
   ];

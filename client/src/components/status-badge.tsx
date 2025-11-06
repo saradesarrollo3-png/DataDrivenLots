@@ -72,21 +72,22 @@ const statusConfig: Record<
 interface StatusBadgeProps {
   status: BatchStatus;
   className?: string;
+  label?: string;
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, className, label }: StatusBadgeProps) {
   const config = statusConfig[status] || {
     label: status,
     className: "bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-300"
   };
-  
+
   return (
     <Badge
       variant="outline"
       className={cn(config.className, "font-medium border-0", className)}
       data-testid={`badge-status-${status.toLowerCase()}`}
     >
-      {config.label}
+      {label || config.label}
     </Badge>
   );
 }
