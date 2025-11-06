@@ -169,17 +169,6 @@ export default function Calidad() {
   const handleApprove = async () => {
     if (!selectedBatch) return;
 
-    // Validar que todos los checkboxes estén marcados
-    const allChecked = checklist.every(item => item.checked);
-    if (!allChecked) {
-      toast({
-        title: "Validación incompleta",
-        description: "Debes completar todos los puntos del checklist para aprobar el lote.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       await createQualityCheckMutation.mutateAsync({
         batchId: selectedBatch.id,
@@ -391,7 +380,7 @@ export default function Calidad() {
       />
 
       <Dialog open={selectedBatch !== null} onOpenChange={(open) => !open && resetDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Revisión de Calidad</DialogTitle>
             <DialogDescription>
@@ -399,8 +388,8 @@ export default function Calidad() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
+          <ScrollArea className="h-[500px] pr-4">
+            <div className="space-y-4 pb-2">
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
                 <div>
                   <p className="text-sm text-muted-foreground">Cantidad</p>
@@ -462,7 +451,7 @@ export default function Calidad() {
             </div>
           </ScrollArea>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex justify-end gap-2 pt-4 border-t mt-2">
             <Button
               variant="outline"
               onClick={handleReject}
