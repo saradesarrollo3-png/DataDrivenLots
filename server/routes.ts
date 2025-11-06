@@ -889,16 +889,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const checks = await storage.getQualityChecks(req.user!.organizationId);
           doc.fontSize(12);
           checks.forEach((item, index) => {
-            const check = item.qualityCheck || item;
-            const batch = item.batch;
+            const check = item.check || item.qualityCheck || item;
+            const batch = item.batch || {};
+            const product = item.product || {};
             
             const approved = check.approved === 1 ? 'Aprobado' : check.approved === -1 ? 'Rechazado' : 'Pendiente';
-            const batchCode = batch?.batchCode || item.batchCode || '-';
-            const checkedAt = check.checkedAt;
-            const notes = check.notes;
+            const batchCode = batch.batchCode || '-';
+            const productName = product.name || '-';
+            const checkedAt = check.checkedAt || check.createdAt;
+            const notes = check.notes || '';
             
             doc.text(`${index + 1}. Lote ${batchCode} - ${approved}`);
-            doc.fontSize(10).text(`   Fecha: ${new Date(checkedAt).toLocaleDateString('es-ES')}`);
+            doc.fontSize(10).text(`   Producto: ${productName}`);
+            doc.text(`   Fecha: ${new Date(checkedAt).toLocaleDateString('es-ES')}`);
             if (notes) doc.text(`   Notas: ${notes}`);
             doc.fontSize(12).moveDown(0.5);
           });
@@ -946,10 +949,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const stock = await storage.getProductStock(req.user!.organizationId);
           doc.fontSize(12);
           stock.forEach((item, index) => {
-            const productName = item.productName || item.product?.name || 'Sin nombre';
-            const quantity = item.totalQuantity || item.quantity || '0';
-            const unit = item.unit || '-';
-            doc.text(`${index + 1}. ${productName}`);
+            // Acceder a las propiedades correctamente desde la estructura devuelta
+            const stockData = item.stock || item;
+            const productData = item.product || {};
+            
+            const productName = productData.name || 'Sin nombre';
+            const productCode = productData.code || '-';
+            const quantity = stockData.quantity || '0';
+            const unit = stockData.unit || '-';
+            
+            doc.text(`${index + 1}. ${productName} (${productCode})`);
             doc.fontSize(10).text(`   Stock: ${quantity} ${unit}`);
             doc.fontSize(12).moveDown(0.5);
           });
