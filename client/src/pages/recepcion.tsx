@@ -197,7 +197,7 @@ export default function Recepcion() {
         initialQuantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
         quantity: parseFloat(item.batch.quantity),
         unit: item.batch.unit,
-        temperature: parseFloat(item.batch.temperature || '0'),
+        temperature: item.batch.temperature ? parseFloat(item.batch.temperature) : 0,
         truckPlate: item.batch.truckPlate || '-',
         deliveryNote: item.batch.deliveryNote || '-',
         arrivedAt: displayDateTime,
@@ -224,6 +224,9 @@ export default function Recepcion() {
       processedDateTime = `${processedDateStr}T${processedTimeStr}:00`;
     }
     
+    const temperatureValue = formData.get('temperature');
+    const truckPlateValue = formData.get('truckPlate');
+    
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
       supplierId: formData.get('supplierId') || null,
@@ -232,8 +235,8 @@ export default function Recepcion() {
       quantity: editingReception ? formData.get('quantity') : entryQuantity, // Al crear, cantidad disponible = cantidad de entrada
       unit: formData.get('unit'),
       deliveryNote: formData.get('deliveryNote'),
-      temperature: formData.get('temperature') || null,
-      truckPlate: formData.get('truckPlate') || null,
+      temperature: temperatureValue && temperatureValue !== '' ? temperatureValue : null,
+      truckPlate: truckPlateValue && truckPlateValue !== '' ? truckPlateValue : null,
       locationId: formData.get('locationId') || null,
       status: editingReception ? editingReception.status : 'RECEPCION',
       processedDate: processedDateTime,

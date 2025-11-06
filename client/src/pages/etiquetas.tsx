@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
@@ -28,8 +27,8 @@ interface ReceptionBatch {
   supplier: string;
   quantity: number;
   unit: string;
-  temperature: number;
-  truckPlate: string;
+  temperature: number | null; // Allow null for temperature
+  truckPlate: string | null; // Allow null for truckPlate
   deliveryNote: string;
   arrivedAt: string;
   locationName: string;
@@ -52,7 +51,7 @@ export default function Etiquetas() {
         cantidad: `${selectedBatch.quantity} ${selectedBatch.unit}`,
         caducidad: selectedBatch.expiryDate,
       });
-      
+
       QRCodeLib.toCanvas(qrCanvasRef.current, qrData, {
         width: 200,
         margin: 1,
@@ -64,19 +63,25 @@ export default function Etiquetas() {
 
   useEffect(() => {
     if (selectedReceptionBatch && qrReceptionCanvasRef.current) {
-      const qrData = JSON.stringify({
+      const qrData: any = {
         lote: selectedReceptionBatch.batchCode,
         producto: selectedReceptionBatch.product,
         proveedor: selectedReceptionBatch.supplier,
         cantidad: `${selectedReceptionBatch.quantity} ${selectedReceptionBatch.unit}`,
-        temperatura: `${selectedReceptionBatch.temperature}°C`,
         albaran: selectedReceptionBatch.deliveryNote,
-        matricula: selectedReceptionBatch.truckPlate,
         fecha: selectedReceptionBatch.arrivedAt,
         ubicacion: selectedReceptionBatch.locationName,
-      });
-      
-      QRCodeLib.toCanvas(qrReceptionCanvasRef.current, qrData, {
+      };
+
+      if (selectedReceptionBatch.temperature !== null) {
+        qrData.temperatura = `${selectedReceptionBatch.temperature.toFixed(1)}°C`;
+      }
+
+      if (selectedReceptionBatch.truckPlate) {
+        qrData.matricula = selectedReceptionBatch.truckPlate;
+      }
+
+      QRCodeLib.toCanvas(qrReceptionCanvasRef.current, JSON.stringify(qrData), {
         width: 200,
         margin: 1,
       }).catch((err) => {
@@ -84,6 +89,7 @@ export default function Etiquetas() {
       });
     }
   }, [selectedReceptionBatch]);
+
 
   const { data: batchesData = [] } = useQuery<any[]>({
     queryKey: ['/api/batches'],
@@ -95,7 +101,7 @@ export default function Etiquetas() {
       id: item.batch.id,
       batchCode: item.batch.batchCode,
       product: item.product?.name || '-',
-      quantity: parseFloat(item.batch.quantity),
+      quantity: parseFloat(item.batch.quantity), // Use initialQuantity for labels
       unit: item.batch.unit,
       manufactureDate: item.batch.manufactureDate 
         ? new Date(item.batch.manufactureDate).toLocaleDateString('es-ES')
@@ -113,10 +119,10 @@ export default function Etiquetas() {
       batchCode: item.batch.batchCode,
       product: item.product?.name || '-',
       supplier: item.supplier?.name || '-',
-      quantity: parseFloat(item.batch.quantity),
+      quantity: parseFloat(item.batch.quantity), // Display initialQuantity for reception labels
       unit: item.batch.unit,
-      temperature: parseFloat(item.batch.temperature || '0'),
-      truckPlate: item.batch.truckPlate || '-',
+      temperature: item.batch.temperature === 0 ? null : parseFloat(item.batch.temperature || '0'), // Fix bug: 0 should be null
+      truckPlate: item.batch.truckPlate || null, // Handle null truckPlate
       deliveryNote: item.batch.deliveryNote || '-',
       arrivedAt: item.batch.processedDate 
         ? new Date(item.batch.processedDate).toLocaleString('es-ES')
@@ -162,7 +168,7 @@ export default function Etiquetas() {
     { 
       key: "temperature", 
       label: "Temp. (°C)",
-      render: (value) => value.toFixed(1)
+      render: (value) => value !== null ? value.toFixed(1) : '-' // Display '-' if temperature is null
     },
     { key: "deliveryNote", label: "Albarán" },
     { 
@@ -349,11 +355,11 @@ export default function Etiquetas() {
                   <p><strong>Lote:</strong> {selectedReceptionBatch.batchCode}</p>
                   <p><strong>Proveedor:</strong> {selectedReceptionBatch.supplier}</p>
                   <p><strong>Cantidad:</strong> {selectedReceptionBatch.quantity} {selectedReceptionBatch.unit}</p>
-                  <p><strong>Temperatura:</strong> {selectedReceptionBatch.temperature.toFixed(1)}°C</p>
+                  <p><strong>Temperatura:</strong> {selectedReceptionBatch.temperature !== null ? selectedReceptionBatch.temperature.toFixed(1) : '-' }°C</p>
                   {selectedReceptionBatch.deliveryNote !== '-' && (
                     <p><strong>Nº Albarán:</strong> {selectedReceptionBatch.deliveryNote}</p>
                   )}
-                  {selectedReceptionBatch.truckPlate !== '-' && (
+                  {selectedReceptionBatch.truckPlate !== null && (
                     <p><strong>Matrícula:</strong> {selectedReceptionBatch.truckPlate}</p>
                   )}
                   <p><strong>Fecha Recepción:</strong> {selectedReceptionBatch.arrivedAt}</p>
