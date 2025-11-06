@@ -349,7 +349,7 @@ export default function Trazabilidad() {
             details: [
               { label: 'Lote Salida', value: peladoRecord.record.outputBatchCode },
               { label: 'Cantidad Salida', value: `${peladoRecord.record.outputQuantity} ${peladoRecord.record.unit}` },
-              { label: 'Utilizada en Envasado', value: `${firstEnvasado.record.inputQuantity} ${firstEnvasado.record.unit}` },
+              { label: 'Utilizada en Envasado', value: `${firstEnvasado.record.inputQuantity || peladoRecord.record.outputQuantity} ${firstEnvasado.record.unit}` },
             ]
           });
 
@@ -406,6 +406,27 @@ export default function Trazabilidad() {
           // 6. ASADO - buscar el lote que alimentó el pelado
           let asadoRecord = null;
           
+          // Si no hay códigos de entrada del pelado, intentar obtenerlos del batch
+          if (peladoInputBatchCodes.length === 0) {
+            const peladoBatch = allBatches.find((b: any) => b.batch.batchCode === peladoRecord.record.outputBatchCode);
+            if (peladoBatch) {
+              // Buscar en batch history los movimientos hacia este lote en estado PELADO
+              const peladoBatchHistory = batchHistory.filter((bh: any) => 
+                bh.history.batchId === peladoBatch.batch.id && bh.history.toStatus === 'PELADO'
+              );
+              
+              if (peladoBatchHistory.length > 0) {
+                // Extraer información de materias primas desde las notas
+                const notes = peladoBatchHistory[0].history.notes || '';
+                const materiaPrimaMatch = notes.match(/Lotes entrada:\s*([^|]+)/);
+                if (materiaPrimaMatch) {
+                  const lotes = materiaPrimaMatch[1].split(',').map((l: string) => l.trim());
+                  peladoInputBatchCodes = lotes;
+                }
+              }
+            }
+          }
+          
           // Buscar por cada código de entrada del pelado
           for (const inputCode of peladoInputBatchCodes) {
             // 1. Buscar por outputBatchCode exacto
@@ -440,7 +461,8 @@ export default function Trazabilidad() {
                       outputQuantity: batch.batch.quantity,
                       unit: batch.batch.unit,
                       createdAt: bhRecord.history.createdAt,
-                      notes: bhRecord.history.notes
+                      notes: bhRecord.history.notes,
+                      inputBatchDetails: null
                     }
                   };
                   break;
@@ -459,12 +481,14 @@ export default function Trazabilidad() {
               details: [
                 { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
                 { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
-                { label: 'Utilizada en Pelado', value: `${peladoRecord.record.inputQuantity} ${peladoRecord.record.unit}` },
+                { label: 'Utilizada en Pelado', value: `${peladoRecord.record.inputQuantity || peladoRecord.record.outputQuantity} ${peladoRecord.record.unit}` },
               ]
             });
 
             // Materias primas utilizadas en el asado
             let inputBatchDetailsForReception: any[] = [];
+            
+            // 1. Intentar desde inputBatchDetails
             if (asadoRecord.record.inputBatchDetails) {
               try {
                 const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
@@ -485,6 +509,41 @@ export default function Trazabilidad() {
                 });
               } catch (e) {
                 console.error('Error parsing inputBatchDetails:', e);
+              }
+            }
+            
+            // 2. Si no hay detalles, intentar desde batch history
+            if (inputBatchDetailsForReception.length === 0 && asadoRecord.record.notes) {
+              const materiaPrimaMatch = asadoRecord.record.notes.match(/Materias primas:\s*([^|]+)/);
+              if (materiaPrimaMatch) {
+                const materiaPrimaStr = materiaPrimaMatch[1].trim();
+                const lotes = materiaPrimaStr.split(',').map((l: string) => l.trim());
+                
+                lotes.forEach((loteInfo: string) => {
+                  const match = loteInfo.match(/^(.+?):\s*(.+)$/);
+                  if (match) {
+                    const batchCode = match[1].trim();
+                    const quantity = match[2].trim();
+                    const rawBatch = allBatches.find((b: any) => b.batch.batchCode === batchCode);
+                    
+                    if (rawBatch) {
+                      inputBatchDetailsForReception.push({
+                        batchId: rawBatch.batch.id,
+                        batchCode: batchCode,
+                        quantity: parseFloat(quantity)
+                      });
+                      
+                      asadoItems.push({
+                        title: `Materia Prima: ${rawBatch.product?.name || batchCode}`,
+                        details: [
+                          { label: 'Lote', value: batchCode },
+                          { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
+                          { label: 'Cantidad Consumida', value: quantity },
+                        ]
+                      });
+                    }
+                  }
+                });
               }
             }
 
