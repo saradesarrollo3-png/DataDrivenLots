@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface QualityBatch {
   id: string;
@@ -54,6 +55,18 @@ interface ChecklistTemplate {
   isActive: number;
 }
 
+interface QualityCheckRecord {
+  id: string;
+  batchId: string;
+  batchCode: string;
+  product: string;
+  quantity: number;
+  approved: number;
+  notes: string;
+  checkedAt: string;
+  status: BatchStatus;
+}
+
 export default function Calidad() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +87,21 @@ export default function Calidad() {
     queryKey: ['/api/batches/status/ESTERILIZADO'],
   });
 
+  // Obtener lotes aprobados
+  const { data: approvedBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/APROBADO'],
+  });
+
+  // Obtener lotes bloqueados
+  const { data: blockedBatches = [] } = useQuery<any[]>({
+    queryKey: ['/api/batches/status/BLOQUEADO'],
+  });
+
+  // Obtener registros de calidad
+  const { data: qualityChecks = [] } = useQuery<any[]>({
+    queryKey: ['/api/quality-checks'],
+  });
+
   const qualityBatches: QualityBatch[] = sterilizedBatches.map(item => ({
     id: item.batch.id,
     code: item.batch.batchCode,
@@ -83,6 +111,44 @@ export default function Calidad() {
     expiryDate: item.batch.expiryDate ? new Date(item.batch.expiryDate).toLocaleDateString('es-ES') : '-',
     status: item.batch.status
   }));
+
+  // Combinar lotes aprobados y bloqueados
+  const reviewedBatches: QualityCheckRecord[] = [
+    ...approvedBatches.map(item => ({
+      id: item.batch.id,
+      batchId: item.batch.id,
+      batchCode: item.batch.batchCode,
+      product: item.product?.name || '-',
+      quantity: parseFloat(item.batch.quantity),
+      approved: 1,
+      notes: '',
+      checkedAt: item.batch.updatedAt || item.batch.createdAt,
+      status: item.batch.status
+    })),
+    ...blockedBatches.map(item => ({
+      id: item.batch.id,
+      batchId: item.batch.id,
+      batchCode: item.batch.batchCode,
+      product: item.product?.name || '-',
+      quantity: parseFloat(item.batch.quantity),
+      approved: -1,
+      notes: '',
+      checkedAt: item.batch.updatedAt || item.batch.createdAt,
+      status: item.batch.status
+    }))
+  ].map(batch => {
+    // Buscar el quality check correspondiente
+    const check = qualityChecks.find((qc: any) => qc.check.batchId === batch.batchId);
+    if (check) {
+      return {
+        ...batch,
+        notes: check.check.notes || '',
+        checkedAt: check.check.checkedAt,
+        approved: check.check.approved
+      };
+    }
+    return batch;
+  }).sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
 
   // Mutación para crear template
   const createTemplateMutation = useMutation({
@@ -161,6 +227,8 @@ export default function Calidad() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
     },
@@ -274,7 +342,7 @@ export default function Calidad() {
     }
   };
 
-  const columns: Column<QualityBatch>[] = [
+  const pendingColumns: Column<QualityBatch>[] = [
     { 
       key: "code", 
       label: "Código Lote",
@@ -295,8 +363,64 @@ export default function Calidad() {
     },
   ];
 
-  const filteredBatches = qualityBatches.filter(b => 
+  const reviewedColumns: Column<QualityCheckRecord>[] = [
+    { 
+      key: "batchCode", 
+      label: "Código Lote",
+      render: (value) => <span className="font-mono font-medium">{value}</span>
+    },
+    { key: "product", label: "Producto" },
+    { 
+      key: "quantity", 
+      label: "Cantidad",
+      render: (value) => `${value} envases`
+    },
+    { 
+      key: "approved", 
+      label: "Resultado",
+      render: (value) => (
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+          value === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {value === 1 ? (
+            <>
+              <CheckCircle className="h-3 w-3" />
+              Aprobado
+            </>
+          ) : (
+            <>
+              <XCircle className="h-3 w-3" />
+              Rechazado
+            </>
+          )}
+        </span>
+      )
+    },
+    { 
+      key: "checkedAt", 
+      label: "Fecha Revisión",
+      render: (value) => new Date(value).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    { 
+      key: "status", 
+      label: "Estado",
+      render: (value) => <StatusBadge status={value} />
+    },
+  ];
+
+  const filteredPendingBatches = qualityBatches.filter(b => 
     b.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.product.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredReviewedBatches = reviewedBatches.filter(b => 
+    b.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     b.product.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -372,12 +496,33 @@ export default function Calidad() {
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filteredBatches}
-        onView={(row) => handleOpenDialog(row)}
-        emptyMessage="No hay lotes esterilizados pendientes de revisión"
-      />
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="pending">
+            Pendientes de Revisión ({qualityBatches.length})
+          </TabsTrigger>
+          <TabsTrigger value="reviewed">
+            Revisados ({reviewedBatches.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="mt-6">
+          <DataTable
+            columns={pendingColumns}
+            data={filteredPendingBatches}
+            onView={(row) => handleOpenDialog(row)}
+            emptyMessage="No hay lotes esterilizados pendientes de revisión"
+          />
+        </TabsContent>
+
+        <TabsContent value="reviewed" className="mt-6">
+          <DataTable
+            columns={reviewedColumns}
+            data={filteredReviewedBatches}
+            emptyMessage="No hay lotes revisados"
+          />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={selectedBatch !== null} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
