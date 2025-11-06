@@ -946,22 +946,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'stock':
-          const stock = await storage.getProductStock(req.user!.organizationId);
-          doc.fontSize(12);
-          stock.forEach((item, index) => {
-            // Acceder a las propiedades correctamente desde la estructura devuelta
-            const stockData = item.stock || item;
-            const productData = item.product || {};
-            
-            const productName = productData.name || 'Sin nombre';
-            const productCode = productData.code || '-';
-            const quantity = stockData.quantity || '0';
-            const unit = stockData.unit || '-';
-            
-            doc.text(`${index + 1}. ${productName} (${productCode})`);
-            doc.fontSize(10).text(`   Stock: ${quantity} ${unit}`);
-            doc.fontSize(12).moveDown(0.5);
+          // Obtener todos los movimientos de stock (recepciones, producciones, expediciones)
+          const batches = await storage.getBatches(req.user!.organizationId);
+          const productionRecords = await storage.getProductionRecords(req.user!.organizationId);
+          const shipments = await storage.getShipments(req.user!.organizationId);
+          
+          // Agrupar movimientos por producto
+          const productMovements = new Map();
+          
+          // Recepciones (entradas)
+          batches.forEach((item) => {
+            if (item.batch.status === 'RECEPCION' && item.product?.name) {
+              const productName = item.product.name;
+              if (!productMovements.has(productName)) {
+                productMovements.set(productName, []);
+              }
+              productMovements.get(productName).push({
+                type: 'Recepción',
+                date: new Date(item.batch.arrivedAt || item.batch.createdAt),
+                batchCode: item.batch.batchCode,
+                quantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
+                unit: item.batch.unit,
+                supplier: item.supplier?.name || '-',
+              });
+            }
           });
+          
+          // Producción (consumos)
+          productionRecords.forEach((item) => {
+            if (item.product?.name) {
+              const productName = item.product.name;
+              if (!productMovements.has(productName)) {
+                productMovements.set(productName, []);
+              }
+              productMovements.get(productName).push({
+                type: `Producción (${item.record.stage})`,
+                date: new Date(item.record.completedAt || item.record.createdAt),
+                batchCode: item.batch?.batchCode || '-',
+                quantity: -parseFloat(item.record.inputQuantity || '0'),
+                unit: item.record.unit,
+                notes: `Entrada: ${item.record.inputQuantity} → Salida: ${item.record.outputQuantity}`,
+              });
+            }
+          });
+          
+          // Expediciones (salidas)
+          shipments.forEach((item) => {
+            if (item.product?.name) {
+              const productName = item.product.name;
+              if (!productMovements.has(productName)) {
+                productMovements.set(productName, []);
+              }
+              productMovements.get(productName).push({
+                type: 'Expedición',
+                date: new Date(item.shipment.shippedAt || item.shipment.createdAt),
+                batchCode: item.batch?.batchCode || '-',
+                quantity: -parseFloat(item.shipment.quantity || '0'),
+                unit: item.shipment.unit,
+                customer: item.customer?.name || '-',
+              });
+            }
+          });
+          
+          doc.fontSize(12);
+          
+          // Imprimir movimientos por producto
+          let productIndex = 0;
+          productMovements.forEach((movements, productName) => {
+            productIndex++;
+            
+            // Ordenar movimientos por fecha
+            movements.sort((a, b) => a.date - b.date);
+            
+            // Calcular balance total
+            const totalBalance = movements.reduce((sum, mov) => sum + mov.quantity, 0);
+            
+            doc.fontSize(14).fillColor('#000000').text(`${productIndex}. ${productName}`, { underline: true });
+            doc.fontSize(10).fillColor('#666666').text(`   Balance total: ${totalBalance.toFixed(2)} ${movements[0]?.unit || ''}`);
+            doc.moveDown(0.3);
+            
+            // Imprimir cada movimiento
+            movements.forEach((mov, idx) => {
+              const sign = mov.quantity >= 0 ? '+' : '';
+              const color = mov.quantity >= 0 ? '#006400' : '#8B0000';
+              
+              doc.fontSize(9).fillColor('#000000').text(`   ${idx + 1}. ${mov.type} - ${mov.date.toLocaleDateString('es-ES')}`);
+              doc.fillColor(color).text(`      Cantidad: ${sign}${mov.quantity.toFixed(2)} ${mov.unit}`);
+              doc.fillColor('#000000').text(`      Lote: ${mov.batchCode}`);
+              
+              if (mov.supplier) doc.text(`      Proveedor: ${mov.supplier}`);
+              if (mov.customer) doc.text(`      Cliente: ${mov.customer}`);
+              if (mov.notes) doc.text(`      Notas: ${mov.notes}`);
+              
+              doc.moveDown(0.2);
+            });
+            
+            doc.moveDown(0.5);
+          });
+          
+          if (productMovements.size === 0) {
+            doc.text('No hay movimientos de stock registrados');
+          }
           break;
       }
       
