@@ -635,6 +635,10 @@ export default function Produccion() {
 
       finalOutputQuantity = totalPackages;
       finalUnit = "envases";
+    } else if (activeStage === "esterilizado") {
+      // Para esterilizado, la cantidad se calcula automáticamente de los lotes seleccionados
+      finalOutputQuantity = getTotalEsterilizadoOutput();
+      finalUnit = selectedBatches[0]?.unit || "envases";
     } else {
       if (!outputQuantity || parseFloat(outputQuantity) === 0) {
         toast({
