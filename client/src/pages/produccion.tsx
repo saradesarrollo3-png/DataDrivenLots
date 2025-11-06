@@ -220,9 +220,13 @@ export default function Produccion() {
   });
 
   // Filtrar lotes de pelado con cantidad mayor a 0
-  const peladoBatches = peladoBatchesRaw.filter(b => parseFloat(b.batch.quantity) > 0);
+  const peladoBatches = peladoBatchesRaw.filter(b => {
+    const quantity = parseFloat(b.batch.quantity);
+    return quantity > 0;
+  });
   
   console.log("📦 Lotes PELADO filtrados (cantidad > 0):", peladoBatches.length, "de", peladoBatchesRaw.length);
+  console.log("📦 Lotes PELADO RAW:", peladoBatchesRaw.map(b => ({code: b.batch.batchCode, qty: b.batch.quantity})));
 
   const { data: envasadoBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ENVASADO'],
@@ -883,12 +887,12 @@ export default function Produccion() {
     }
 
       // Invalidate queries for all stages to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
 
       toast({
         title: "Proceso creado",
