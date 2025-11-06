@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Printer, QrCode } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import QRCodeLib from "qrcode";
 
 interface LabelBatch {
   id: string;
@@ -22,6 +23,25 @@ interface LabelBatch {
 export default function Etiquetas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBatch, setSelectedBatch] = useState<LabelBatch | null>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (selectedBatch && qrCanvasRef.current) {
+      const qrData = JSON.stringify({
+        lote: selectedBatch.batchCode,
+        producto: selectedBatch.product,
+        cantidad: `${selectedBatch.quantity} ${selectedBatch.unit}`,
+        caducidad: selectedBatch.expiryDate,
+      });
+      
+      QRCodeLib.toCanvas(qrCanvasRef.current, qrData, {
+        width: 200,
+        margin: 1,
+      }).catch((err) => {
+        console.error("Error generating QR code:", err);
+      });
+    }
+  }, [selectedBatch]);
 
   const { data: batchesData = [] } = useQuery<any[]>({
     queryKey: ['/api/batches'],
@@ -142,11 +162,13 @@ export default function Etiquetas() {
               </div>
               <p><strong>Lote:</strong> {selectedBatch.batchCode}</p>
               <p><strong>Cantidad:</strong> {selectedBatch.quantity} {selectedBatch.unit}</p>
-              <p><strong>Fabricación:</strong> {selectedBatch.manufactureDate}</p>
+              {selectedBatch.manufactureDate !== '-' && (
+                <p><strong>Fabricación:</strong> {selectedBatch.manufactureDate}</p>
+              )}
               <p><strong>Caducidad:</strong> {selectedBatch.expiryDate}</p>
               <div className="mt-4 pt-4 border-t text-center">
-                <div className="inline-block bg-muted p-4">
-                  <QrCode className="h-24 w-24" />
+                <div className="inline-block bg-white p-4">
+                  <canvas ref={qrCanvasRef} />
                   <p className="text-xs mt-2">{selectedBatch.batchCode}</p>
                 </div>
               </div>

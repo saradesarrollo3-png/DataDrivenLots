@@ -41,6 +41,24 @@ export default function Historial() {
     })
   }));
 
+  const translateAction = (action: string): string => {
+    const translations: Record<string, string> = {
+      'created': 'Creado',
+      'received': 'Recibido',
+      'status_changed': 'Cambio de Estado',
+      'roasted': 'Asado',
+      'peeled': 'Pelado',
+      'packaged': 'Envasado',
+      'sterilized': 'Esterilizado',
+      'quality_checked': 'Control de Calidad',
+      'approved': 'Aprobado',
+      'rejected': 'Rechazado',
+      'shipped': 'Expedido',
+      'partial_shipment': 'Expedición Parcial',
+    };
+    return translations[action] || action.replace('_', ' ');
+  };
+
   const columns: Column<HistoryEntry>[] = [
     { 
       key: "createdAt", 
@@ -55,7 +73,7 @@ export default function Historial() {
     { 
       key: "action", 
       label: "Acción",
-      render: (value) => <span className="capitalize">{value.replace('_', ' ')}</span>
+      render: (value) => <span className="capitalize">{translateAction(value)}</span>
     },
     { 
       key: "fromStatus", 
@@ -99,7 +117,6 @@ export default function Historial() {
       <DataTable
         columns={columns}
         data={filteredEntries}
-        onView={(row) => console.log("View history:", row)}
         emptyMessage="No hay registros en el historial"
       />
     </div>
