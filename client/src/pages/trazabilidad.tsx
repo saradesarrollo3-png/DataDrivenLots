@@ -294,18 +294,51 @@ export default function Trazabilidad() {
         // 5. PELADO - buscar el lote que alimentó el envasado
         const inputBatchCodeEnvasado = firstEnvasado.record.inputBatchCode;
         
-        // Buscar por coincidencia exacta primero
-        let peladoRecord = productionRecords.find((pr: any) =>
+        // Primero intentar encontrar el batch del envasado para obtener su ID
+        const envasadoInputBatch = allBatches.find((b: any) => 
+          b.batch.batchCode === inputBatchCodeEnvasado
+        );
+        
+        // Buscar registro de pelado por múltiples criterios
+        let peladoRecord = null;
+        
+        // 1. Buscar por outputBatchCode exacto
+        peladoRecord = productionRecords.find((pr: any) =>
           pr.record.stage === 'PELADO' && pr.record.outputBatchCode === inputBatchCodeEnvasado
         );
-
-        // Si no hay coincidencia exacta, buscar por código parcial
+        
+        // 2. Si no, buscar por batchId del envasado
+        if (!peladoRecord && envasadoInputBatch) {
+          peladoRecord = productionRecords.find((pr: any) =>
+            pr.record.stage === 'PELADO' && pr.record.batchId === envasadoInputBatch.batch.id
+          );
+        }
+        
+        // 3. Si no, buscar en batch history eventos de PELADO
         if (!peladoRecord) {
-          peladoRecord = productionRecords.find((pr: any) => {
-            if (pr.record.stage !== 'PELADO') return false;
-            // Verificar si el inputBatchCode del envasado empieza con el outputBatchCode del pelado
-            return inputBatchCodeEnvasado.startsWith(pr.record.outputBatchCode);
-          });
+          const peladoBatchHistory = batchHistory.filter((bh: any) =>
+            bh.history.toStatus === 'PELADO'
+          );
+          
+          // Buscar el batch history que corresponde al código de entrada del envasado
+          for (const bhRecord of peladoBatchHistory) {
+            const batch = allBatches.find((b: any) => b.batch.id === bhRecord.history.batchId);
+            if (batch && batch.batch.batchCode === inputBatchCodeEnvasado) {
+              // Crear un pseudo-record desde batch history
+              peladoRecord = {
+                record: {
+                  stage: 'PELADO',
+                  batchId: bhRecord.history.batchId,
+                  outputBatchCode: batch.batch.batchCode,
+                  outputQuantity: batch.batch.quantity,
+                  unit: batch.batch.unit,
+                  createdAt: bhRecord.history.createdAt,
+                  notes: bhRecord.history.notes
+                }
+              };
+              break;
+            }
+          }
         }
 
         if (peladoRecord) {
@@ -320,13 +353,16 @@ export default function Trazabilidad() {
             ]
           });
 
-          // Materias primas del pelado
+          // Materias primas del pelado - extraer del inputBatchCode o batch history
+          let peladoInputBatchCodes: string[] = [];
+          
           if (peladoRecord.record.inputBatchDetails) {
             try {
               const inputBatchDetails = JSON.parse(peladoRecord.record.inputBatchDetails);
               inputBatchDetails.forEach((detail: any) => {
                 const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
                 if (inputBatch) {
+                  peladoInputBatchCodes.push(inputBatch.batch.batchCode);
                   peladoItems.push({
                     title: `Entrada: ${inputBatch.product?.name || detail.batchCode}`,
                     details: [
@@ -339,6 +375,8 @@ export default function Trazabilidad() {
             } catch (e) {
               console.error('Error parsing inputBatchDetails:', e);
             }
+          } else if (peladoRecord.record.inputBatchCode) {
+            peladoInputBatchCodes = [peladoRecord.record.inputBatchCode];
           }
 
           steps.push({
@@ -366,29 +404,51 @@ export default function Trazabilidad() {
           });
 
           // 6. ASADO - buscar el lote que alimentó el pelado
-          const inputBatchCodePelado = peladoRecord.record.inputBatchCode;
+          let asadoRecord = null;
           
-          // Buscar por coincidencia exacta primero
-          let asadoRecord = productionRecords.find((pr: any) =>
-            pr.record.stage === 'ASADO' && pr.record.outputBatchCode === inputBatchCodePelado
-          );
-
-          // Si no encontramos con el código exacto, buscar por coincidencia parcial
-          if (!asadoRecord) {
-            asadoRecord = productionRecords.find((pr: any) => {
-              if (pr.record.stage !== 'ASADO') return false;
-              return inputBatchCodePelado.startsWith(pr.record.outputBatchCode);
-            });
-          }
-
-          // Si aún no encontramos, buscar cualquier registro de ASADO que tenga inputBatchDetails
-          if (!asadoRecord) {
-            const peladoBatchId = allBatches.find((b: any) => b.batch.batchCode === inputBatchCodePelado)?.batch.id;
-            if (peladoBatchId) {
-              asadoRecord = productionRecords.find((pr: any) => 
-                pr.record.stage === 'ASADO' && pr.record.batchId === peladoBatchId
-              );
+          // Buscar por cada código de entrada del pelado
+          for (const inputCode of peladoInputBatchCodes) {
+            // 1. Buscar por outputBatchCode exacto
+            asadoRecord = productionRecords.find((pr: any) =>
+              pr.record.stage === 'ASADO' && pr.record.outputBatchCode === inputCode
+            );
+            
+            // 2. Si no, buscar por batchId
+            if (!asadoRecord) {
+              const peladoInputBatch = allBatches.find((b: any) => b.batch.batchCode === inputCode);
+              if (peladoInputBatch) {
+                asadoRecord = productionRecords.find((pr: any) =>
+                  pr.record.stage === 'ASADO' && pr.record.batchId === peladoInputBatch.batch.id
+                );
+              }
             }
+            
+            // 3. Si no, buscar en batch history
+            if (!asadoRecord) {
+              const asadoBatchHistory = batchHistory.filter((bh: any) =>
+                bh.history.toStatus === 'ASADO'
+              );
+              
+              for (const bhRecord of asadoBatchHistory) {
+                const batch = allBatches.find((b: any) => b.batch.id === bhRecord.history.batchId);
+                if (batch && batch.batch.batchCode === inputCode) {
+                  asadoRecord = {
+                    record: {
+                      stage: 'ASADO',
+                      batchId: bhRecord.history.batchId,
+                      outputBatchCode: batch.batch.batchCode,
+                      outputQuantity: batch.batch.quantity,
+                      unit: batch.batch.unit,
+                      createdAt: bhRecord.history.createdAt,
+                      notes: bhRecord.history.notes
+                    }
+                  };
+                  break;
+                }
+              }
+            }
+            
+            if (asadoRecord) break;
           }
 
           if (asadoRecord) {
