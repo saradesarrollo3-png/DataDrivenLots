@@ -11,19 +11,27 @@ interface KPICardProps {
     isPositive: boolean;
   };
   className?: string;
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline'; // Added variant for flexibility
 }
 
-export function KPICard({ title, value, icon: Icon, trend, className }: KPICardProps) {
+// Placeholder for variantStyles, assuming it exists elsewhere or needs to be defined.
+// For this example, we'll create a basic one to make the code runnable.
+const variantStyles: Record<NonNullable<KPICardProps['variant']>, { icon: string; text: string }> = {
+  default: { icon: 'text-muted-foreground', text: '' },
+  secondary: { icon: 'text-secondary-foreground', text: 'text-secondary-foreground' },
+  destructive: { icon: 'text-destructive', text: 'text-destructive' },
+  outline: { icon: 'text-primary', text: 'text-primary' },
+};
+
+export function KPICard({ title, value, icon: Icon, trend, className, variant = 'default' }: KPICardProps) {
   return (
     <Card className={cn("hover-elevate", className)} data-testid={`card-kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className="h-5 w-5 text-muted-foreground" />
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+        <CardTitle className="text-xs md:text-sm font-medium truncate pr-2">{title}</CardTitle>
+        <Icon className={cn("h-3 w-3 md:h-4 md:w-4 flex-shrink-0", variantStyles[variant].icon)} />
       </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold" data-testid={`text-kpi-value-${title.toLowerCase().replace(/\s+/g, '-')}`}>{value}</div>
+      <CardContent className="p-3 md:p-4 pt-0">
+        <div className={cn("text-xl md:text-2xl font-bold", variantStyles[variant].text)} data-testid={`text-kpi-value-${title.toLowerCase().replace(/\s+/g, '-')}`}>{value}</div>
         {trend && (
           <p className={cn(
             "text-xs mt-1",

@@ -239,6 +239,23 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Prevenir zoom en inputs en iOS */
+    -webkit-text-size-adjust: 100%;
+    /* Mejorar scroll en móviles */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mejorar legibilidad de inputs en móviles */
+  input, select, textarea {
+    @apply text-base;
+  }
+
+  /* Asegurar que los modales/dialogs se vean bien en móvil */
+  @media (max-width: 640px) {
+    [role="dialog"] {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
   }
 }
 

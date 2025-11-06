@@ -34,6 +34,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Reception {
   id: string;
@@ -98,7 +99,7 @@ export default function Recepcion() {
       const method = editingReception ? 'PUT' : 'POST';
       const response = await fetch(url, {
         method,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('sessionId')}`
         },
@@ -133,7 +134,7 @@ export default function Recepcion() {
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/batches/${id}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${localStorage.getItem('sessionId')}`
         },
       });
@@ -167,7 +168,7 @@ export default function Recepcion() {
       let processedDateValue = undefined;
       let processedTimeValue = undefined;
       let displayDateTime = '';
-      
+
       if (item.batch.processedDate) {
         const dt = new Date(item.batch.processedDate);
         processedDateValue = dt.toISOString().split('T')[0];
@@ -188,7 +189,7 @@ export default function Recepcion() {
           minute: '2-digit'
         });
       }
-      
+
       return {
         id: item.batch.id,
         batchCode: item.batch.batchCode,
@@ -213,20 +214,20 @@ export default function Recepcion() {
   const handleCreateReception = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const entryQuantity = formData.get('initialQuantity');
     const processedDateStr = formData.get('processedDate') as string;
     const processedTimeStr = formData.get('processedTime') as string;
-    
+
     // Combinar fecha y hora en formato ISO
     let processedDateTime: string | undefined = undefined;
     if (processedDateStr && processedTimeStr) {
       processedDateTime = `${processedDateStr}T${processedTimeStr}:00`;
     }
-    
+
     const temperatureValue = formData.get('temperature');
     const truckPlateValue = formData.get('truckPlate');
-    
+
     const data: any = {
       batchCode: editingReception ? editingReception.batchCode : `L-${Date.now().toString().slice(-8)}`,
       supplierId: formData.get('supplierId') || null,
@@ -261,38 +262,38 @@ export default function Recepcion() {
   };
 
   const columns: Column<Reception>[] = [
-    { 
-      key: "batchCode", 
+    {
+      key: "batchCode",
       label: "Código Lote",
       render: (value) => <span className="font-mono font-medium">{value}</span>
     },
     { key: "supplier", label: "Proveedor" },
     { key: "product", label: "Producto" },
-    { 
-      key: "initialQuantity", 
+    {
+      key: "initialQuantity",
       label: "Cantidad de Entrada",
       render: (value, row) => `${value.toFixed(2)} ${row.unit}`
     },
-    { 
-      key: "quantity", 
+    {
+      key: "quantity",
       label: "Cantidad Disponible",
       render: (value, row) => <span className="font-semibold">{value.toFixed(2)} {row.unit}</span>
     },
-    { 
-      key: "temperature", 
+    {
+      key: "temperature",
       label: "Temp. (°C)",
       render: (value) => value.toFixed(1)
     },
     { key: "truckPlate", label: "Matrícula" },
     { key: "arrivedAt", label: "Fecha/Hora" },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Estado",
       render: (value) => <StatusBadge status={value} />
     },
   ];
 
-  const filteredReceptions = receptions.filter(r => 
+  const filteredReceptions = receptions.filter(r =>
     r.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.product.toLowerCase().includes(searchTerm.toLowerCase())
@@ -315,8 +316,8 @@ export default function Recepcion() {
 
   const stockColumns: Column<ProductStock>[] = [
     { key: "productName", label: "Producto" },
-    { 
-      key: "quantity", 
+    {
+      key: "quantity",
       label: "Cantidad Disponible",
       render: (value, row) => (
         <span className="font-semibold">{value.toFixed(2)} {row.unit}</span>
@@ -327,8 +328,8 @@ export default function Recepcion() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Recepción</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -353,7 +354,7 @@ export default function Recepcion() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateReception} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="supplier">Proveedor *</Label>
                   <Select name="supplierId" required defaultValue={editingReception?.supplierId || ""}>
@@ -382,7 +383,7 @@ export default function Recepcion() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="initialQuantity">Cantidad de Entrada *</Label>
                   <Input
@@ -413,7 +414,7 @@ export default function Recepcion() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unidad *</Label>
                   <Select name="unit" required defaultValue={editingReception?.unit || ""}>
@@ -430,7 +431,7 @@ export default function Recepcion() {
                 <div className="space-y-2"></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="product">Producto *</Label>
                   <Select name="productId" required defaultValue={editingReception?.productId || ""}>
@@ -454,13 +455,13 @@ export default function Recepcion() {
                     type="number"
                     step="0.1"
                     placeholder="4.5"
-                    defaultValue={editingReception?.temperature || ''}
+                    defaultValue={editingReception?.temperature !== undefined ? editingReception.temperature.toString() : ''}
                     data-testid="input-temperature"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="truckPlate">Matrícula Camión</Label>
                   <Input
@@ -488,7 +489,7 @@ export default function Recepcion() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="processedDate">Fecha de Recepción *</Label>
                   <Input
@@ -514,9 +515,9 @@ export default function Recepcion() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setIsDialogOpen(false);
                     setEditingReception(null);
@@ -525,8 +526,8 @@ export default function Recepcion() {
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   data-testid="button-submit-reception"
                   disabled={createReceptionMutation.isPending}
                 >
@@ -539,7 +540,7 @@ export default function Recepcion() {
       </div>
 
       <Tabs defaultValue="recepciones" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="recepciones">Recepciones</TabsTrigger>
           <TabsTrigger value="stock">
             <Package className="h-4 w-4 mr-2" />
@@ -548,22 +549,22 @@ export default function Recepcion() {
         </TabsList>
 
         <TabsContent value="recepciones" className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por código, proveedor o producto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 w-full"
                 data-testid="input-search"
               />
             </div>
-            <Button variant="outline" data-testid="button-filter">
+            <Button variant="outline" className="w-full md:w-auto" data-testid="button-filter">
               <Filter className="h-4 w-4 mr-2" />
               Filtros
             </Button>
-            <Button variant="outline" data-testid="button-export">
+            <Button variant="outline" className="w-full md:w-auto" data-testid="button-export">
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
@@ -579,15 +580,15 @@ export default function Recepcion() {
         </TabsContent>
 
         <TabsContent value="stock" className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar producto..."
-                className="pl-9"
+                className="pl-9 w-full"
               />
             </div>
-            <Button variant="outline">
+            <Button variant="outline" className="w-full md:w-auto">
               <Download className="h-4 w-4 mr-2" />
               Exportar Stock
             </Button>
@@ -608,7 +609,7 @@ export default function Recepcion() {
           </DialogHeader>
           {viewingReception && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Código de Lote</Label>
                   <p className="font-medium font-mono">{viewingReception.batchCode}</p>
@@ -620,7 +621,7 @@ export default function Recepcion() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Proveedor</Label>
                   <p className="font-medium">{viewingReception.supplier}</p>
@@ -630,7 +631,7 @@ export default function Recepcion() {
                   <p className="font-medium">{viewingReception.product}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Cantidad de Entrada</Label>
                   <p className="font-medium">{viewingReception.initialQuantity} {viewingReception.unit}</p>
@@ -640,14 +641,14 @@ export default function Recepcion() {
                   <p className="font-medium font-semibold">{viewingReception.quantity} {viewingReception.unit}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Nº Albarán</Label>
                   <p className="font-medium">{viewingReception.deliveryNote}</p>
                 </div>
                 <div></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Temperatura</Label>
                   <p className="font-medium">{viewingReception.temperature.toFixed(1)}°C</p>
@@ -657,11 +658,11 @@ export default function Recepcion() {
                   <p className="font-medium">{viewingReception.truckPlate}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Fecha de Recepción</Label>
                   <p className="font-medium">
-                    {viewingReception.processedDate 
+                    {viewingReception.processedDate
                       ? new Date(viewingReception.processedDate + 'T' + (viewingReception.processedTime || '00:00')).toLocaleDateString('es-ES')
                       : new Date(viewingReception.arrivedAt).toLocaleDateString('es-ES')}
                   </p>

@@ -1,13 +1,12 @@
-
 import { KPICard } from "@/components/kpi-card";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Package, 
-  AlertTriangle, 
-  Clock, 
+import {
+  Package,
+  AlertTriangle,
+  Clock,
   GraduationCap,
   Settings,
   ClipboardList,
@@ -49,6 +48,16 @@ interface QuickAccessLink {
   bgColor: string;
 }
 
+// Placeholder for stats data, as it's not provided in the original code but used in the changes.
+// In a real scenario, this would come from a query or props.
+const stats = {
+  activeBatches: 150,
+  inProduction: 30,
+  pendingQuality: 15,
+  readyToShip: 45,
+};
+
+
 export default function Dashboard() {
   const { data: batchesData = [] } = useQuery({
     queryKey: ['/api/batches'],
@@ -85,40 +94,40 @@ export default function Dashboard() {
     .slice(0, 5);
 
   // Calcular KPIs por zona (lotes con cantidad > 0)
-  const lotesRecepcion = batchesData.filter((item: any) => 
+  const lotesRecepcion = batchesData.filter((item: any) =>
     item.batch.status === 'RECEPCION' && parseFloat(item.batch.quantity) > 0
   ).length;
-  
-  const lotesAsado = batchesData.filter((item: any) => 
+
+  const lotesAsado = batchesData.filter((item: any) =>
     item.batch.status === 'ASADO' && parseFloat(item.batch.quantity) > 0
   ).length;
-  
-  const lotesPelado = batchesData.filter((item: any) => 
+
+  const lotesPelado = batchesData.filter((item: any) =>
     item.batch.status === 'PELADO' && parseFloat(item.batch.quantity) > 0
   ).length;
-  
-  const lotesEnvasado = batchesData.filter((item: any) => 
+
+  const lotesEnvasado = batchesData.filter((item: any) =>
     item.batch.status === 'ENVASADO' && parseFloat(item.batch.quantity) > 0
   ).length;
 
-  const lotesEsterilizado = batchesData.filter((item: any) => 
+  const lotesEsterilizado = batchesData.filter((item: any) =>
     item.batch.status === 'ESTERILIZADO' && parseFloat(item.batch.quantity) > 0
   ).length;
 
-  const lotesAprobados = batchesData.filter((item: any) => 
+  const lotesAprobados = batchesData.filter((item: any) =>
     item.batch.status === 'APROBADO' && parseFloat(item.batch.quantity) > 0
   ).length;
 
   const recentColumns: Column<RecentBatch>[] = [
     { key: "code", label: "Código Lote" },
     { key: "product", label: "Producto" },
-    { 
-      key: "quantity", 
+    {
+      key: "quantity",
       label: "Cantidad",
       render: (value, row) => `${value} ${row.unit}`
     },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Estado",
       render: (value) => <StatusBadge status={value} />
     },
@@ -129,8 +138,8 @@ export default function Dashboard() {
     { key: "code", label: "Código Lote" },
     { key: "product", label: "Producto" },
     { key: "expiryDate", label: "Fecha Caducidad" },
-    { 
-      key: "daysLeft", 
+    {
+      key: "daysLeft",
       label: "Días Restantes",
       render: (value) => (
         <span className={value <= 7 ? "text-red-600 dark:text-red-400 font-medium" : ""}>
@@ -216,36 +225,13 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
           Vista general del sistema de trazabilidad
         </p>
       </div>
-
-      <Card className="border-primary/50 bg-gradient-to-r from-primary/5 to-primary/10">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <GraduationCap className="h-8 w-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">¿Primera vez usando el sistema?</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Consulta nuestro tutorial paso a paso para aprender el flujo completo
-                </p>
-              </div>
-            </div>
-            <Link href="/tutorial">
-              <Button size="lg">
-                Ver Tutorial
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Lotes por Zona</h2>

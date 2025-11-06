@@ -171,28 +171,33 @@ function AppContent() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between px-6 py-4 border-b">
-            <div className="flex items-center gap-4">
+          <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b">
+            <div className="flex items-center gap-2 md:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               {user && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
-                  <span>{user.username}</span>
-                  <span className="text-xs">({user.organizationName})</span>
+                  <span className="hidden md:inline">{user.username}</span>
+                  <span className="text-xs hidden lg:inline">({user.organizationName})</span>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <ThemeToggle />
               {user && (
-                <Button variant="ghost" size="sm" onClick={logout}>
+                <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:flex">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Cerrar Sesión
+                  <span className="hidden md:inline">Cerrar Sesión</span>
+                </Button>
+              )}
+              {user && (
+                <Button variant="ghost" size="sm" onClick={logout} className="sm:hidden">
+                  <LogOut className="h-4 w-4" />
                 </Button>
               )}
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6">
             <Router />
           </main>
         </div>

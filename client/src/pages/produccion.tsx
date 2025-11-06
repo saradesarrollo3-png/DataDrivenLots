@@ -224,7 +224,7 @@ export default function Produccion() {
     const quantity = parseFloat(b.batch.quantity);
     return quantity > 0;
   });
-  
+
   console.log("📦 Lotes PELADO filtrados (cantidad > 0):", peladoBatches.length, "de", peladoBatchesRaw.length);
   console.log("📦 Lotes PELADO RAW:", peladoBatchesRaw.map(b => ({code: b.batch.batchCode, qty: b.batch.quantity})));
 
@@ -369,8 +369,8 @@ export default function Produccion() {
   const handleBatchSelection = (batch: AvailableBatch, isChecked: boolean) => {
     if (isChecked) {
       // Para pelado, envasado y esterilizado, asignar automáticamente la cantidad completa del lote
-      const autoQuantity = (activeStage === "pelado" || activeStage === "envasado" || activeStage === "esterilizado") 
-        ? batch.availableQuantity 
+      const autoQuantity = (activeStage === "pelado" || activeStage === "envasado" || activeStage === "esterilizado")
+        ? batch.availableQuantity
         : 0;
 
       console.log("✅ Lote seleccionado:", batch.batchCode, "Cantidad auto:", autoQuantity);
@@ -390,8 +390,8 @@ export default function Produccion() {
 
   const handleQuantityChange = (batchId: string, quantity: string) => {
     const numQuantity = parseFloat(quantity) || 0;
-    setSelectedBatches(selectedBatches.map(b => 
-      b.batchId === batchId 
+    setSelectedBatches(selectedBatches.map(b =>
+      b.batchId === batchId
         ? { ...b, selectedQuantity: Math.min(numQuantity, b.maxQuantity) }
         : b
     ));
@@ -408,14 +408,14 @@ export default function Produccion() {
   // Calcular totales por tipo de envase para esterilizado
   const calculatePackageTypesSummary = () => {
     if (activeStage !== "esterilizado") return [];
-    
+
     const summary = new Map<string, { typeName: string; count: number; unit: string }>();
-    
+
     selectedBatches.forEach(selectedBatch => {
       // Extraer el tipo de envase del código de lote (formato: CODIGO-TIPO)
       const parts = selectedBatch.batchCode.split('-');
       const packageType = parts.length > 1 ? parts[parts.length - 1] : selectedBatch.batchCode;
-      
+
       if (summary.has(packageType)) {
         const existing = summary.get(packageType)!;
         existing.count += selectedBatch.selectedQuantity;
@@ -427,7 +427,7 @@ export default function Produccion() {
         });
       }
     });
-    
+
     return Array.from(summary.values());
   };
 
@@ -466,7 +466,7 @@ export default function Produccion() {
 
   const updatePackageOutputQuantity = (id: string, quantity: string) => {
     const numQuantity = parseFloat(quantity) || 0;
-    setPackageOutputs(packageOutputs.map(p => 
+    setPackageOutputs(packageOutputs.map(p =>
       p.id === id ? { ...p, quantity: numQuantity } : p
     ));
   };
@@ -501,7 +501,7 @@ export default function Produccion() {
     // Obtener la fecha y hora del formulario
     const processedDateInput = document.getElementById('processedDate') as HTMLInputElement;
     const processedTimeInput = document.getElementById('processedTime') as HTMLInputElement;
-    
+
     let processedDateTime: string | undefined = undefined;
     if (processedDateInput?.value && processedTimeInput?.value) {
       processedDateTime = `${processedDateInput.value}T${processedTimeInput.value}:00`;
@@ -754,7 +754,7 @@ export default function Produccion() {
             // Extraer el tipo de envase del código de lote
             const parts = selectedBatch.batchCode.split('-');
             const packageType = parts.length > 1 ? parts[parts.length - 1] : selectedBatch.batchCode;
-            
+
             if (packageTypesMap.has(packageType)) {
               const existing = packageTypesMap.get(packageType)!;
               existing.batches.push(selectedBatch);
@@ -929,7 +929,7 @@ export default function Produccion() {
 
       toast({
         title: "Proceso creado",
-        description: activeStage === "envasado" 
+        description: activeStage === "envasado"
           ? `Se han creado ${packageOutputs.length} lotes de envases exitosamente`
           : activeStage === "esterilizado"
           ? "Los lotes han sido esterilizados y agrupados por tipo de envase"
@@ -945,7 +945,7 @@ export default function Produccion() {
     }
   };
 
-  const mapBatchesToTable = (batches: any[]): ProductionBatch[] => 
+  const mapBatchesToTable = (batches: any[]): ProductionBatch[] =>
     batches
       .filter(b => parseFloat(b.batch.quantity) > 0) // Filtrar lotes con cantidad 0
       .map(b => {
@@ -962,7 +962,7 @@ export default function Produccion() {
         } else {
           displayDateTime = new Date(b.batch.createdAt).toLocaleDateString('es-ES');
         }
-        
+
         return {
           id: b.batch.id,
           batchCode: b.batch.batchCode,
@@ -981,20 +981,20 @@ export default function Produccion() {
   const esterilizadoTableData = mapBatchesToTable(esterilizadoBatches);
 
   const columns: Column<ProductionBatch>[] = [
-    { 
-      key: "batchCode", 
+    {
+      key: "batchCode",
       label: "Código Lote",
       render: (value) => <span className="font-mono font-medium">{value}</span>
     },
     { key: "productName", label: "Producto" },
-    { 
-      key: "quantity", 
+    {
+      key: "quantity",
       label: "Cantidad",
       render: (value, row) => `${value} ${row.unit}`
     },
     { key: "createdAt", label: "Fecha" },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Estado",
       render: (value) => <StatusBadge status={value} />
     },
@@ -1090,21 +1090,21 @@ export default function Produccion() {
   const availableBatches = getAvailableBatches();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Producción</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl md:text-3xl font-bold">Producción</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Gestión de las 4 etapas del proceso productivo
         </p>
       </div>
 
       <Tabs defaultValue="asado" className="space-y-4" onValueChange={setActiveStage}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           {stages.map((stage) => {
             const Icon = stage.icon;
             return (
-              <TabsTrigger 
-                key={stage.id} 
+              <TabsTrigger
+                key={stage.id}
                 value={stage.id}
                 data-testid={`tab-${stage.id}`}
               >
@@ -1129,7 +1129,7 @@ export default function Produccion() {
                       {stage.description}
                     </CardDescription>
                   </div>
-                  <Button 
+                  <Button
                     data-testid={`button-new-${stage.id}`}
                     onClick={() => setShowNewProcessDialog(true)}
                   >
@@ -1158,8 +1158,8 @@ export default function Produccion() {
             <DialogTitle>Detalles del Lote de Producción</DialogTitle>
           </DialogHeader>
           {viewingBatch && (
-            <ViewBatchDetails 
-              batch={viewingBatch} 
+            <ViewBatchDetails
+              batch={viewingBatch}
               allBatches={allBatches}
             />
           )}
