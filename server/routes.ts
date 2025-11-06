@@ -745,6 +745,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(events);
   });
 
+  // Admin - User Management
+  app.get("/api/admin/users", requireAuth, async (req, res) => {
+    const orgUsers = await db.select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      createdAt: users.createdAt,
+    }).from(users).where(eq(users.organizationId, req.user!.organizationId));
+    res.json(orgUsers);
+  });
+
+  app.post("/api/admin/users", requireAuth, async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+      
+      // Check if user exists
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+      if (existingUser) {
+        return res.status(400).json({ message: "El email ya está registrado" });
+      }
+
+      // Create user
+      const hashedPassword = await hashPassword(password);
+      const [newUser] = await db.insert(users).values({
+        username,
+        email,
+        password: hashedPassword,
+        organizationId: req.user!.organizationId,
+      }).returning({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        createdAt: users.createdAt,
+      });
+
+      res.json(newUser);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", requireAuth, async (req, res) => {
+    try {
+      // Prevent deleting yourself
+      if (req.params.id === req.user!.id) {
+        return res.status(400).json({ message: "No puedes eliminar tu propio usuario" });
+      }
+
+      await db.delete(users).where(eq(users.id, req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Admin - Audit PDF Generation
+  app.get("/api/admin/audit/pdf", requireAuth, async (req, res) => {
+    try {
+      const { type, startDate, endDate } = req.query;
+      
+      // For now, return a simple text response
+      // In production, you would use a PDF library like pdfkit or puppeteer
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=auditoria_${type}_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      // Simple placeholder - in production, generate actual PDF
+      const pdfContent = `Reporte de Auditoría
+Tipo: ${type}
+Fecha de generación: ${new Date().toLocaleDateString('es-ES')}
+${startDate ? `Desde: ${startDate}` : ''}
+${endDate ? `Hasta: ${endDate}` : ''}
+
+Este es un reporte de ejemplo.
+En producción, aquí se generaría un PDF completo con los datos solicitados.`;
+      
+      res.send(Buffer.from(pdfContent));
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

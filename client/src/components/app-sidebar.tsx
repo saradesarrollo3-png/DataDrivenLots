@@ -9,6 +9,8 @@ import {
   Tag,
   Settings,
   LayoutDashboard,
+  User,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,11 +74,24 @@ const trackingItems = [
   },
 ];
 
-const configItems = [
+const dataManagementItems = [
   {
     title: "Configuración",
     url: "/configuracion",
     icon: Settings,
+  },
+];
+
+const adminItems = [
+  {
+    title: "Gestión de usuarios",
+    url: "/admin/usuarios",
+    icon: User,
+  },
+  {
+    title: "Auditoría",
+    url: "/admin/auditoria",
+    icon: FileText,
   },
 ];
 
@@ -149,9 +164,28 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
+          <SidebarGroupLabel>Gestión de datos</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {configItems.map((item) => (
+              {dataManagementItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={location === item.url} data-testid={`link-${item.title.toLowerCase()}`}>
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Administración</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location === item.url} data-testid={`link-${item.title.toLowerCase()}`}>
                     <Link href={item.url}>

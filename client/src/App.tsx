@@ -24,6 +24,8 @@ import Expedicion from "@/pages/expedicion";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import GestionUsuarios from "@/pages/admin/usuarios";
+import Auditoria from "@/pages/admin/auditoria";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -140,6 +142,8 @@ function Router() {
       <Route path="/trazabilidad" component={() => <ProtectedRoute component={Trazabilidad} />} />
       <Route path="/historial" component={() => <ProtectedRoute component={Historial} />} />
       <Route path="/etiquetas" component={() => <ProtectedRoute component={Etiquetas} />} />
+      <Route path="/admin/usuarios" component={() => <ProtectedRoute component={GestionUsuarios} />} />
+      <Route path="/admin/auditoria" component={() => <ProtectedRoute component={Auditoria} />} />
       <Route component={NotFound} />
     </Switch>
   );
