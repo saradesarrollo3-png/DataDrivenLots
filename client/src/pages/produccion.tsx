@@ -338,8 +338,14 @@ export default function Produccion() {
         filteredBatches = allBatches.filter(b => b.batch.status === "ASADO" && parseFloat(b.batch.quantity) > 0);
         break;
       case "envasado":
-        filteredBatches = allBatches.filter(b => b.batch.status === "PELADO" && parseFloat(b.batch.quantity) > 0);
-        console.log("📦 Lotes disponibles para ENVASADO (PELADO con cantidad > 0):", filteredBatches.length);
+        // Filtrar lotes PELADO con cantidad mayor a 0
+        filteredBatches = allBatches.filter(b => {
+          const quantity = parseFloat(b.batch.quantity);
+          const isValid = b.batch.status === "PELADO" && quantity > 0;
+          console.log(`📦 Lote ${b.batch.batchCode}: status=${b.batch.status}, quantity=${quantity}, isValid=${isValid}`);
+          return isValid;
+        });
+        console.log("📦 Total lotes disponibles para ENVASADO (PELADO con cantidad > 0):", filteredBatches.length);
         break;
       case "esterilizado":
         filteredBatches = allBatches.filter(b => b.batch.status === "ENVASADO" && parseFloat(b.batch.quantity) > 0);
