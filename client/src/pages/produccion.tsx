@@ -486,18 +486,52 @@ export default function Produccion() {
       processedDateTime = `${processedDateInput.value}T${processedTimeInput.value}:00`;
     }
 
-    // Para pelado, cambiar el estado de los lotes de ASADO a PELADO manteniendo la cantidad
+    // Para pelado, crear registro de producción y cambiar estado
     if (activeStage === "pelado") {
       try {
+        const inputBatchCodes = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => b.batchCode)
+          .join(', ');
+
+        const inputBatchDetails = selectedBatches
+          .filter(b => b.selectedQuantity > 0)
+          .map(b => ({
+            batchId: b.batchId,
+            batchCode: b.batchCode,
+            quantity: b.selectedQuantity,
+          }));
+
+        const totalInput = calculateTotalInput();
+        const finalOutputQuantity = parseFloat(outputQuantity) || totalInput;
+        const finalUnit = unit || 'kg';
+
         for (const selectedBatch of selectedBatches) {
-          // Solo cambiar el estado del lote de ASADO a PELADO
-          await updateBatchMutation.mutateAsync({
-            id: selectedBatch.batchId,
-            data: {
-              status: 'PELADO',
+          if (selectedBatch.selectedQuantity > 0) {
+            // Cambiar el estado del lote de ASADO a PELADO
+            await updateBatchMutation.mutateAsync({
+              id: selectedBatch.batchId,
+              data: {
+                status: 'PELADO',
+                processedDate: processedDateTime,
+              },
+            });
+
+            // Crear registro de producción para trazabilidad
+            await createProductionRecordMutation.mutateAsync({
+              batchId: selectedBatch.batchId,
+              stage: 'PELADO',
+              inputBatchCode: inputBatchCodes,
+              outputBatchCode: selectedBatch.batchCode,
+              inputQuantity: selectedBatch.selectedQuantity.toString(),
+              outputQuantity: selectedBatch.selectedQuantity.toString(),
+              unit: finalUnit,
+              inputBatchDetails: JSON.stringify(inputBatchDetails),
+              notes: notes || null,
               processedDate: processedDateTime,
-            },
-          });
+              completedAt: new Date().toISOString(),
+            });
+          }
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
