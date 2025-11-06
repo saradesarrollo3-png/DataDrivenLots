@@ -211,6 +211,53 @@ export const productStock = pgTable("product_stock", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Traceability Events
+export const traceabilityEvents = pgTable("traceability_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  eventType: text("event_type").notNull(), // 'RECEPCION', 'ASADO', 'PELADO', 'ENVASADO', 'ESTERILIZADO', 'CALIDAD', 'EXPEDICION'
+  fromStage: batchStatusEnum("from_stage"),
+  toStage: batchStatusEnum("to_stage"),
+  
+  // Lotes involucrados
+  inputBatchIds: text("input_batch_ids"), // JSON array de IDs
+  inputBatchCodes: text("input_batch_codes"), // JSON array de códigos
+  outputBatchId: varchar("output_batch_id").references(() => batches.id),
+  outputBatchCode: text("output_batch_code"),
+  
+  // Cantidades
+  inputQuantities: text("input_quantities"), // JSON: [{batchId, batchCode, quantity, unit}]
+  outputQuantity: decimal("output_quantity", { precision: 10, scale: 2 }),
+  outputUnit: text("output_unit"),
+  
+  // Contexto adicional
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  supplierName: text("supplier_name"),
+  productId: varchar("product_id").references(() => products.id),
+  productName: text("product_name"),
+  packageType: text("package_type"), // Tipo de envase si aplica
+  
+  // Control de calidad
+  qualityCheckId: varchar("quality_check_id").references(() => qualityChecks.id),
+  qualityApproved: integer("quality_approved"), // 1=aprobado, -1=rechazado, 0=pendiente
+  
+  // Expedición
+  shipmentId: varchar("shipment_id").references(() => shipments.id),
+  shipmentCode: text("shipment_code"),
+  customerId: varchar("customer_id").references(() => customers.id),
+  customerName: text("customer_name"),
+  deliveryNote: text("delivery_note"),
+  
+  // Trazabilidad de temperatura y otros datos
+  temperature: decimal("temperature", { precision: 5, scale: 2 }),
+  notes: text("notes"),
+  
+  // Auditoría
+  performedBy: varchar("performed_by").references(() => users.id),
+  performedAt: timestamp("performed_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 
@@ -250,6 +297,7 @@ export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true, organizationId: true });
 export const insertProductStockSchema = createInsertSchema(productStock).omit({ id: true, updatedAt: true });
+export const insertTraceabilityEventSchema = createInsertSchema(traceabilityEvents).omit({ id: true, createdAt: true, organizationId: true });
 
 // Types
 export type Organization = typeof organizations.$inferSelect;
@@ -269,3 +317,4 @@ export type QualityCheck = typeof qualityChecks.$inferSelect;
 export type Shipment = typeof shipments.$inferSelect;
 export type BatchHistory = typeof batchHistory.$inferSelect;
 export type ProductStock = typeof productStock.$inferSelect;
+export type TraceabilityEvent = typeof traceabilityEvents.$inferSelect;

@@ -6,7 +6,7 @@ import {
   insertCustomerSchema, insertPackageTypeSchema, insertBatchSchema,
   insertProductionRecordSchema, insertQualityCheckSchema, insertShipmentSchema,
   insertBatchHistorySchema, registerSchema, loginSchema, organizations, users,
-  insertQualityChecklistTemplateSchema
+  insertQualityChecklistTemplateSchema, insertTraceabilityEventSchema
 } from "@shared/schema";
 import { requireAuth, hashPassword, comparePassword, createSession, deleteSession } from "./auth";
 import { db } from "./db";
@@ -264,6 +264,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       organizationId: req.user!.organizationId
     });
 
+    // Get additional details for traceability event
+    const supplier = batch.supplierId ? await storage.getSupplierById(batch.supplierId, req.user!.organizationId) : null;
+    const product = batch.productId ? await storage.getProductById(batch.productId, req.user!.organizationId) : null;
+
+    // Registrar evento de trazabilidad para RECEPCION
+    await storage.insertTraceabilityEvent({
+      organizationId: req.user!.organizationId,
+      eventType: 'RECEPCION',
+      toStage: 'RECEPCION',
+      outputBatchId: batch.id,
+      outputBatchCode: batch.batchCode,
+      outputQuantity: batch.quantity,
+      outputUnit: batch.unit,
+      supplierId: batch.supplierId,
+      supplierName: supplier?.name || null,
+      productId: batch.productId,
+      productName: product?.name || null,
+      temperature: batch.temperature,
+      deliveryNote: batch.deliveryNote,
+      notes: `Recepción de materia prima. Matrícula: ${batch.truckPlate || '-'}`,
+      performedBy: req.user!.id,
+      performedAt: batch.arrivedAt || new Date(),
+    });
+
     // Update product stock
     if (batch.productId && batch.quantity && batch.unit) {
       const quantityValue = typeof batch.quantity === 'string' 
@@ -440,6 +464,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: historyNotes,
         organizationId: req.user!.organizationId,
       });
+
+      // Registrar evento de trazabilidad
+      const batch = await storage.getBatchById(data.batchId, req.user!.organizationId);
+      const product = batch?.batch.productId ? await storage.getProductById(batch.batch.productId, req.user!.organizationId) : null;
+
+      // Parsear input details para obtener IDs y códigos
+      let inputBatchIds: string[] = [];
+      let inputBatchCodes: string[] = [];
+      let inputQuantitiesData: any[] = [];
+      
+      if (data.inputBatchDetails) {
+        try {
+          const inputDetails = JSON.parse(data.inputBatchDetails);
+          inputBatchIds = inputDetails.map((d: any) => d.batchId);
+          inputBatchCodes = inputDetails.map((d: any) => d.batchCode);
+          inputQuantitiesData = inputDetails.map((d: any) => ({
+            batchId: d.batchId,
+            batchCode: d.batchCode,
+            quantity: d.quantity,
+            unit: batch?.batch.unit || data.unit
+          }));
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails:', e);
+        }
+      } else if (data.inputBatchCode) {
+        inputBatchCodes = data.inputBatchCode.split(',').map((c: string) => c.trim());
+      }
+
+      await storage.insertTraceabilityEvent({
+        organizationId: req.user!.organizationId,
+        eventType: data.stage,
+        fromStage: 'RECEPCION',
+        toStage: toStatus as any,
+        inputBatchIds: inputBatchIds.length > 0 ? JSON.stringify(inputBatchIds) : null,
+        inputBatchCodes: inputBatchCodes.length > 0 ? JSON.stringify(inputBatchCodes) : null,
+        outputBatchId: data.batchId,
+        outputBatchCode: data.outputBatchCode,
+        inputQuantities: inputQuantitiesData.length > 0 ? JSON.stringify(inputQuantitiesData) : null,
+        outputQuantity: data.outputQuantity,
+        outputUnit: data.unit,
+        productId: batch?.batch.productId,
+        productName: product?.name || null,
+        packageType: data.outputBatchCode.includes('-') ? data.outputBatchCode.split('-').pop() : null,
+        notes: data.notes || historyNotes,
+        performedBy: req.user!.id,
+        performedAt: recordData.processedDate || recordData.completedAt,
+      });
       
       res.json(record);
     } catch (error: any) {
@@ -514,6 +585,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       organizationId: req.user!.organizationId,
     });
 
+    // Registrar evento de trazabilidad para CALIDAD
+    const batch = await storage.getBatchById(data.batchId, req.user!.organizationId);
+    const product = batch?.batch.productId ? await storage.getProductById(batch.batch.productId, req.user!.organizationId) : null;
+
+    await storage.insertTraceabilityEvent({
+      organizationId: req.user!.organizationId,
+      eventType: 'CALIDAD',
+      fromStage: 'ESTERILIZADO',
+      toStage: newStatus as any,
+      outputBatchId: data.batchId,
+      outputBatchCode: batch?.batch.batchCode,
+      outputQuantity: batch?.batch.quantity,
+      outputUnit: batch?.batch.unit,
+      productId: batch?.batch.productId,
+      productName: product?.name || null,
+      qualityCheckId: check.id,
+      qualityApproved: data.approved,
+      notes: data.notes || (data.approved === 1 ? 'Lote aprobado' : data.approved === -1 ? 'Lote rechazado' : 'Lote en revisión'),
+      performedBy: req.user!.id,
+      performedAt: new Date(),
+    });
+
     res.json(check);
   });
 
@@ -570,6 +663,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: `Expedición parcial: ${shippedQuantity} ${data.unit}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
           organizationId: req.user!.organizationId,
         });
+
+        // Registrar evento de trazabilidad para EXPEDICION
+        const customer = await storage.getCustomerById(data.customerId, req.user!.organizationId);
+        const product = batchData.batch.productId ? await storage.getProductById(batchData.batch.productId, req.user!.organizationId) : null;
+
+        await storage.insertTraceabilityEvent({
+          organizationId: req.user!.organizationId,
+          eventType: 'EXPEDICION',
+          fromStage: 'APROBADO',
+          toStage: 'EXPEDIDO',
+          outputBatchId: data.batchId,
+          outputBatchCode: batchData.batch.batchCode,
+          outputQuantity: data.quantity,
+          outputUnit: data.unit,
+          productId: batchData.batch.productId,
+          productName: product?.name || null,
+          shipmentId: shipment.id,
+          shipmentCode: data.shipmentCode,
+          customerId: data.customerId,
+          customerName: customer?.name || null,
+          deliveryNote: data.deliveryNote,
+          notes: `Expedición de ${shippedQuantity} ${data.unit}. Matrícula: ${data.truckPlate || '-'}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
+          performedBy: req.user!.id,
+          performedAt: new Date(),
+        });
       }
 
       res.json(shipment);
@@ -599,6 +717,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/batch-history/:batchId", requireAuth, async (req, res) => {
     const history = await storage.getBatchHistory(req.params.batchId, req.user!.organizationId);
     res.json(history);
+  });
+
+  // Traceability Events
+  app.get("/api/traceability-events", requireAuth, async (req, res) => {
+    const events = await storage.getTraceabilityEvents(req.user!.organizationId);
+    res.json(events);
+  });
+
+  app.get("/api/traceability-events/batch/:batchCode", requireAuth, async (req, res) => {
+    const events = await storage.getTraceabilityEventsByBatch(req.params.batchCode, req.user!.organizationId);
+    res.json(events);
+  });
+
+  app.get("/api/traceability-events/shipment/:shipmentId", requireAuth, async (req, res) => {
+    const events = await storage.getTraceabilityEventsByShipment(req.params.shipmentId, req.user!.organizationId);
+    res.json(events);
   });
 
   const httpServer = createServer(app);

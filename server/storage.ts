@@ -2,7 +2,7 @@ import { db } from "./db";
 import {
   suppliers, products, locations, customers, packageTypes, batches,
   productionRecords, qualityChecks, shipments, batchHistory, productStock,
-  qualityChecklistTemplates,
+  qualityChecklistTemplates, traceabilityEvents, // Import the new table
   type Supplier, type Product, type Location, type Customer, type PackageType,
   type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory, type ProductStock,
   type QualityChecklistTemplate
@@ -341,6 +341,36 @@ export const storage = {
     return history;
   },
 
+  // Traceability Events
+  async getTraceabilityEvents(organizationId: string) {
+    return db.select()
+      .from(traceabilityEvents)
+      .where(eq(traceabilityEvents.organizationId, organizationId))
+      .orderBy(desc(traceabilityEvents.performedAt));
+  },
+  async getTraceabilityEventsByBatch(batchCode: string, organizationId: string) {
+    return db.select()
+      .from(traceabilityEvents)
+      .where(
+        eq(traceabilityEvents.organizationId, organizationId),
+        sql`${traceabilityEvents.outputBatchCode} = ${batchCode} OR ${traceabilityEvents.inputBatchCodes}::text LIKE '%${batchCode}%'`
+      )
+      .orderBy(traceabilityEvents.performedAt);
+  },
+  async getTraceabilityEventsByShipment(shipmentId: string, organizationId: string) {
+    return db.select()
+      .from(traceabilityEvents)
+      .where(
+        eq(traceabilityEvents.organizationId, organizationId),
+        eq(traceabilityEvents.shipmentId, shipmentId)
+      )
+      .orderBy(desc(traceabilityEvents.performedAt));
+  },
+  async insertTraceabilityEvent(data: typeof traceabilityEvents.$inferInsert) {
+    const [event] = await db.insert(traceabilityEvents).values(data).returning();
+    return event;
+  },
+
   // Product Stock
   async getProductStock(organizationId: string) {
     // Calcular stock desde lotes en RECEPCION únicamente
@@ -373,7 +403,7 @@ export const storage = {
       }
     }));
   },
-  
+
   async updateProductStock(organizationId: string, productId: string, unit: string, quantityChange: number) {
     // Buscar stock existente
     const [existingStock] = await db.select()
