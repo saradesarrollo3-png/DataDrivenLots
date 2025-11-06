@@ -946,15 +946,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'stock':
-          // Obtener todos los movimientos de stock (recepciones, producciones, expediciones)
+          // Obtener recepciones y registros de producción de asado
           const stockBatches = await storage.getBatches(req.user!.organizationId);
           const stockProductionRecords = await storage.getProductionRecords(req.user!.organizationId);
-          const stockShipments = await storage.getShipments(req.user!.organizationId);
           
           // Agrupar movimientos por producto
           const productMovements = new Map();
           
-          // Recepciones (entradas)
+          // 1. Recepciones (entradas de materia prima)
           stockBatches.forEach((item) => {
             if (item.batch.status === 'RECEPCION' && item.product?.name) {
               const productName = item.product.name;
@@ -972,38 +971,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
           
-          // Producción (consumos)
+          // 2. Consumos en ASADO únicamente
           stockProductionRecords.forEach((item) => {
-            if (item.product?.name) {
+            if (item.record.stage === 'ASADO' && item.product?.name) {
               const productName = item.product.name;
               if (!productMovements.has(productName)) {
                 productMovements.set(productName, []);
               }
               productMovements.get(productName).push({
-                type: `Producción (${item.record.stage})`,
+                type: 'Consumo en Asado',
                 date: new Date(item.record.completedAt || item.record.createdAt),
                 batchCode: item.batch?.batchCode || '-',
                 quantity: -parseFloat(item.record.inputQuantity || '0'),
                 unit: item.record.unit,
-                notes: `Entrada: ${item.record.inputQuantity} → Salida: ${item.record.outputQuantity}`,
-              });
-            }
-          });
-          
-          // Expediciones (salidas)
-          stockShipments.forEach((item) => {
-            if (item.product?.name) {
-              const productName = item.product.name;
-              if (!productMovements.has(productName)) {
-                productMovements.set(productName, []);
-              }
-              productMovements.get(productName).push({
-                type: 'Expedición',
-                date: new Date(item.shipment.shippedAt || item.shipment.createdAt),
-                batchCode: item.batch?.batchCode || '-',
-                quantity: -parseFloat(item.shipment.quantity || '0'),
-                unit: item.shipment.unit,
-                customer: item.customer?.name || '-',
+                notes: `Entrada: ${item.record.inputQuantity} kg → Salida: ${item.record.outputQuantity} kg`,
               });
             }
           });
@@ -1035,8 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               doc.fillColor('#000000').text(`      Lote: ${mov.batchCode}`);
               
               if (mov.supplier) doc.text(`      Proveedor: ${mov.supplier}`);
-              if (mov.customer) doc.text(`      Cliente: ${mov.customer}`);
-              if (mov.notes) doc.text(`      Notas: ${mov.notes}`);
+              if (mov.notes) doc.text(`      ${mov.notes}`);
               
               doc.moveDown(0.2);
             });
