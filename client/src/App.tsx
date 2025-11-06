@@ -39,7 +39,6 @@ export const useAuth = () => useContext(AuthContext);
 
 function AuthProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const sessionId = localStorage.getItem("sessionId");
 
   console.log("AuthProvider - sessionId:", sessionId);
@@ -82,6 +81,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('sessionId');
     localStorage.removeItem('user');
     queryClient.clear();
+    // Use toast imperatively to avoid re-renders
+    const { toast } = await import("@/hooks/use-toast");
     toast({
       title: "Sesión cerrada",
       description: "Has cerrado sesión correctamente",
