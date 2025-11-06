@@ -471,6 +471,74 @@ export default function Trazabilidad() {
                   items: receptionItems
                 });
               }
+            } else {
+              // Si no hay detalles de recepción desde production records, intentar extraer de batch history
+              const asadoBatchHistory = batchHistory.filter((bh: any) => 
+                bh.history.batchId === asadoRecord.record.batchId && 
+                bh.history.toStatus === 'ASADO' &&
+                bh.history.notes?.includes('Materias primas:')
+              );
+
+              if (asadoBatchHistory.length > 0) {
+                const receptionItems: any[] = [];
+                const historyNotes = asadoBatchHistory[0].history.notes;
+                
+                // Extraer información de las notas: "Materias primas: LOTE1: 100 kg, LOTE2: 50 kg"
+                const materiaPrimaMatch = historyNotes.match(/Materias primas: ([^|]+)/);
+                if (materiaPrimaMatch) {
+                  const materiaPrimaStr = materiaPrimaMatch[1].trim();
+                  const lotes = materiaPrimaStr.split(',').map((l: string) => l.trim());
+                  
+                  lotes.forEach((loteInfo: string) => {
+                    const parts = loteInfo.split(':');
+                    if (parts.length === 2) {
+                      const batchCode = parts[0].trim();
+                      const quantity = parts[1].trim();
+                      const rawBatch = allBatches.find((b: any) => b.batch.batchCode === batchCode);
+                      
+                      if (rawBatch) {
+                        const arrivedAt = new Date(rawBatch.batch.arrivedAt);
+                        receptionItems.push({
+                          title: rawBatch.product?.name || '-',
+                          details: [
+                            { label: 'Lote', value: rawBatch.batch.batchCode },
+                            { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
+                            { label: 'Cantidad Utilizada', value: quantity },
+                            { label: 'Cantidad Recepcionada', value: `${rawBatch.batch.initialQuantity} ${rawBatch.batch.unit}` },
+                            { label: 'Fecha Recepción', value: arrivedAt.toLocaleString('es-ES', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) },
+                            { label: 'Temperatura', value: rawBatch.batch.temperature ? `${parseFloat(rawBatch.batch.temperature).toFixed(1)}°C` : '-' },
+                            { label: 'Albarán', value: rawBatch.batch.deliveryNote || '-' },
+                          ]
+                        });
+                      }
+                    }
+                  });
+                }
+
+                if (receptionItems.length > 0) {
+                  steps.push({
+                    id: 'reception',
+                    stage: 'Recepción de Materia Prima',
+                    icon: Package,
+                    color: 'text-blue-600',
+                    timestamp: new Date(asadoBatchHistory[0].history.createdAt).toLocaleString('es-ES', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }),
+                    status: 'RECEPCION',
+                    items: receptionItems
+                  });
+                }
+              }
             }
           }
         }

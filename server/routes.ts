@@ -417,12 +417,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const toStatus = stageStatusMap[data.stage] || 'EN_PROCESO';
       
+      // Preparar notas con detalles de materias primas si es ASADO
+      let historyNotes = `Procesado en etapa: ${data.stage}`;
+      
+      if (data.stage === 'ASADO' && data.inputBatchDetails) {
+        try {
+          const inputDetails = JSON.parse(data.inputBatchDetails);
+          const materiaPrimaInfo = inputDetails.map((detail: any) => 
+            `${detail.batchCode}: ${detail.quantity} kg`
+          ).join(', ');
+          historyNotes += ` | Materias primas: ${materiaPrimaInfo} | Total entrada: ${data.inputQuantity} kg → Salida: ${data.outputQuantity} kg`;
+        } catch (e) {
+          console.error('Error parsing inputBatchDetails for history:', e);
+        }
+      }
+      
       await storage.insertBatchHistory({
         batchId: data.batchId,
         action: 'processed',
         fromStatus: 'RECEPCION',
         toStatus: toStatus as any,
-        notes: `Procesado en etapa: ${data.stage}`,
+        notes: historyNotes,
         organizationId: req.user!.organizationId,
       });
       
