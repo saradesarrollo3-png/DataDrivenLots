@@ -170,10 +170,21 @@ export default function Expedicion() {
     : approvedBatches;
 
   const handleSubmit = () => {
-    if (!selectedCustomer || !shipmentCode || !deliveryNote || shipmentLines.length === 0) {
+    if (!selectedCustomer || !shipmentCode || shipmentLines.length === 0) {
       toast({
         title: "Error",
-        description: "Debes completar todos los campos y añadir al menos un producto",
+        description: "Debes completar el código de albarán, cliente y añadir al menos un producto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar que todas las líneas tengan cantidad mayor a 0
+    const invalidLines = shipmentLines.filter(line => line.quantity <= 0);
+    if (invalidLines.length > 0) {
+      toast({
+        title: "Error",
+        description: "Todas las líneas deben tener una cantidad mayor a 0",
         variant: "destructive",
       });
       return;
@@ -359,20 +370,20 @@ export default function Expedicion() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="truckPlate">Matrícula Camión *</Label>
+                  <Label htmlFor="truckPlate">Matrícula Camión</Label>
                   <Input
                     id="truckPlate"
-                    placeholder="ABC-1234"
+                    placeholder="ABC-1234 (opcional)"
                     value={truckPlate}
                     onChange={(e) => setTruckPlate(e.target.value)}
                     data-testid="input-truck-plate"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="deliveryNote">Nº Albarán *</Label>
+                  <Label htmlFor="deliveryNote">Nº Albarán</Label>
                   <Input
                     id="deliveryNote"
-                    placeholder="ALB-2025-001"
+                    placeholder="ALB-2025-001 (opcional)"
                     value={deliveryNote}
                     onChange={(e) => setDeliveryNote(e.target.value)}
                     data-testid="input-delivery-note"

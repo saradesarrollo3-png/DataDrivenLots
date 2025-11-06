@@ -513,18 +513,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = insertShipmentSchema.omit({ organizationId: true }).parse(bodyData);
     const shipment = await storage.insertShipment({ ...data, organizationId: req.user!.organizationId });
 
-    // Update batch status to EXPEDIDO
+    // Get batch data
     const batchData = await storage.getBatchById(data.batchId, req.user!.organizationId);
-    await storage.updateBatch(data.batchId, { status: 'EXPEDIDO' });
+    
+    if (batchData) {
+      const currentQuantity = parseFloat(batchData.batch.quantity);
+      const shippedQuantity = parseFloat(data.quantity);
+      const remainingQuantity = currentQuantity - shippedQuantity;
 
-    // Reduce product stock
-    if (batchData?.batch.productId && data.quantity && data.unit) {
-      await storage.updateProductStock(
-        req.user!.organizationId,
-        batchData.batch.productId,
-        data.unit,
-        -parseFloat(data.quantity)
-      );
+      // Update batch quantity - reduce by shipped amount
+      if (remainingQuantity > 0) {
+        // Partial shipment - keep batch in APROBADO status with reduced quantity
+        await storage.updateBatch(data.batchId, { 
+          quantity: remainingQuantity.toFixed(2)
+        });
+      } else {
+        // Full shipment - mark as EXPEDIDO
+        await storage.updateBatch(data.batchId, { 
+          quantity: "0",
+          status: 'EXPEDIDO' 
+        });
+      }
+
+      // Reduce product stock
+      if (batchData.batch.productId && data.quantity && data.unit) {
+        await storage.updateProductStock(
+          req.user!.organizationId,
+          batchData.batch.productId,
+          data.unit,
+          -shippedQuantity
+        );
+      }
+
+      // Create history entry
+      await storage.insertBatchHistory({
+        batchId: data.batchId,
+        action: 'shipped',
+        fromStatus: batchData.batch.status,
+        toStatus: remainingQuantity > 0 ? batchData.batch.status : 'EXPEDIDO',
+        notes: `Expedición parcial: ${shippedQuantity} ${data.unit}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
+        organizationId: req.user!.organizationId,
+      });
     }
 
     res.json(shipment);
