@@ -46,18 +46,42 @@ export default function Trazabilidad() {
     
     const steps: TraceabilityStep[] = [];
 
-    // Obtener todos los eventos relacionados con esta expedición
-    const shipmentEvents = traceabilityEvents.filter((e: any) => e.shipmentId === shipmentId);
-    console.log("🔍 Eventos relacionados con shipmentId:", shipmentEvents.length);
+    // Primero buscar el evento de expedición para obtener el código del lote expedido
+    const expedicionEvent = traceabilityEvents.find((e: any) => 
+      e.eventType === 'EXPEDICION' && e.shipmentId === shipmentId
+    );
+    
+    console.log("📦 Evento EXPEDICION encontrado:", !!expedicionEvent, expedicionEvent?.outputBatchCode);
+
+    if (!expedicionEvent) {
+      console.warn("⚠️ No se encontró evento de EXPEDICION para shipmentId:", shipmentId);
+      console.log("📋 Eventos EXPEDICION disponibles:", traceabilityEvents
+        .filter((e: any) => e.eventType === 'EXPEDICION')
+        .map((e: any) => ({
+          id: e.id,
+          shipmentId: e.shipmentId,
+          outputBatchCode: e.outputBatchCode
+        })));
+      return [];
+    }
+
+    // Obtener el código del lote expedido
+    const batchCode = expedicionEvent.outputBatchCode;
+    console.log("🔍 Rastreando trazabilidad para lote:", batchCode);
+
+    // Obtener todos los eventos relacionados con este lote
+    const shipmentEvents = traceabilityEvents.filter((e: any) => {
+      // Incluir eventos donde el lote está en output o en input
+      const isOutputBatch = e.outputBatchCode === batchCode;
+      const isInputBatch = e.inputBatchCodes && 
+        JSON.parse(e.inputBatchCodes || '[]').includes(batchCode);
+      return isOutputBatch || isInputBatch || e.shipmentId === shipmentId;
+    });
+    
+    console.log("🔍 Eventos relacionados encontrados:", shipmentEvents.length);
 
     if (shipmentEvents.length === 0) {
-      console.warn("⚠️ No se encontraron eventos de trazabilidad para shipmentId:", shipmentId);
-      console.log("📋 Todos los eventos disponibles:", traceabilityEvents.map((e: any) => ({
-        id: e.id,
-        eventType: e.eventType,
-        shipmentId: e.shipmentId,
-        outputBatchCode: e.outputBatchCode
-      })));
+      console.warn("⚠️ No se encontraron eventos de trazabilidad para lote:", batchCode);
       return [];
     }
 
@@ -69,10 +93,9 @@ export default function Trazabilidad() {
       performedAt: e.performedAt
     })));
 
-    // 1. Evento de EXPEDICION
-    const expedicionEvent = shipmentEvents.find((e: any) => e.eventType === 'EXPEDICION');
-    console.log("📦 Evento EXPEDICION encontrado:", !!expedicionEvent, expedicionEvent?.outputBatchCode);
+    // 1. Evento de EXPEDICION (ya lo tenemos de antes)
     if (expedicionEvent) {
+      console.log("✅ Construyendo paso de EXPEDICION");
       steps.push({
         id: 'shipment',
         stage: 'Expedición',
@@ -99,9 +122,7 @@ export default function Trazabilidad() {
         }]
       });
 
-      // Obtener el código del lote expedido para rastrear hacia atrás
-      const batchCode = expedicionEvent.outputBatchCode;
-      console.log("🔍 Buscando trazabilidad para lote:", batchCode);
+      console.log("🔍 Buscando historial previo para lote:", batchCode);
 
       // 2. Buscar evento de CALIDAD para este lote
       const calidadEvent = traceabilityEvents.find((e: any) =>
