@@ -947,15 +947,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
         case 'stock':
           // Obtener todos los movimientos de stock (recepciones, producciones, expediciones)
-          const batches = await storage.getBatches(req.user!.organizationId);
-          const productionRecords = await storage.getProductionRecords(req.user!.organizationId);
-          const shipments = await storage.getShipments(req.user!.organizationId);
+          const stockBatches = await storage.getBatches(req.user!.organizationId);
+          const stockProductionRecords = await storage.getProductionRecords(req.user!.organizationId);
+          const stockShipments = await storage.getShipments(req.user!.organizationId);
           
           // Agrupar movimientos por producto
           const productMovements = new Map();
           
           // Recepciones (entradas)
-          batches.forEach((item) => {
+          stockBatches.forEach((item) => {
             if (item.batch.status === 'RECEPCION' && item.product?.name) {
               const productName = item.product.name;
               if (!productMovements.has(productName)) {
@@ -973,7 +973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Producción (consumos)
-          productionRecords.forEach((item) => {
+          stockProductionRecords.forEach((item) => {
             if (item.product?.name) {
               const productName = item.product.name;
               if (!productMovements.has(productName)) {
@@ -991,7 +991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Expediciones (salidas)
-          shipments.forEach((item) => {
+          stockShipments.forEach((item) => {
             if (item.product?.name) {
               const productName = item.product.name;
               if (!productMovements.has(productName)) {
