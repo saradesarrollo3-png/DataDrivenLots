@@ -504,7 +504,7 @@ export default function Produccion() {
 
         const totalInput = calculateTotalInput();
         const finalOutputQuantity = parseFloat(outputQuantity) || totalInput;
-        const finalUnit = unit || 'kg';
+        const finalUnit = selectedBatches[0]?.unit || 'kg';
 
         for (const selectedBatch of selectedBatches) {
           if (selectedBatch.selectedQuantity > 0) {
