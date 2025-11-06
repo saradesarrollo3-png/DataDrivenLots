@@ -3,8 +3,10 @@ import { KPICard } from "@/components/kpi-card";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, TrendingUp, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, TrendingUp, AlertTriangle, CheckCircle, Clock, GraduationCap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 interface RecentBatch {
   id: string;
@@ -109,6 +111,29 @@ export default function Dashboard() {
           Vista general del sistema de trazabilidad
         </p>
       </div>
+
+      <Card className="border-primary/50 bg-gradient-to-r from-primary/5 to-primary/10">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-primary/10 p-3 rounded-lg">
+                <GraduationCap className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">¿Primera vez usando el sistema?</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Consulta nuestro tutorial paso a paso para aprender el flujo completo
+                </p>
+              </div>
+            </div>
+            <Link href="/tutorial">
+              <Button size="lg">
+                Ver Tutorial
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard

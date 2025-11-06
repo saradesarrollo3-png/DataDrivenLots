@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   User,
   FileText,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,11 @@ const menuItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Tutorial",
+    url: "/tutorial",
+    icon: GraduationCap,
   },
 ];
 

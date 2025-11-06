@@ -1,4 +1,3 @@
-
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -26,6 +25,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import GestionUsuarios from "@/pages/admin/usuarios";
 import Auditoria from "@/pages/admin/auditoria";
+import Tutorial from "@/pages/tutorial";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthContextType {
@@ -144,6 +144,7 @@ function Router() {
       <Route path="/etiquetas" component={() => <ProtectedRoute component={Etiquetas} />} />
       <Route path="/admin/usuarios" component={() => <ProtectedRoute component={GestionUsuarios} />} />
       <Route path="/admin/auditoria" component={() => <ProtectedRoute component={Auditoria} />} />
+      <Route path="/tutorial" component={() => <ProtectedRoute component={Tutorial} />} />
       <Route component={NotFound} />
     </Switch>
   );
