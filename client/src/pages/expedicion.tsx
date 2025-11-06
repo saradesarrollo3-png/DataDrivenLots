@@ -165,7 +165,7 @@ export default function Expedicion() {
   );
 
   // Filtrar lotes por producto seleccionado
-  const filteredBatches = selectedProduct
+  const filteredBatches = selectedProduct && selectedProduct !== "ALL_PRODUCTS"
     ? approvedBatches.filter(b => b.productId === selectedProduct)
     : approvedBatches;
 
@@ -395,7 +395,7 @@ export default function Expedicion() {
                     <SelectValue placeholder="Todos los productos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los productos</SelectItem>
+                    <SelectItem value="ALL_PRODUCTS">Todos los productos</SelectItem>
                     {availableProducts.map((product: any) => (
                       <SelectItem key={product.id} value={product.id}>
                         {product.name}

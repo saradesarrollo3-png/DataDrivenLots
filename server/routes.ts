@@ -477,9 +477,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       checkedBy: req.user!.id,
     });
 
-    // Update batch status based on approval
+    // Update batch status and expiry date based on approval
     const newStatus = data.approved === 1 ? 'APROBADO' : data.approved === -1 ? 'BLOQUEADO' : 'RETENIDO';
-    await storage.updateBatch(data.batchId, { status: newStatus });
+    const updateData: any = { status: newStatus };
+    
+    // If approved, save the expiry date from the request body
+    if (data.approved === 1 && req.body.expiryDate) {
+      updateData.expiryDate = new Date(req.body.expiryDate);
+    }
+    
+    await storage.updateBatch(data.batchId, updateData);
 
     // Create history entry
     await storage.insertBatchHistory({

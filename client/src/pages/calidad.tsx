@@ -73,6 +73,7 @@ export default function Calidad() {
   const [selectedBatch, setSelectedBatch] = useState<QualityBatch | null>(null);
   const [notes, setNotes] = useState("");
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [expiryDate, setExpiryDate] = useState("");
   const [showConfig, setShowConfig] = useState(false);
   const [newChecklistLabel, setNewChecklistLabel] = useState("");
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
@@ -209,7 +210,7 @@ export default function Calidad() {
 
   // Mutación para crear quality check
   const createQualityCheckMutation = useMutation({
-    mutationFn: async (data: { batchId: string; approved: number; notes: string; checklistData: string }) => {
+    mutationFn: async (data: { batchId: string; approved: number; notes: string; checklistData: string; expiryDate?: string }) => {
       const response = await fetch('/api/quality-checks', {
         method: 'POST',
         headers: {
@@ -237,17 +238,27 @@ export default function Calidad() {
   const handleApprove = async () => {
     if (!selectedBatch) return;
 
+    if (!expiryDate) {
+      toast({
+        title: "Fecha de caducidad requerida",
+        description: "Debes indicar la fecha de caducidad del lote para aprobarlo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await createQualityCheckMutation.mutateAsync({
         batchId: selectedBatch.id,
         approved: 1,
         notes: notes,
         checklistData: JSON.stringify(checklist),
+        expiryDate: expiryDate,
       });
 
       toast({
         title: "Lote Aprobado",
-        description: `El lote ${selectedBatch.code} ha sido aprobado para venta.`,
+        description: `El lote ${selectedBatch.code} ha sido aprobado para venta con caducidad ${new Date(expiryDate).toLocaleDateString('es-ES')}.`,
       });
 
       resetDialog();
@@ -300,6 +311,7 @@ export default function Calidad() {
     setSelectedBatch(null);
     setNotes("");
     setChecklist([]);
+    setExpiryDate("");
   };
 
   const handleChecklistChange = (id: string, checked: boolean) => {
@@ -311,6 +323,7 @@ export default function Calidad() {
   const handleOpenDialog = (batch: QualityBatch) => {
     setSelectedBatch(batch);
     setNotes("");
+    setExpiryDate(batch.expiryDate && batch.expiryDate !== '-' ? new Date(batch.expiryDate).toISOString().split('T')[0] : "");
     // Cargar checklist desde templates
     const initialChecklist = checklistTemplates
       .filter(t => t.isActive === 1)
@@ -580,6 +593,18 @@ export default function Calidad() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="expiryDate">Fecha de Caducidad *</Label>
+                <Input
+                  id="expiryDate"
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  data-testid="input-expiry-date"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
