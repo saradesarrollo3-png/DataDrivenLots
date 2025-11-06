@@ -286,9 +286,12 @@ export default function Trazabilidad() {
 
       // 5. PELADO - buscar el lote que alimentó el envasado
       const inputBatchCodeEnvasado = firstEnvasado.record.inputBatchCode;
-      const peladoRecord = productionRecords.find((pr: any) =>
+      let peladoRecord = productionRecords.find((pr: any) =>
         pr.record.stage === 'PELADO' && pr.record.outputBatchCode === inputBatchCodeEnvasado
       );
+
+      // Variable para rastrear el siguiente inputBatchCode
+      let nextInputBatchCode = inputBatchCodeEnvasado;
 
       if (peladoRecord) {
         const peladoItems: any[] = [];
@@ -347,125 +350,135 @@ export default function Trazabilidad() {
           items: peladoItems
         });
 
-        // 6. ASADO - buscar el lote que alimentó el pelado
-        const inputBatchCodePelado = peladoRecord.record.inputBatchCode;
-        const asadoRecord = productionRecords.find((pr: any) =>
-          pr.record.stage === 'ASADO' && pr.record.outputBatchCode === inputBatchCodePelado
-        );
+        nextInputBatchCode = peladoRecord.record.inputBatchCode;
+      }
 
-        if (asadoRecord) {
-          const asadoItems: any[] = [];
+      // 6. ASADO - buscar el lote que alimentó el pelado (o envasado si no hay pelado)
+      let asadoRecord = productionRecords.find((pr: any) =>
+        pr.record.stage === 'ASADO' && pr.record.outputBatchCode === nextInputBatchCode
+      );
 
-          asadoItems.push({
-            title: 'Producción',
-            details: [
-              { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
-              { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
-              { label: 'Notas', value: asadoRecord.record.notes || '-' },
-            ]
-          });
+      // Si no encontramos con el código exacto, buscar por coincidencia parcial
+      if (!asadoRecord) {
+        asadoRecord = productionRecords.find((pr: any) => {
+          if (pr.record.stage !== 'ASADO') return false;
+          // Verificar si el inputBatchCode del envasado/pelado comienza con el outputBatchCode del asado
+          return nextInputBatchCode.startsWith(pr.record.outputBatchCode);
+        });
+      }
 
-          // Materias primas utilizadas en el asado
-          if (asadoRecord.record.inputBatchDetails) {
-            try {
-              const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
-              inputBatchDetails.forEach((detail: any) => {
-                const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-                if (inputBatch) {
-                  asadoItems.push({
-                    title: inputBatch.product?.name || detail.batchCode,
-                    details: [
-                      { label: 'Lote', value: detail.batchCode },
-                      { label: 'Proveedor', value: inputBatch.supplier?.name || '-' },
-                      { label: 'Cantidad Disponible', value: `${inputBatch.batch.quantity} ${inputBatch.batch.unit}` },
-                      { label: 'Cantidad Consumida', value: `${detail.quantity} ${inputBatch.batch.unit}` },
-                    ]
-                  });
-                }
-              });
-            } catch (e) {
-              console.error('Error parsing inputBatchDetails:', e);
-            }
+      if (asadoRecord) {
+        const asadoItems: any[] = [];
+
+        asadoItems.push({
+          title: 'Producción',
+          details: [
+            { label: 'Lote Salida', value: asadoRecord.record.outputBatchCode },
+            { label: 'Cantidad Salida', value: `${asadoRecord.record.outputQuantity} ${asadoRecord.record.unit}` },
+            { label: 'Notas', value: asadoRecord.record.notes || '-' },
+          ]
+        });
+
+        // Materias primas utilizadas en el asado
+        let inputBatchDetailsForReception: any[] = [];
+        if (asadoRecord.record.inputBatchDetails) {
+          try {
+            const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
+            inputBatchDetailsForReception = inputBatchDetails;
+            
+            inputBatchDetails.forEach((detail: any) => {
+              const inputBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+              if (inputBatch) {
+                asadoItems.push({
+                  title: inputBatch.product?.name || detail.batchCode,
+                  details: [
+                    { label: 'Lote', value: detail.batchCode },
+                    { label: 'Proveedor', value: inputBatch.supplier?.name || '-' },
+                    { label: 'Cantidad Disponible', value: `${inputBatch.batch.quantity} ${inputBatch.batch.unit}` },
+                    { label: 'Cantidad Consumida', value: `${detail.quantity} ${inputBatch.batch.unit}` },
+                  ]
+                });
+              }
+            });
+          } catch (e) {
+            console.error('Error parsing inputBatchDetails:', e);
           }
+        }
 
-          steps.push({
-            id: 'asado',
-            stage: 'Asado',
-            icon: Flame,
-            color: 'text-orange-600',
-            timestamp: asadoRecord.record.processedDate
-              ? new Date(asadoRecord.record.processedDate).toLocaleString('es-ES', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              : new Date(asadoRecord.record.completedAt || asadoRecord.record.createdAt).toLocaleString('es-ES', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }),
-            status: 'ASADO',
-            items: asadoItems
+        steps.push({
+          id: 'asado',
+          stage: 'Asado',
+          icon: Flame,
+          color: 'text-orange-600',
+          timestamp: asadoRecord.record.processedDate
+            ? new Date(asadoRecord.record.processedDate).toLocaleString('es-ES', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : new Date(asadoRecord.record.completedAt || asadoRecord.record.createdAt).toLocaleString('es-ES', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+          status: 'ASADO',
+          items: asadoItems
+        });
+
+        // 7. RECEPCIÓN - mostrar las materias primas utilizadas
+        if (inputBatchDetailsForReception.length > 0) {
+          const receptionItems: any[] = [];
+          let latestReceptionDate: Date | null = null;
+
+          inputBatchDetailsForReception.forEach((detail: any) => {
+            const rawBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
+            if (rawBatch) {
+              const arrivedAt = new Date(rawBatch.batch.arrivedAt);
+              if (!latestReceptionDate || arrivedAt > latestReceptionDate) {
+                latestReceptionDate = arrivedAt;
+              }
+
+              receptionItems.push({
+                title: rawBatch.product?.name || '-',
+                details: [
+                  { label: 'Lote', value: rawBatch.batch.batchCode },
+                  { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
+                  { label: 'Cantidad Utilizada', value: `${detail.quantity} ${rawBatch.batch.unit}` },
+                  { label: 'Cantidad Total Disponible', value: `${rawBatch.batch.quantity} ${rawBatch.batch.unit}` },
+                  { label: 'Temperatura', value: rawBatch.batch.temperature ? `${parseFloat(rawBatch.batch.temperature).toFixed(1)}°C` : '-' },
+                  { label: 'Albarán', value: rawBatch.batch.deliveryNote || '-' },
+                  { label: 'Fecha Recepción', value: arrivedAt.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) },
+                ]
+              });
+            }
           });
 
-          // 7. RECEPCIÓN - mostrar las materias primas utilizadas
-          if (asadoRecord.record.inputBatchDetails) {
-            try {
-              const inputBatchDetails = JSON.parse(asadoRecord.record.inputBatchDetails);
-              const receptionItems: any[] = [];
-              let latestReceptionDate: Date | null = null;
-
-              inputBatchDetails.forEach((detail: any) => {
-                const rawBatch = allBatches.find((b: any) => b.batch.id === detail.batchId);
-                if (rawBatch) {
-                  const arrivedAt = new Date(rawBatch.batch.arrivedAt);
-                  if (!latestReceptionDate || arrivedAt > latestReceptionDate) {
-                    latestReceptionDate = arrivedAt;
-                  }
-
-                  receptionItems.push({
-                    title: rawBatch.product?.name || '-',
-                    details: [
-                      { label: 'Lote', value: rawBatch.batch.batchCode },
-                      { label: 'Proveedor', value: rawBatch.supplier?.name || '-' },
-                      { label: 'Cantidad Utilizada', value: `${detail.quantity} ${rawBatch.batch.unit}` },
-                      { label: 'Cantidad Total Disponible', value: `${rawBatch.batch.quantity} ${rawBatch.batch.unit}` },
-                      { label: 'Temperatura', value: rawBatch.batch.temperature ? `${parseFloat(rawBatch.batch.temperature).toFixed(1)}°C` : '-' },
-                      { label: 'Albarán', value: rawBatch.batch.deliveryNote || '-' },
-                      { label: 'Fecha Recepción', value: arrivedAt.toLocaleString('es-ES', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) },
-                    ]
-                  });
-                }
-              });
-
-              steps.push({
-                id: 'reception',
-                stage: 'Recepción de Materia Prima',
-                icon: Package,
-                color: 'text-blue-600',
-                timestamp: latestReceptionDate ? latestReceptionDate.toLocaleString('es-ES', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) : '-',
-                status: 'RECEPCION',
-                items: receptionItems
-              });
-            } catch (e) {
-              console.error('Error parsing inputBatchDetails:', e);
-            }
+          if (receptionItems.length > 0) {
+            steps.push({
+              id: 'reception',
+              stage: 'Recepción de Materia Prima',
+              icon: Package,
+              color: 'text-blue-600',
+              timestamp: latestReceptionDate ? latestReceptionDate.toLocaleString('es-ES', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : '-',
+              status: 'RECEPCION',
+              items: receptionItems
+            });
           }
         }
       }
