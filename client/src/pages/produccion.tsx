@@ -368,16 +368,6 @@ export default function Produccion() {
 
   const handleBatchSelection = (batch: AvailableBatch, isChecked: boolean) => {
     if (isChecked) {
-      // Para esterilizado, solo permitir un lote
-      if (activeStage === "esterilizado" && selectedBatches.length > 0) {
-        toast({
-          title: "Advertencia",
-          description: "Solo se puede seleccionar un lote para esterilizado",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Para pelado, envasado y esterilizado, asignar automáticamente la cantidad completa del lote
       const autoQuantity = (activeStage === "pelado" || activeStage === "envasado" || activeStage === "esterilizado") 
         ? batch.availableQuantity 
@@ -393,20 +383,8 @@ export default function Produccion() {
         unit: batch.unit,
         selectedQuantity: autoQuantity,
       }]);
-
-      // Para esterilizado, establecer automáticamente la cantidad de salida y el código de lote
-      if (activeStage === "esterilizado") {
-        setOutputQuantity(batch.availableQuantity.toString());
-        setOutputBatchCode(batch.batchCode);
-      }
     } else {
       setSelectedBatches(selectedBatches.filter(b => b.batchId !== batch.id));
-
-      // Si se deselecciona el lote en esterilizado, limpiar la cantidad de salida y el código
-      if (activeStage === "esterilizado") {
-        setOutputQuantity("");
-        setOutputBatchCode("");
-      }
     }
   };
 
@@ -425,6 +403,36 @@ export default function Produccion() {
 
   const calculateTotalPackageOutput = () => {
     return packageOutputs.reduce((sum, p) => sum + p.quantity, 0);
+  };
+
+  // Calcular totales por tipo de envase para esterilizado
+  const calculatePackageTypesSummary = () => {
+    if (activeStage !== "esterilizado") return [];
+    
+    const summary = new Map<string, { typeName: string; count: number; unit: string }>();
+    
+    selectedBatches.forEach(selectedBatch => {
+      // Extraer el tipo de envase del código de lote (formato: CODIGO-TIPO)
+      const parts = selectedBatch.batchCode.split('-');
+      const packageType = parts.length > 1 ? parts[parts.length - 1] : selectedBatch.batchCode;
+      
+      if (summary.has(packageType)) {
+        const existing = summary.get(packageType)!;
+        existing.count += selectedBatch.selectedQuantity;
+      } else {
+        summary.set(packageType, {
+          typeName: packageType,
+          count: selectedBatch.selectedQuantity,
+          unit: selectedBatch.unit,
+        });
+      }
+    });
+    
+    return Array.from(summary.values());
+  };
+
+  const getTotalEsterilizadoOutput = () => {
+    return selectedBatches.reduce((sum, b) => sum + b.selectedQuantity, 0);
   };
 
   const addPackageOutput = () => {
@@ -729,69 +737,90 @@ export default function Produccion() {
         }
       } else if (activeStage === "esterilizado") {
       try {
-        // Para esterilizado, crear lotes duplicados con el mismo código y cantidad
-        const inputBatchCodes = selectedBatches
-          .filter(b => b.selectedQuantity > 0)
-          .map(b => b.batchCode)
-          .join(', ');
+        // Agrupar lotes por tipo de envase
+        const packageTypesMap = new Map<string, {
+          typeName: string;
+          batches: typeof selectedBatches;
+          totalQuantity: number;
+          unit: string;
+        }>();
 
-        const inputBatchDetails = selectedBatches
-          .filter(b => b.selectedQuantity > 0)
-          .map(b => ({
+        selectedBatches.forEach(selectedBatch => {
+          if (selectedBatch.selectedQuantity > 0) {
+            // Extraer el tipo de envase del código de lote
+            const parts = selectedBatch.batchCode.split('-');
+            const packageType = parts.length > 1 ? parts[parts.length - 1] : selectedBatch.batchCode;
+            
+            if (packageTypesMap.has(packageType)) {
+              const existing = packageTypesMap.get(packageType)!;
+              existing.batches.push(selectedBatch);
+              existing.totalQuantity += selectedBatch.selectedQuantity;
+            } else {
+              packageTypesMap.set(packageType, {
+                typeName: packageType,
+                batches: [selectedBatch],
+                totalQuantity: selectedBatch.selectedQuantity,
+                unit: selectedBatch.unit,
+              });
+            }
+          }
+        });
+
+        // Crear un lote esterilizado por cada tipo de envase
+        for (const [packageType, packageGroup] of packageTypesMap.entries()) {
+          const inputBatchCodes = packageGroup.batches.map(b => b.batchCode).join(', ');
+          const inputBatchDetails = packageGroup.batches.map(b => ({
             batchId: b.batchId,
             batchCode: b.batchCode,
             quantity: b.selectedQuantity,
           }));
 
-        const totalInput = calculateTotalInput();
+          const firstBatch = allBatches.find((b: any) => b.batch.id === packageGroup.batches[0].batchId);
+          const batchCodeWithType = outputBatchCode ? `${outputBatchCode}-${packageType}` : `EST-${packageType}`;
 
-        // Crear lote esterilizado por cada lote de envasado seleccionado
-        for (const selectedBatch of selectedBatches) {
-          if (selectedBatch.selectedQuantity > 0) {
-            const sourceBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+          // Crear nuevo lote esterilizado consolidado por tipo
+          const batchData: any = {
+            batchCode: batchCodeWithType,
+            productId: firstBatch?.batch.productId,
+            initialQuantity: packageGroup.totalQuantity.toString(),
+            quantity: packageGroup.totalQuantity.toString(),
+            unit: packageGroup.unit,
+            status: 'ESTERILIZADO',
+            processedDate: processedDateTime,
+          };
 
-            // Crear nuevo lote esterilizado con el mismo código base
-            const batchData: any = {
-              batchCode: outputBatchCode || selectedBatch.batchCode,
-              productId: sourceBatch?.batch.productId,
-              initialQuantity: selectedBatch.selectedQuantity.toString(),
-              quantity: selectedBatch.selectedQuantity.toString(),
-              unit: selectedBatch.unit,
-              status: 'ESTERILIZADO',
-              processedDate: processedDateTime,
-            };
+          const newBatch = await createBatchMutation.mutateAsync(batchData);
 
-            const newBatch = await createBatchMutation.mutateAsync(batchData);
+          // Crear registro de producción
+          await createProductionRecordMutation.mutateAsync({
+            batchId: newBatch.id,
+            stage: 'ESTERILIZADO',
+            inputBatchCode: inputBatchCodes,
+            outputBatchCode: batchCodeWithType,
+            inputQuantity: packageGroup.totalQuantity.toString(),
+            outputQuantity: packageGroup.totalQuantity.toString(),
+            unit: packageGroup.unit,
+            inputBatchDetails: JSON.stringify(inputBatchDetails),
+            notes: notes ? `${notes} - Tipo: ${packageType} (${packageGroup.totalQuantity} ${packageGroup.unit})` : `Tipo: ${packageType} (${packageGroup.totalQuantity} ${packageGroup.unit})`,
+            processedDate: processedDateTime,
+            completedAt: new Date().toISOString(),
+          });
 
-            // Crear registro de producción
-            await createProductionRecordMutation.mutateAsync({
-              batchId: newBatch.id,
-              stage: 'ESTERILIZADO',
-              inputBatchCode: selectedBatch.batchCode,
-              outputBatchCode: outputBatchCode || selectedBatch.batchCode,
-              inputQuantity: selectedBatch.selectedQuantity.toString(),
-              outputQuantity: selectedBatch.selectedQuantity.toString(),
-              unit: selectedBatch.unit,
-              inputBatchDetails: JSON.stringify([{
-                batchId: selectedBatch.batchId,
-                batchCode: selectedBatch.batchCode,
-                quantity: selectedBatch.selectedQuantity,
-              }]),
-              notes: notes || null,
-              processedDate: processedDateTime,
-              completedAt: new Date().toISOString(),
-            });
-
-            // Marcar lote de ENVASADO como consumido (cantidad 0) sin cambiar estado
+          // Marcar lotes de ENVASADO como consumidos
+          for (const selectedBatch of packageGroup.batches) {
             await updateBatchMutation.mutateAsync({
               id: selectedBatch.batchId,
               data: {
                 quantity: "0",
-                // NO cambiar el estado, permanece en ENVASADO
               },
             });
           }
         }
+
+        toast({
+          title: "Proceso completado",
+          description: `Se han creado ${packageTypesMap.size} lote(s) esterilizado(s) agrupados por tipo de envase`,
+        });
       } catch (error: any) {
         toast({
           title: "Error",
@@ -898,6 +927,8 @@ export default function Produccion() {
         title: "Proceso creado",
         description: activeStage === "envasado" 
           ? `Se han creado ${packageOutputs.length} lotes de envases exitosamente`
+          : activeStage === "esterilizado"
+          ? "Los lotes han sido esterilizados y agrupados por tipo de envase"
           : "El lote consolidado se ha creado exitosamente",
       });
       handleCloseDialog();
@@ -1468,6 +1499,31 @@ export default function Produccion() {
                       </div>
                     )}
                   </div>
+                ) : activeStage === "esterilizado" && selectedBatches.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="border rounded-lg">
+                      <div className="p-3 bg-muted/50 border-b">
+                        <Label className="font-semibold">Resumen por Tipo de Envase</Label>
+                      </div>
+                      <div className="divide-y">
+                        {calculatePackageTypesSummary().map((summary, index) => (
+                          <div key={index} className="p-3 flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium">{summary.typeName}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">{summary.count} {summary.unit}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="p-3 bg-muted/30 border-t">
+                        <p className="text-sm font-semibold">
+                          Total a esterilizar: {getTotalEsterilizadoOutput()} envases
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div>
                     <Label htmlFor="output-qty">Cantidad de Salida</Label>
@@ -1480,7 +1536,6 @@ export default function Produccion() {
                         value={outputQuantity}
                         onChange={(e) => setOutputQuantity(e.target.value)}
                         placeholder="Cantidad producida"
-                        disabled={activeStage === "esterilizado"}
                       />
                       {selectedBatches.length > 0 && (
                         <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
@@ -1488,11 +1543,6 @@ export default function Produccion() {
                         </span>
                       )}
                     </div>
-                    {activeStage === "esterilizado" && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        La cantidad se establece automáticamente según el lote seleccionado
-                      </p>
-                    )}
                   </div>
                 )}
 
