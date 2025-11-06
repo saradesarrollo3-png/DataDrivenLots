@@ -197,21 +197,29 @@ export default function Trazabilidad() {
         }]
       });
 
-      // 4. ENVASADO - buscar todos los lotes de envasado que comparten el mismo código base
+      // 4. ENVASADO - buscar el registro que generó el lote de entrada del esterilizado
       const inputBatchCodeForSterilization = esterilizadoRecord.record.inputBatchCode;
-      const baseCodeEnvasado = inputBatchCodeForSterilization.includes('-') && inputBatchCodeForSterilization.match(/-[A-Z]+$/i)
-        ? inputBatchCodeForSterilization.substring(0, inputBatchCodeForSterilization.lastIndexOf('-'))
-        : inputBatchCodeForSterilization;
+      
+      // Primero buscar por coincidencia exacta del outputBatchCode
+      let envasadoRecords = productionRecords.filter((pr: any) => 
+        pr.record.stage === 'ENVASADO' && pr.record.outputBatchCode === inputBatchCodeForSterilization
+      );
 
-      // Encontrar todos los registros de envasado con el mismo código base
-      const envasadoRecords = productionRecords.filter((pr: any) => {
-        if (pr.record.stage !== 'ENVASADO') return false;
-        const outputCode = pr.record.outputBatchCode;
-        const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i)
-          ? outputCode.substring(0, outputCode.lastIndexOf('-'))
-          : outputCode;
-        return baseCode === baseCodeEnvasado;
-      });
+      // Si no hay coincidencia exacta, buscar por código base (sin sufijo)
+      if (envasadoRecords.length === 0) {
+        const baseCodeEnvasado = inputBatchCodeForSterilization.includes('-') && inputBatchCodeForSterilization.match(/-[A-Z]+$/i)
+          ? inputBatchCodeForSterilization.substring(0, inputBatchCodeForSterilization.lastIndexOf('-'))
+          : inputBatchCodeForSterilization;
+
+        envasadoRecords = productionRecords.filter((pr: any) => {
+          if (pr.record.stage !== 'ENVASADO') return false;
+          const outputCode = pr.record.outputBatchCode;
+          const baseCode = outputCode.includes('-') && outputCode.match(/-[A-Z]+$/i)
+            ? outputCode.substring(0, outputCode.lastIndexOf('-'))
+            : outputCode;
+          return baseCode === baseCodeEnvasado;
+        });
+      }
 
       if (envasadoRecords.length > 0) {
         const firstEnvasado = envasadoRecords[0];
@@ -280,9 +288,20 @@ export default function Trazabilidad() {
 
         // 5. PELADO - buscar el lote que alimentó el envasado
         const inputBatchCodeEnvasado = firstEnvasado.record.inputBatchCode;
-        const peladoRecord = productionRecords.find((pr: any) =>
+        
+        // Buscar por coincidencia exacta primero
+        let peladoRecord = productionRecords.find((pr: any) =>
           pr.record.stage === 'PELADO' && pr.record.outputBatchCode === inputBatchCodeEnvasado
         );
+
+        // Si no hay coincidencia exacta, buscar por código parcial
+        if (!peladoRecord) {
+          peladoRecord = productionRecords.find((pr: any) => {
+            if (pr.record.stage !== 'PELADO') return false;
+            // Verificar si el inputBatchCode del envasado empieza con el outputBatchCode del pelado
+            return inputBatchCodeEnvasado.startsWith(pr.record.outputBatchCode);
+          });
+        }
 
         if (peladoRecord) {
           const peladoItems: any[] = [];
@@ -343,6 +362,8 @@ export default function Trazabilidad() {
 
           // 6. ASADO - buscar el lote que alimentó el pelado
           const inputBatchCodePelado = peladoRecord.record.inputBatchCode;
+          
+          // Buscar por coincidencia exacta primero
           let asadoRecord = productionRecords.find((pr: any) =>
             pr.record.stage === 'ASADO' && pr.record.outputBatchCode === inputBatchCodePelado
           );
@@ -353,6 +374,16 @@ export default function Trazabilidad() {
               if (pr.record.stage !== 'ASADO') return false;
               return inputBatchCodePelado.startsWith(pr.record.outputBatchCode);
             });
+          }
+
+          // Si aún no encontramos, buscar cualquier registro de ASADO que tenga inputBatchDetails
+          if (!asadoRecord) {
+            const peladoBatchId = allBatches.find((b: any) => b.batch.batchCode === inputBatchCodePelado)?.batch.id;
+            if (peladoBatchId) {
+              asadoRecord = productionRecords.find((pr: any) => 
+                pr.record.stage === 'ASADO' && pr.record.batchId === peladoBatchId
+              );
+            }
           }
 
           if (asadoRecord) {
@@ -484,16 +515,17 @@ export default function Trazabilidad() {
                 const historyNotes = asadoBatchHistory[0].history.notes;
                 
                 // Extraer información de las notas: "Materias primas: LOTE1: 100 kg, LOTE2: 50 kg"
-                const materiaPrimaMatch = historyNotes.match(/Materias primas: ([^|]+)/);
+                const materiaPrimaMatch = historyNotes.match(/Materias primas:\s*([^|]+)/);
                 if (materiaPrimaMatch) {
                   const materiaPrimaStr = materiaPrimaMatch[1].trim();
                   const lotes = materiaPrimaStr.split(',').map((l: string) => l.trim());
                   
                   lotes.forEach((loteInfo: string) => {
-                    const parts = loteInfo.split(':');
-                    if (parts.length === 2) {
-                      const batchCode = parts[0].trim();
-                      const quantity = parts[1].trim();
+                    // Buscar patrón "CODIGO: CANTIDAD kg"
+                    const match = loteInfo.match(/^(.+?):\s*(.+)$/);
+                    if (match) {
+                      const batchCode = match[1].trim();
+                      const quantity = match[2].trim();
                       const rawBatch = allBatches.find((b: any) => b.batch.batchCode === batchCode);
                       
                       if (rawBatch) {
