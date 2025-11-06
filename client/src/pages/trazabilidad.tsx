@@ -225,6 +225,11 @@ export default function Trazabilidad() {
         const firstEnvasado = envasadoRecords[0];
         const envasadoItems: any[] = [];
 
+        // Calcular el código base del envasado
+        const baseCodeEnvasado = inputBatchCodeForSterilization.includes('-') && inputBatchCodeForSterilization.match(/-[A-Z]+$/i)
+          ? inputBatchCodeForSterilization.substring(0, inputBatchCodeForSterilization.lastIndexOf('-'))
+          : inputBatchCodeForSterilization;
+
         // Información general del envasado
         envasadoItems.push({
           title: 'Entrada al Envasado',
