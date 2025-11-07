@@ -451,13 +451,14 @@ export default function Calidad() {
       if (!response.ok) throw new Error('Error al eliminar lote');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+    onSuccess: async () => {
+      // Invalidar y refrescar inmediatamente todas las queries relacionadas
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/product-stock'], refetchType: 'active' });
     },
   });
 

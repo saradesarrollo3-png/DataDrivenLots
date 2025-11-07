@@ -332,10 +332,14 @@ export default function Produccion() {
       if (!response.ok) throw new Error('Error al eliminar lote');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+    onSuccess: async () => {
+      // Invalidar y refrescar inmediatamente todas las queries relacionadas
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/batches'], refetchType: 'active' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/product-stock'], refetchType: 'active' });
     },
   });
 
