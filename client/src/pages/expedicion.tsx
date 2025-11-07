@@ -73,6 +73,16 @@ export default function Expedicion() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  
+  // Generar código de albarán de expedición
+  const generateShipmentCode = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `EXP-${year}${month}${day}-${random}`;
+  };
 
   const { data: shipments = [] } = useQuery({
     queryKey: ['/api/shipments'],
@@ -251,6 +261,11 @@ export default function Expedicion() {
     setShipmentLines([]);
     setSelectedProduct("");
   };
+  
+  const handleOpenDialog = () => {
+    setShipmentCode(generateShipmentCode());
+    setIsDialogOpen(true);
+  };
 
   const processedShipments: Shipment[] = shipments.map((item: any) => ({
     shipmentCode: item.shipment.shipmentCode,
@@ -363,7 +378,13 @@ export default function Expedicion() {
             Gestión de expediciones a clientes con criterio FEFO
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (open) {
+            handleOpenDialog();
+          } else {
+            handleCloseDialog();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-new-shipment">
               <Plus className="h-4 w-4 mr-2" />

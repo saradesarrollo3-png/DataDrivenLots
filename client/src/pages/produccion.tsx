@@ -210,6 +210,24 @@ export default function Produccion() {
   const [viewingBatch, setViewingBatch] = useState<ProductionBatch | null>(null);
   const [editProcessedDate, setEditProcessedDate] = useState<string>('');
   const [editProcessedTime, setEditProcessedTime] = useState<string>('');
+  
+  // Generar código de lote base según la etapa
+  const generateBatchCode = (stage: string) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    
+    const prefixes: Record<string, string> = {
+      'asado': 'ASA',
+      'envasado': 'ENV',
+      'esterilizado': 'EST',
+    };
+    
+    const prefix = prefixes[stage] || 'LOTE';
+    return `${prefix}-${year}${month}${day}-${random}`;
+  };
 
   const { data: asadoBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ASADO'],
@@ -495,6 +513,14 @@ export default function Produccion() {
     setNotes("");
     setEditProcessedDate("");
     setEditProcessedTime("");
+  };
+  
+  // Generar código al abrir el diálogo
+  const handleOpenNewProcessDialog = () => {
+    if (!editingBatch && activeStage !== "pelado") {
+      setOutputBatchCode(generateBatchCode(activeStage));
+    }
+    setShowNewProcessDialog(true);
   };
 
   const handleSubmitProcess = async () => {
@@ -1133,7 +1159,7 @@ export default function Produccion() {
                   </div>
                   <Button
                     data-testid={`button-new-${stage.id}`}
-                    onClick={() => setShowNewProcessDialog(true)}
+                    onClick={handleOpenNewProcessDialog}
                   >
                     Nuevo Proceso
                   </Button>

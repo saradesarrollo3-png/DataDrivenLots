@@ -72,6 +72,16 @@ export default function Recepcion() {
   const [viewingReception, setViewingReception] = useState<Reception | null>(null);
   const [editingReception, setEditingReception] = useState<Reception | null>(null);
   const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
+  
+  // Generar sugerencia de número de albarán
+  const generateDeliveryNoteCode = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ALB-${year}${month}${day}-${random}`;
+  };
 
   const { data: batchesData = [] } = useQuery<any[]>({
     queryKey: ['/api/batches'],
@@ -369,7 +379,7 @@ export default function Recepcion() {
                     name="deliveryNote"
                     placeholder="ALB-2025-001"
                     required
-                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : ''}
+                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : generateDeliveryNoteCode()}
                     data-testid="input-delivery-note"
                   />
                 </div>
