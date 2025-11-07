@@ -624,28 +624,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(check);
   });
 
-  app.put("/api/quality-checks/:id", requireAuth, async (req, res) => {
-    try {
-      const updated = await storage.updateQualityCheck(
-        req.params.id,
-        req.user!.organizationId,
-        req.body
-      );
-      res.json(updated);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Error al actualizar la revisión de calidad" });
-    }
-  });
-
-  app.delete("/api/quality-checks/:id", requireAuth, async (req, res) => {
-    try {
-      await storage.deleteQualityCheck(req.params.id, req.user!.organizationId);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Error al eliminar la revisión de calidad" });
-    }
-  });
-
   // Shipments
   app.get("/api/shipments", requireAuth, async (req, res) => {
     const shipments = await storage.getShipments(req.user!.organizationId);
@@ -736,15 +714,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       res.status(400).json({ message: error.message || "Error al crear la expedición" });
-    }
-  });
-
-  app.delete("/api/shipments/:shipmentCode", requireAuth, async (req, res) => {
-    try {
-      await storage.deleteShipment(req.params.shipmentCode, req.user!.organizationId);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Error al eliminar la expedición" });
     }
   });
 

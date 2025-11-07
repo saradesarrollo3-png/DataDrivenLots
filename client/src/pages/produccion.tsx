@@ -333,29 +333,16 @@ export default function Produccion() {
           'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
         },
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al eliminar lote');
-      }
+      if (!response.ok) throw new Error('Error al eliminar lote');
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       toast({
         title: "Lote eliminado",
         description: "El lote ha sido eliminado exitosamente",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error al eliminar",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -514,24 +501,11 @@ export default function Produccion() {
     setEditProcessedTime("");
   };
 
-  const handleOpenNewProcessDialog = () => {
-    setEditingBatch(null);
-    setSelectedBatches([]);
-    setOutputBatchCode("");
-    setOutputQuantity("");
-    setNotes("");
-    setEditProcessedDate("");
-    setEditProcessedTime("");
-    setShowNewProcessDialog(true);
-  };
-
   const handleSubmitProcess = async () => {
     console.log("🚀 handleSubmitProcess - activeStage:", activeStage);
     console.log("🚀 selectedBatches:", selectedBatches);
-    console.log("🚀 editingBatch:", editingBatch);
 
-    // Solo validar lotes seleccionados si NO estamos editando
-    if (!editingBatch && selectedBatches.length === 0) {
+    if (selectedBatches.length === 0) {
       toast({
         title: "Error",
         description: "Debes seleccionar al menos un lote",
@@ -632,8 +606,7 @@ export default function Produccion() {
 
     // Para envasado y esterilizado, no requerimos cantidades específicas por lote
     // ya que solo se seleccionan lotes completos
-    // Solo validar si NO estamos editando
-    if (!editingBatch && activeStage === "asado" && totalInput === 0) {
+    if (activeStage === "asado" && totalInput === 0) {
       toast({
         title: "Error",
         description: "Debes especificar cantidades para los lotes seleccionados",
@@ -894,20 +867,26 @@ export default function Produccion() {
         const totalInput = calculateTotalInput();
 
         if (editingBatch) {
-          // Actualizar lote existente - solo fecha de proceso
+          // Actualizar lote existente
           await updateBatchMutation.mutateAsync({
             id: editingBatch.id,
             data: {
+              quantity: finalOutputQuantity.toString(),
               processedDate: processedDateTime,
             },
           });
 
-          toast({
-            title: "Fecha actualizada",
-            description: "La fecha de proceso ha sido actualizada correctamente",
-          });
-          handleCloseDialog();
-          return;
+          // Actualizar el registro de producción existente
+          const existingRecords = await fetch(`/api/production-records/batch/${editingBatch.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+            },
+          }).then(r => r.json());
+
+          if (existingRecords.length > 0) {
+            // Aquí deberías tener una ruta PUT para actualizar el registro
+            // Por ahora, se mantiene como está
+          }
         } else {
           // Crear lote de ASADO
           const batchData: any = {
@@ -1012,8 +991,37 @@ export default function Produccion() {
         };
       });
 
-  const handleEditProduction = async (batch: ProductionBatch, stage: string) => {
-    setActiveStage(stage);
+  const asadoTableData = mapBatchesToTable(asadoBatches);
+  const peladoTableData = mapBatchesToTable(peladoBatches);
+  const envasadoTableData = mapBatchesToTable(envasadoBatches);
+  const esterilizadoTableData = mapBatchesToTable(esterilizadoBatches);
+
+  const columns: Column<ProductionBatch>[] = [
+    {
+      key: "batchCode",
+      label: "Código Lote",
+      render: (value) => <span className="font-mono font-medium">{value}</span>
+    },
+    { key: "productName", label: "Producto" },
+    {
+      key: "quantity",
+      label: "Cantidad",
+      render: (value, row) => `${value} ${row.unit}`
+    },
+    { key: "createdAt", label: "Fecha" },
+    {
+      key: "status",
+      label: "Estado",
+      render: (value) => <StatusBadge status={value} />
+    },
+  ];
+
+  const handleView = (batch: ProductionBatch) => {
+    setViewingBatch(batch);
+  };
+
+  const handleEdit = async (batch: ProductionBatch) => {
+    console.log('Edit asado:', batch);
     setEditingBatch(batch);
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
@@ -1049,78 +1057,7 @@ export default function Produccion() {
       console.error('Error loading production records:', error);
     }
 
-    setSelectedBatches([]);
-    setShowNewProcessDialog(true);
-  };
-
-  const handleDeleteProduction = async (batch: ProductionBatch) => {
-    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
-      await deleteBatchMutation.mutateAsync(batch.id);
-    }
-  };
-
-  const asadoTableData = mapBatchesToTable(asadoBatches);
-  const peladoTableData = mapBatchesToTable(peladoBatches);
-  const envasadoTableData = mapBatchesToTable(envasadoBatches);
-  const esterilizadoTableData = mapBatchesToTable(esterilizadoBatches);
-
-  const columns: Column<ProductionBatch>[] = [
-    {
-      key: "batchCode",
-      label: "Código Lote",
-      render: (value) => <span className="font-mono font-medium">{value}</span>
-    },
-    { key: "productName", label: "Producto" },
-    {
-      key: "quantity",
-      label: "Cantidad",
-      render: (value, row) => `${value} ${row.unit}`
-    },
-    { key: "createdAt", label: "Fecha" },
-    {
-      key: "status",
-      label: "Estado",
-      render: (value) => <StatusBadge status={value} />
-    },
-  ];
-
-  const handleView = (batch: ProductionBatch) => {
-    setViewingBatch(batch);
-  };
-
-  const handleEdit = async (batch: ProductionBatch) => {
-    console.log('Edit batch:', batch);
-    setEditingBatch(batch);
-    setOutputBatchCode(batch.batchCode);
-    setOutputQuantity(batch.quantity.toString());
-
-    // Cargar los registros de producción para obtener fecha/hora
-    try {
-      const response = await fetch(`/api/production-records/batch/${batch.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
-        },
-      });
-      if (response.ok) {
-        const records = await response.json();
-        if (records.length > 0) {
-          const record = records[0].record;
-
-          // Cargar fecha y hora desde processedDate
-          if (record.processedDate) {
-            const processedDateTime = new Date(record.processedDate);
-            setEditProcessedDate(processedDateTime.toISOString().split('T')[0]);
-            setEditProcessedTime(processedDateTime.toTimeString().slice(0, 5));
-          } else {
-            setEditProcessedDate(new Date().toISOString().split('T')[0]);
-            setEditProcessedTime(new Date().toTimeString().slice(0, 5));
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error loading production records:', error);
-    }
-
+    // No cargar lotes de entrada para evitar que reaparezcan
     setSelectedBatches([]);
     setShowNewProcessDialog(true);
   };
@@ -1210,7 +1147,7 @@ export default function Produccion() {
                   </div>
                   <Button
                     data-testid={`button-new-${stage.id}`}
-                    onClick={handleOpenNewProcessDialog}
+                    onClick={() => setShowNewProcessDialog(true)}
                   >
                     Nuevo Proceso
                   </Button>
@@ -1220,9 +1157,9 @@ export default function Produccion() {
                 <DataTable
                   columns={columns}
                   data={stage.data}
-                  onView={handleView}
-                  onEdit={(batch) => handleEditProduction(batch, stage.id)}
-                  onDelete={handleDeleteProduction}
+                  onView={stage.id === "asado" ? handleView : undefined}
+                  onEdit={stage.id === "asado" ? handleEdit : undefined}
+                  onDelete={stage.id === "asado" ? handleDelete : undefined}
                   emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
                 />
               </CardContent>
@@ -1249,10 +1186,10 @@ export default function Produccion() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingBatch ? `Editar Fecha - Lote ${editingBatch.batchCode}` : `Nuevo Proceso - ${stages.find(s => s.id === activeStage)?.title}`}
+              {editingBatch ? "Editar Proceso" : "Nuevo Proceso"} - {stages.find(s => s.id === activeStage)?.title}
             </DialogTitle>
             <DialogDescription>
-              {editingBatch && "Solo puedes editar la fecha de proceso. Para otros cambios, crea un nuevo proceso."}
+              {editingBatch && "Modificando el lote y sus orígenes"}
               {!editingBatch && activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}
               {!editingBatch && activeStage === "pelado" && "Selecciona lotes que ya pasaron por ASADO"}
               {!editingBatch && activeStage === "envasado" && "Selecciona lotes procesados en PELADO para envasar"}
@@ -1261,8 +1198,8 @@ export default function Produccion() {
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Selección de lotes de entrada - solo para asado y no en edición */}
-            {!editingBatch && activeStage === "asado" && (
+            {/* Selección de lotes de entrada - solo para asado */}
+            {activeStage === "asado" && (
               <div>
                 <Label className="text-base font-semibold">
                   {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
@@ -1377,8 +1314,8 @@ export default function Produccion() {
               </div>
             )}
 
-            {/* Selección de lotes - para pelado, envasado y esterilizado, no en edición */}
-            {!editingBatch && activeStage !== "asado" && (
+            {/* Selección de lotes - para pelado, envasado y esterilizado */}
+            {activeStage !== "asado" && (
               <div>
                 <Label className="text-base font-semibold">Seleccionar Lotes</Label>
                 <div className="mt-2 border rounded-lg">
@@ -1475,8 +1412,8 @@ export default function Produccion() {
               </div>
             </div>
 
-            {/* Información de salida - solo para etapas que no sean pelado y no en edición */}
-            {!editingBatch && activeStage !== "pelado" && (
+            {/* Información de salida - solo para etapas que no sean pelado */}
+            {activeStage !== "pelado" && (
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Lote de Salida</Label>
 
@@ -1647,7 +1584,7 @@ export default function Produccion() {
                 Cancelar
               </Button>
               <Button onClick={handleSubmitProcess}>
-                {editingBatch ? "Actualizar Fecha" : activeStage === "pelado" ? "Cambiar Estado a Pelado" : "Crear Proceso"}
+                {activeStage === "pelado" ? "Cambiar Estado a Pelado" : "Crear Proceso"}
               </Button>
             </div>
           </div>

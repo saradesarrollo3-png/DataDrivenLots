@@ -187,16 +187,10 @@ export const storage = {
   },
 
   async deleteBatch(id: string) {
-    // First delete related traceability events (input and output)
-    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.outputBatchId, id));
-    await db.delete(traceabilityEvents).where(sql`${traceabilityEvents.inputBatchIds}::text LIKE ${'%' + id + '%'}`);
-    
-    // Then delete related production records
+    // First delete related production records
     await db.delete(productionRecords).where(eq(productionRecords.batchId, id));
-    
     // Then delete related batch history records
     await db.delete(batchHistory).where(eq(batchHistory.batchId, id));
-    
     // Finally delete the batch
     await db.delete(batches).where(eq(batches.id, id));
     return { success: true }; // Ensure JSON response
@@ -292,81 +286,9 @@ export const storage = {
     .leftJoin(products, eq(batches.productId, products.id))
     .where(eq(batches.status, 'ESTERILIZADO'), eq(batches.organizationId, organizationId));
   },
-  async insertQualityCheck(data: any) {
+  async insertQualityCheck(data: typeof qualityChecks.$inferInsert) {
     const [check] = await db.insert(qualityChecks).values(data).returning();
     return check;
-  },
-
-  async updateQualityCheck(id: string, organizationId: string, data: any) {
-    // Obtener el quality check para verificar permisos
-    const [check] = await db.select()
-      .from(qualityChecks)
-      .where(eq(qualityChecks.id, id));
-
-    if (!check) {
-      throw new Error('Quality check no encontrado');
-    }
-
-    if (check.organizationId !== organizationId) {
-      throw new Error('No autorizado');
-    }
-
-    // Actualizar el quality check
-    const updateData: any = {};
-    if (data.processedDate) {
-      updateData.checkedAt = new Date(data.processedDate);
-    }
-
-    if (Object.keys(updateData).length > 0) {
-      await db.update(qualityChecks)
-        .set(updateData)
-        .where(eq(qualityChecks.id, id));
-    }
-
-    // Si hay fecha de caducidad, actualizar el batch
-    if (data.expiryDate) {
-      await db.update(batches)
-        .set({ expiryDate: new Date(data.expiryDate) })
-        .where(eq(batches.id, check.batchId));
-    }
-
-    // Si hay fecha de proceso, actualizar el batch
-    if (data.processedDate) {
-      await db.update(batches)
-        .set({ processedDate: new Date(data.processedDate) })
-        .where(eq(batches.id, check.batchId));
-    }
-
-    return { success: true };
-  },
-
-  async deleteQualityCheck(id: string, organizationId: string) {
-    // Obtener el quality check para recuperar el batchId
-    const [check] = await db.select()
-      .from(qualityChecks)
-      .where(eq(qualityChecks.id, id));
-
-    if (!check) {
-      throw new Error('Quality check no encontrado');
-    }
-
-    // Verificar que pertenece a la organización
-    if (check.organizationId !== organizationId) {
-      throw new Error('No autorizado');
-    }
-
-    // Eliminar eventos de trazabilidad relacionados con este quality check
-    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.qualityCheckId, id));
-
-    // Cambiar el estado del lote de vuelta a ESTERILIZADO
-    await db.update(batches)
-      .set({ status: 'ESTERILIZADO', expiryDate: null })
-      .where(eq(batches.id, check.batchId));
-
-    // Eliminar el quality check
-    await db.delete(qualityChecks).where(eq(qualityChecks.id, id));
-
-    return { success: true };
   },
 
   // Shipments
@@ -384,60 +306,9 @@ export const storage = {
     .where(eq(shipments.organizationId, organizationId))
     .orderBy(desc(shipments.shippedAt));
   },
-  async insertShipment(data: any) {
+  async insertShipment(data: typeof shipments.$inferInsert) {
     const [shipment] = await db.insert(shipments).values(data).returning();
     return shipment;
-  },
-
-  async deleteShipment(shipmentCode: string, organizationId: string) {
-    // Obtener el shipment para recuperar información necesaria
-    const [shipment] = await db.select()
-      .from(shipments)
-      .where(eq(shipments.shipmentCode, shipmentCode));
-
-    if (!shipment) {
-      throw new Error('Expedición no encontrada');
-    }
-
-    // Verificar que pertenece a la organización
-    if (shipment.organizationId !== organizationId) {
-      throw new Error('No autorizado');
-    }
-
-    // Eliminar eventos de trazabilidad relacionados con este shipment
-    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.shipmentId, shipment.id));
-
-    // Obtener información del lote
-    const batchData = await this.getBatchById(shipment.batchId, organizationId);
-
-    if (batchData) {
-      const shippedQuantity = parseFloat(shipment.quantity);
-      const currentQuantity = parseFloat(batchData.batch.quantity);
-      const restoredQuantity = currentQuantity + shippedQuantity;
-
-      // Restaurar la cantidad del lote
-      await db.update(batches)
-        .set({
-          quantity: restoredQuantity.toString(),
-          status: 'APROBADO' // Volver a estado APROBADO
-        })
-        .where(eq(batches.id, shipment.batchId));
-
-      // Restaurar stock del producto
-      if (batchData.batch.productId) {
-        await this.updateProductStock(
-          organizationId,
-          batchData.batch.productId,
-          shipment.unit,
-          shippedQuantity
-        );
-      }
-    }
-
-    // Eliminar el shipment
-    await db.delete(shipments).where(eq(shipments.shipmentCode, shipmentCode));
-
-    return { success: true };
   },
 
   // Batch History
@@ -546,7 +417,7 @@ export const storage = {
       const currentQuantity = parseFloat(existingStock.quantity);
       const newQuantity = currentQuantity + quantityChange;
       const [updated] = await db.update(productStock)
-        .set({
+        .set({ 
           quantity: newQuantity.toFixed(2),
           updatedAt: new Date()
         })
