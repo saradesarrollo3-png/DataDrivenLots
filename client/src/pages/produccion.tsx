@@ -894,18 +894,17 @@ export default function Produccion() {
         const totalInput = calculateTotalInput();
 
         if (editingBatch) {
-          // Actualizar lote existente - solo cantidad y notas
+          // Actualizar lote existente - solo fecha de proceso
           await updateBatchMutation.mutateAsync({
             id: editingBatch.id,
             data: {
-              quantity: finalOutputQuantity.toString(),
               processedDate: processedDateTime,
             },
           });
 
           toast({
-            title: "Lote actualizado",
-            description: "El lote ha sido actualizado correctamente",
+            title: "Fecha actualizada",
+            description: "La fecha de proceso ha sido actualizada correctamente",
           });
           handleCloseDialog();
           return;
@@ -1090,12 +1089,12 @@ export default function Produccion() {
   };
 
   const handleEdit = async (batch: ProductionBatch) => {
-    console.log('Edit asado:', batch);
+    console.log('Edit batch:', batch);
     setEditingBatch(batch);
     setOutputBatchCode(batch.batchCode);
     setOutputQuantity(batch.quantity.toString());
 
-    // Cargar los registros de producción para obtener fecha/hora y notas
+    // Cargar los registros de producción para obtener fecha/hora
     try {
       const response = await fetch(`/api/production-records/batch/${batch.id}`, {
         headers: {
@@ -1106,10 +1105,6 @@ export default function Produccion() {
         const records = await response.json();
         if (records.length > 0) {
           const record = records[0].record;
-
-          if (record.notes) {
-            setNotes(record.notes);
-          }
 
           // Cargar fecha y hora desde processedDate
           if (record.processedDate) {
@@ -1126,7 +1121,6 @@ export default function Produccion() {
       console.error('Error loading production records:', error);
     }
 
-    // No cargar lotes de entrada para evitar que reaparezcan
     setSelectedBatches([]);
     setShowNewProcessDialog(true);
   };
@@ -1255,10 +1249,10 @@ export default function Produccion() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingBatch ? `Editar Lote ${editingBatch.batchCode}` : `Nuevo Proceso - ${stages.find(s => s.id === activeStage)?.title}`}
+              {editingBatch ? `Editar Fecha - Lote ${editingBatch.batchCode}` : `Nuevo Proceso - ${stages.find(s => s.id === activeStage)?.title}`}
             </DialogTitle>
             <DialogDescription>
-              {editingBatch && "Modificando cantidad y detalles del lote"}
+              {editingBatch && "Solo puedes editar la fecha de proceso. Para otros cambios, crea un nuevo proceso."}
               {!editingBatch && activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}
               {!editingBatch && activeStage === "pelado" && "Selecciona lotes que ya pasaron por ASADO"}
               {!editingBatch && activeStage === "envasado" && "Selecciona lotes procesados en PELADO para envasar"}
@@ -1267,8 +1261,8 @@ export default function Produccion() {
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Selección de lotes de entrada - solo para asado */}
-            {activeStage === "asado" && (
+            {/* Selección de lotes de entrada - solo para asado y no en edición */}
+            {!editingBatch && activeStage === "asado" && (
               <div>
                 <Label className="text-base font-semibold">
                   {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
@@ -1383,8 +1377,8 @@ export default function Produccion() {
               </div>
             )}
 
-            {/* Selección de lotes - para pelado, envasado y esterilizado */}
-            {activeStage !== "asado" && (
+            {/* Selección de lotes - para pelado, envasado y esterilizado, no en edición */}
+            {!editingBatch && activeStage !== "asado" && (
               <div>
                 <Label className="text-base font-semibold">Seleccionar Lotes</Label>
                 <div className="mt-2 border rounded-lg">
@@ -1481,8 +1475,8 @@ export default function Produccion() {
               </div>
             </div>
 
-            {/* Información de salida - solo para etapas que no sean pelado */}
-            {activeStage !== "pelado" && (
+            {/* Información de salida - solo para etapas que no sean pelado y no en edición */}
+            {!editingBatch && activeStage !== "pelado" && (
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Lote de Salida</Label>
 
@@ -1653,7 +1647,7 @@ export default function Produccion() {
                 Cancelar
               </Button>
               <Button onClick={handleSubmitProcess}>
-                {activeStage === "pelado" ? "Cambiar Estado a Pelado" : "Crear Proceso"}
+                {editingBatch ? "Actualizar Fecha" : activeStage === "pelado" ? "Cambiar Estado a Pelado" : "Crear Proceso"}
               </Button>
             </div>
           </div>

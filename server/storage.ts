@@ -297,6 +297,49 @@ export const storage = {
     return check;
   },
 
+  async updateQualityCheck(id: string, organizationId: string, data: any) {
+    // Obtener el quality check para verificar permisos
+    const [check] = await db.select()
+      .from(qualityChecks)
+      .where(eq(qualityChecks.id, id));
+
+    if (!check) {
+      throw new Error('Quality check no encontrado');
+    }
+
+    if (check.organizationId !== organizationId) {
+      throw new Error('No autorizado');
+    }
+
+    // Actualizar el quality check
+    const updateData: any = {};
+    if (data.processedDate) {
+      updateData.checkedAt = new Date(data.processedDate);
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(qualityChecks)
+        .set(updateData)
+        .where(eq(qualityChecks.id, id));
+    }
+
+    // Si hay fecha de caducidad, actualizar el batch
+    if (data.expiryDate) {
+      await db.update(batches)
+        .set({ expiryDate: new Date(data.expiryDate) })
+        .where(eq(batches.id, check.batchId));
+    }
+
+    // Si hay fecha de proceso, actualizar el batch
+    if (data.processedDate) {
+      await db.update(batches)
+        .set({ processedDate: new Date(data.processedDate) })
+        .where(eq(batches.id, check.batchId));
+    }
+
+    return { success: true };
+  },
+
   async deleteQualityCheck(id: string, organizationId: string) {
     // Obtener el quality check para recuperar el batchId
     const [check] = await db.select()

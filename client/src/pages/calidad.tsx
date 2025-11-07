@@ -81,6 +81,9 @@ export default function Calidad() {
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
   const [editingCheck, setEditingCheck] = useState<QualityCheckRecord | null>(null);
   const [deletingCheck, setDeletingCheck] = useState<QualityCheckRecord | null>(null);
+  const [editExpiryDate, setEditExpiryDate] = useState<string>('');
+  const [editProcessedDate, setEditProcessedDate] = useState<string>('');
+  const [editProcessedTime, setEditProcessedTime] = useState<string>('');
 
   // Obtener templates de checklist
   const { data: checklistTemplates = [] } = useQuery<ChecklistTemplate[]>({
@@ -212,6 +215,37 @@ export default function Calidad() {
         title: "Checklist eliminado",
         description: "El punto de control ha sido eliminado.",
       });
+    },
+  });
+
+  // Mutación para actualizar quality check
+  const updateQualityCheckMutation = useMutation({
+    mutationFn: async ({ checkId, data }: { checkId: string; data: any }) => {
+      const response = await fetch(`/api/quality-checks/${checkId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar la revisión de calidad');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      toast({
+        title: "Revisión actualizada",
+        description: "La revisión de calidad ha sido actualizada correctamente.",
+      });
+      setEditingCheck(null);
     },
   });
 
@@ -407,34 +441,13 @@ export default function Calidad() {
   };
 
   const handleEditCheck = (check: QualityCheckRecord) => {
-    // Crear un objeto QualityBatch a partir del check
-    const batchToEdit: QualityBatch = {
-      id: check.batchId,
-      code: check.batchCode,
-      product: check.product,
-      quantity: check.quantity,
-      manufactureDate: '-',
-      expiryDate: check.expiryDate ? new Date(check.expiryDate).toLocaleDateString('es-ES') : '-',
-      status: check.status,
-    };
-    
     setEditingCheck(check);
-    setSelectedBatch(batchToEdit);
-    setNotes(check.notes);
-    setExpiryDate(check.expiryDate || '');
+    setEditExpiryDate(check.expiryDate || '');
     
-    // Cargar checklist desde el check existente
-    if (check.checkId) {
-      const checkData = qualityChecks.find((qc: any) => qc.check.id === check.checkId);
-      if (checkData?.check.checklistData) {
-        try {
-          const parsedChecklist = JSON.parse(checkData.check.checklistData);
-          setChecklist(parsedChecklist);
-        } catch (e) {
-          console.error('Error parsing checklist data:', e);
-        }
-      }
-    }
+    // Cargar fecha y hora de revisión desde checkedAt
+    const checkedDateTime = new Date(check.checkedAt);
+    setEditProcessedDate(checkedDateTime.toISOString().split('T')[0]);
+    setEditProcessedTime(checkedDateTime.toTimeString().slice(0, 5));
   };
 
   const handleDeleteCheck = (check: QualityCheckRecord) => {
@@ -444,6 +457,28 @@ export default function Calidad() {
   const confirmDeleteCheck = async () => {
     if (deletingCheck?.checkId) {
       await deleteQualityCheckMutation.mutateAsync(deletingCheck.checkId);
+    }
+  };
+
+  const handleSaveEditCheck = async () => {
+    if (!editingCheck?.checkId) return;
+
+    const processedDateTime = `${editProcessedDate}T${editProcessedTime}:00`;
+
+    try {
+      await updateQualityCheckMutation.mutateAsync({
+        checkId: editingCheck.checkId,
+        data: {
+          expiryDate: editExpiryDate,
+          processedDate: processedDateTime,
+        },
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la revisión",
+        variant: "destructive",
+      });
     }
   };
 
@@ -500,6 +535,11 @@ export default function Calidad() {
           )}
         </span>
       )
+    },
+    { 
+      key: "expiryDate", 
+      label: "Caducidad",
+      render: (value) => value ? new Date(value).toLocaleDateString('es-ES') : '-'
     },
     { 
       key: "checkedAt", 
@@ -797,6 +837,65 @@ export default function Calidad() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editingCheck !== null} onOpenChange={(open) => !open && setEditingCheck(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Revisión de Calidad</DialogTitle>
+            <DialogDescription>
+              Lote: {editingCheck?.batchCode} - Solo puedes editar fechas
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-expiry-date">Fecha de Caducidad</Label>
+              <Input
+                id="edit-expiry-date"
+                type="date"
+                value={editExpiryDate}
+                onChange={(e) => setEditExpiryDate(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-processed-date">Fecha de Revisión</Label>
+                <Input
+                  id="edit-processed-date"
+                  type="date"
+                  value={editProcessedDate}
+                  onChange={(e) => setEditProcessedDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-processed-time">Hora de Revisión</Label>
+                <Input
+                  id="edit-processed-time"
+                  type="time"
+                  value={editProcessedTime}
+                  onChange={(e) => setEditProcessedTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditingCheck(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEditCheck}
+              disabled={updateQualityCheckMutation.isPending}
+            >
+              Guardar Cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
