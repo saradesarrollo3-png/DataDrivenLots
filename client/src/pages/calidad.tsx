@@ -124,6 +124,9 @@ export default function Calidad() {
 
       if (!batchData) return null;
 
+      // Usar processedDate si existe, sino usar checkedAt
+      const reviewDate = qc.check.processedDate || qc.check.checkedAt;
+
       return {
         id: batchData.batch.id,
         batchId: batchData.batch.id,
@@ -132,13 +135,17 @@ export default function Calidad() {
         quantity: parseFloat(batchData.batch.quantity),
         approved: qc.check.approved,
         notes: qc.check.notes || '',
-        checkedAt: qc.check.processedDate,
+        checkedAt: reviewDate,
         expiryDate: batchData.batch.expiryDate || '-',
         status: batchData.batch.status
       };
     })
     .filter((batch): batch is QualityCheckRecord => batch !== null)
-    .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+    .sort((a, b) => {
+      const dateA = new Date(a.checkedAt).getTime();
+      const dateB = new Date(b.checkedAt).getTime();
+      return dateB - dateA;
+    });
 
   // Mutación para crear template
   const createTemplateMutation = useMutation({
@@ -420,13 +427,18 @@ export default function Calidad() {
     { 
       key: "checkedAt", 
       label: "Fecha Revisión",
-      render: (value) => new Date(value).toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      render: (value) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
     },
     { 
       key: "status", 
