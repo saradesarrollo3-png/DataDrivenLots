@@ -501,6 +501,17 @@ export default function Produccion() {
     setEditProcessedTime("");
   };
 
+  const handleOpenNewProcessDialog = () => {
+    setEditingBatch(null);
+    setSelectedBatches([]);
+    setOutputBatchCode("");
+    setOutputQuantity("");
+    setNotes("");
+    setEditProcessedDate("");
+    setEditProcessedTime("");
+    setShowNewProcessDialog(true);
+  };
+
   const handleSubmitProcess = async () => {
     console.log("🚀 handleSubmitProcess - activeStage:", activeStage);
     console.log("🚀 selectedBatches:", selectedBatches);
@@ -1194,7 +1205,7 @@ export default function Produccion() {
                   </div>
                   <Button
                     data-testid={`button-new-${stage.id}`}
-                    onClick={() => setShowNewProcessDialog(true)}
+                    onClick={handleOpenNewProcessDialog}
                   >
                     Nuevo Proceso
                   </Button>
@@ -1233,10 +1244,10 @@ export default function Produccion() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingBatch ? "Editar Proceso" : "Nuevo Proceso"} - {stages.find(s => s.id === activeStage)?.title}
+              {editingBatch ? `Editar Lote ${editingBatch.batchCode}` : `Nuevo Proceso - ${stages.find(s => s.id === activeStage)?.title}`}
             </DialogTitle>
             <DialogDescription>
-              {editingBatch && "Modificando el lote y sus orígenes"}
+              {editingBatch && "Modificando cantidad y detalles del lote"}
               {!editingBatch && activeStage === "asado" && "Selecciona lotes en RECEPCIÓN para procesar"}
               {!editingBatch && activeStage === "pelado" && "Selecciona lotes que ya pasaron por ASADO"}
               {!editingBatch && activeStage === "envasado" && "Selecciona lotes procesados en PELADO para envasar"}

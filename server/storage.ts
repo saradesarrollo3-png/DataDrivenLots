@@ -187,10 +187,16 @@ export const storage = {
   },
 
   async deleteBatch(id: string) {
-    // First delete related production records
+    // First delete related traceability events (input and output)
+    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.outputBatchId, id));
+    await db.delete(traceabilityEvents).where(sql`${traceabilityEvents.inputBatchIds}::text LIKE '%${id}%'`);
+    
+    // Then delete related production records
     await db.delete(productionRecords).where(eq(productionRecords.batchId, id));
+    
     // Then delete related batch history records
     await db.delete(batchHistory).where(eq(batchHistory.batchId, id));
+    
     // Finally delete the batch
     await db.delete(batches).where(eq(batches.id, id));
     return { success: true }; // Ensure JSON response
@@ -306,6 +312,9 @@ export const storage = {
       throw new Error('No autorizado');
     }
 
+    // Eliminar eventos de trazabilidad relacionados con este quality check
+    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.qualityCheckId, id));
+
     // Cambiar el estado del lote de vuelta a ESTERILIZADO
     await db.update(batches)
       .set({ status: 'ESTERILIZADO', expiryDate: null })
@@ -351,6 +360,9 @@ export const storage = {
     if (shipment.organizationId !== organizationId) {
       throw new Error('No autorizado');
     }
+
+    // Eliminar eventos de trazabilidad relacionados con este shipment
+    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.shipmentId, shipment.id));
 
     // Obtener información del lote
     const batchData = await this.getBatchById(shipment.batchId, organizationId);
