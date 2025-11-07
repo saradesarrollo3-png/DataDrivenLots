@@ -72,7 +72,7 @@ export default function Recepcion() {
   const [viewingReception, setViewingReception] = useState<Reception | null>(null);
   const [editingReception, setEditingReception] = useState<Reception | null>(null);
   const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
-  const [suggestedDeliveryNote, setSuggestedDeliveryNote] = useState("");
+  const [deliveryNoteValue, setDeliveryNoteValue] = useState("");
   
   // Generar sugerencia de número de albarán
   const generateDeliveryNoteCode = () => {
@@ -251,6 +251,7 @@ export default function Recepcion() {
 
   const handleEdit = (reception: Reception) => {
     setEditingReception(reception);
+    setDeliveryNoteValue(reception.deliveryNote !== '-' ? reception.deliveryNote : '');
     setIsDialogOpen(true);
   };
 
@@ -343,10 +344,16 @@ export default function Recepcion() {
           setIsDialogOpen(open);
           if (!open) {
             setEditingReception(null);
-            setSuggestedDeliveryNote("");
-          } else if (!editingReception) {
-            // Generar código al abrir para nueva recepción
-            setSuggestedDeliveryNote(generateDeliveryNoteCode());
+            setDeliveryNoteValue("");
+          } else {
+            // Al abrir el diálogo
+            if (editingReception) {
+              // Si estamos editando, usar el valor existente
+              setDeliveryNoteValue(editingReception.deliveryNote !== '-' ? editingReception.deliveryNote : '');
+            } else {
+              // Si es nueva recepción, generar código
+              setDeliveryNoteValue(generateDeliveryNoteCode());
+            }
           }
         }}>
           <DialogTrigger asChild>
@@ -386,7 +393,8 @@ export default function Recepcion() {
                     name="deliveryNote"
                     placeholder="ALB-20250104-001"
                     required
-                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : suggestedDeliveryNote}
+                    value={deliveryNoteValue}
+                    onChange={(e) => setDeliveryNoteValue(e.target.value)}
                     data-testid="input-delivery-note"
                   />
                 </div>
@@ -530,7 +538,7 @@ export default function Recepcion() {
                   onClick={() => {
                     setIsDialogOpen(false);
                     setEditingReception(null);
-                    setSuggestedDeliveryNote("");
+                    setDeliveryNoteValue("");
                   }}
                   disabled={createReceptionMutation.isPending}
                 >
