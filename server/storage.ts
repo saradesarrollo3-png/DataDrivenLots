@@ -189,7 +189,7 @@ export const storage = {
   async deleteBatch(id: string) {
     // First delete related traceability events (input and output)
     await db.delete(traceabilityEvents).where(eq(traceabilityEvents.outputBatchId, id));
-    await db.delete(traceabilityEvents).where(sql`${traceabilityEvents.inputBatchIds}::text LIKE '%${id}%'`);
+    await db.delete(traceabilityEvents).where(sql`${traceabilityEvents.inputBatchIds}::text LIKE ${'%' + id + '%'}`);
     
     // Then delete related production records
     await db.delete(productionRecords).where(eq(productionRecords.batchId, id));

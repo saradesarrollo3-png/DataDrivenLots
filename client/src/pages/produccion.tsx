@@ -333,16 +333,29 @@ export default function Produccion() {
           'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
         },
       });
-      if (!response.ok) throw new Error('Error al eliminar lote');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al eliminar lote');
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ENVASADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       toast({
         title: "Lote eliminado",
         description: "El lote ha sido eliminado exitosamente",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al eliminar",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -515,8 +528,10 @@ export default function Produccion() {
   const handleSubmitProcess = async () => {
     console.log("🚀 handleSubmitProcess - activeStage:", activeStage);
     console.log("🚀 selectedBatches:", selectedBatches);
+    console.log("🚀 editingBatch:", editingBatch);
 
-    if (selectedBatches.length === 0) {
+    // Solo validar lotes seleccionados si NO estamos editando
+    if (!editingBatch && selectedBatches.length === 0) {
       toast({
         title: "Error",
         description: "Debes seleccionar al menos un lote",
@@ -617,7 +632,8 @@ export default function Produccion() {
 
     // Para envasado y esterilizado, no requerimos cantidades específicas por lote
     // ya que solo se seleccionan lotes completos
-    if (activeStage === "asado" && totalInput === 0) {
+    // Solo validar si NO estamos editando
+    if (!editingBatch && activeStage === "asado" && totalInput === 0) {
       toast({
         title: "Error",
         description: "Debes especificar cantidades para los lotes seleccionados",
@@ -878,7 +894,7 @@ export default function Produccion() {
         const totalInput = calculateTotalInput();
 
         if (editingBatch) {
-          // Actualizar lote existente
+          // Actualizar lote existente - solo cantidad y notas
           await updateBatchMutation.mutateAsync({
             id: editingBatch.id,
             data: {
@@ -887,17 +903,12 @@ export default function Produccion() {
             },
           });
 
-          // Actualizar el registro de producción existente
-          const existingRecords = await fetch(`/api/production-records/batch/${editingBatch.id}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
-            },
-          }).then(r => r.json());
-
-          if (existingRecords.length > 0) {
-            // Aquí deberías tener una ruta PUT para actualizar el registro
-            // Por ahora, se mantiene como está
-          }
+          toast({
+            title: "Lote actualizado",
+            description: "El lote ha sido actualizado correctamente",
+          });
+          handleCloseDialog();
+          return;
         } else {
           // Crear lote de ASADO
           const batchData: any = {
