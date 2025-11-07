@@ -1,0 +1,55 @@
+9:18:26 AM [express] GET /api/batches/status/ASADO 304 in 124ms :: [{"batch":{"id":"47adafee-7725-46…
+Getting session: 2fmq88iefjrmhon6zde Found: true Total sessions: 1
+9:18:27 AM [express] GET /api/batches/status/PELADO 304 in 124ms :: [{"batch":{"id":"9e8e758b-288a-4…
+Getting session: 2fmq88iefjrmhon6zde Found: true Total sessions: 1
+9:18:27 AM [express] GET /api/batches/status/ENVASADO 200 in 123ms :: [{"batch":{"id":"93d74199-9b35…
+Getting session: 2fmq88iefjrmhon6zde Found: true Total sessions: 1
+9:18:27 AM [express] GET /api/batches/status/ESTERILIZADO 200 in 123ms :: [{"batch":{"id":"3d9a414c-…
+Getting session: 2fmq88iefjrmhon6zde Found: true Total sessions: 1
+9:18:28 AM [express] GET /api/batches 200 in 131ms :: [{"batch":{"id":"3d9a414c-c060-4cc9-85a5-0e449…
+Getting session: 2fmq88iefjrmhon6zde Found: true Total sessions: 1
+file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587
+                const error = new ZodError(ctx.common.issues);
+                              ^
+
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "date",
+    "received": "string",
+    "path": [
+      "processedDate"
+    ],
+    "message": "Expected date, received string"
+  }
+]
+    at get error [as error] (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:587:31)
+    at ZodObject.parse (file:///home/runner/workspace/node_modules/zod/lib/index.mjs:663:22)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:575:43)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at requireAuth (/home/runner/workspace/server/auth.ts:78:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  issues: [
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [ 'processedDate' ],
+      message: 'Expected date, received string'
+    }
+  ],
+  addIssue: [Function (anonymous)],
+  addIssues: [Function (anonymous)],
+  errors: [
+    {
+      code: 'invalid_type',
+      expected: 'date',
+      received: 'string',
+      path: [ 'processedDate' ],
+      message: 'Expected date, received string'
+    }
+  ]
+}
+
+Node.js v20.19.3
