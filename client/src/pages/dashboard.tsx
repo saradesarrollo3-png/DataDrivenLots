@@ -63,16 +63,19 @@ export default function Dashboard() {
     queryKey: ['/api/batches'],
   });
 
-  // Procesar datos recientes
-  const recentBatches: RecentBatch[] = batchesData.slice(0, 5).map((item: any) => ({
-    id: item.batch.id,
-    code: item.batch.batchCode,
-    product: item.product?.name || 'N/A',
-    quantity: parseFloat(item.batch.quantity),
-    unit: item.batch.unit,
-    status: item.batch.status,
-    date: new Date(item.batch.arrivedAt).toLocaleDateString('es-ES')
-  }));
+  // Procesar datos recientes (filtrar lotes con cantidad > 0)
+  const recentBatches: RecentBatch[] = batchesData
+    .filter((item: any) => parseFloat(item.batch.quantity) > 0)
+    .slice(0, 5)
+    .map((item: any) => ({
+      id: item.batch.id,
+      code: item.batch.batchCode,
+      product: item.product?.name || 'N/A',
+      quantity: parseFloat(item.batch.quantity),
+      unit: item.batch.unit,
+      status: item.batch.status,
+      date: new Date(item.batch.arrivedAt).toLocaleDateString('es-ES')
+    }));
 
   // Calcular lotes próximos a caducar
   const expiringBatches: ExpiringBatch[] = batchesData
