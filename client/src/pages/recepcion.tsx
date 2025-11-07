@@ -72,6 +72,7 @@ export default function Recepcion() {
   const [viewingReception, setViewingReception] = useState<Reception | null>(null);
   const [editingReception, setEditingReception] = useState<Reception | null>(null);
   const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
+  const [suggestedDeliveryNote, setSuggestedDeliveryNote] = useState("");
   
   // Generar sugerencia de número de albarán
   const generateDeliveryNoteCode = () => {
@@ -340,7 +341,13 @@ export default function Recepcion() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
-          if (!open) setEditingReception(null);
+          if (!open) {
+            setEditingReception(null);
+            setSuggestedDeliveryNote("");
+          } else if (!editingReception) {
+            // Generar código al abrir para nueva recepción
+            setSuggestedDeliveryNote(generateDeliveryNoteCode());
+          }
         }}>
           <DialogTrigger asChild>
             <Button data-testid="button-new-reception" onClick={() => setEditingReception(null)}>
@@ -377,9 +384,9 @@ export default function Recepcion() {
                   <Input
                     id="deliveryNote"
                     name="deliveryNote"
-                    placeholder="ALB-2025-001"
+                    placeholder="ALB-20250104-001"
                     required
-                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : generateDeliveryNoteCode()}
+                    defaultValue={editingReception?.deliveryNote !== '-' ? editingReception?.deliveryNote : suggestedDeliveryNote}
                     data-testid="input-delivery-note"
                   />
                 </div>
@@ -523,6 +530,7 @@ export default function Recepcion() {
                   onClick={() => {
                     setIsDialogOpen(false);
                     setEditingReception(null);
+                    setSuggestedDeliveryNote("");
                   }}
                   disabled={createReceptionMutation.isPending}
                 >
