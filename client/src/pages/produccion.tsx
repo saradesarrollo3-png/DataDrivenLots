@@ -280,10 +280,6 @@ export default function Produccion() {
       queryClient.invalidateQueries({ queryKey: ['/api/production-records/stage/ESTERILIZADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
-      toast({
-        title: "Proceso creado",
-        description: "El registro de producción se ha creado exitosamente",
-      });
       handleCloseDialog();
     },
     onError: (error: any) => {
@@ -539,8 +535,6 @@ export default function Produccion() {
             quantity: b.selectedQuantity,
           }));
 
-        const totalInput = calculateTotalInput();
-        const finalOutputQuantity = parseFloat(outputQuantity) || totalInput;
         const finalUnit = selectedBatches[0]?.unit || 'kg';
 
         for (const selectedBatch of selectedBatches) {
@@ -571,14 +565,10 @@ export default function Produccion() {
           }
         }
 
-        queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/PELADO'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
 
-        toast({
-          title: "Proceso completado",
-          description: "Los lotes han sido procesados y movidos a PELADO",
-        });
         handleCloseDialog();
         return;
       } catch (error: any) {
@@ -929,14 +919,6 @@ export default function Produccion() {
       await queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       await queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
 
-      toast({
-        title: "Proceso creado",
-        description: activeStage === "envasado"
-          ? `Se han creado ${packageOutputs.length} lotes de envases exitosamente`
-          : activeStage === "esterilizado"
-          ? "Los lotes han sido esterilizados y agrupados por tipo de envase"
-          : "El lote consolidado se ha creado exitosamente",
-      });
       handleCloseDialog();
     } catch (error: any) {
       toast({
