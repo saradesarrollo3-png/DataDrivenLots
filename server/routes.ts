@@ -573,11 +573,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quality-checks", requireAuth, async (req, res) => {
     const data = insertQualityCheckSchema.parse(req.body);
-    const check = await storage.insertQualityCheck({
+    
+    // Convert processedDate string to Date object if provided
+    const checkData: any = {
       ...data,
       organizationId: req.user!.organizationId,
       checkedBy: req.user!.id,
-    });
+    };
+    
+    if (data.processedDate) {
+      checkData.processedDate = new Date(data.processedDate);
+    }
+    
+    const check = await storage.insertQualityCheck(checkData);
 
     // Update batch status and expiry date based on approval
     const newStatus = data.approved === 1 ? 'APROBADO' : data.approved === -1 ? 'BLOQUEADO' : 'RETENIDO';

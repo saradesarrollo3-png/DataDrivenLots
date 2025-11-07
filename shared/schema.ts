@@ -295,7 +295,9 @@ export const insertProductionRecordSchema = createInsertSchema(productionRecords
   processedDate: z.string().optional(),
 });
 export const insertQualityChecklistTemplateSchema = createInsertSchema(qualityChecklistTemplates).omit({ id: true, createdAt: true });
-export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true });
+export const insertQualityCheckSchema = createInsertSchema(qualityChecks).omit({ id: true, organizationId: true }).extend({
+  processedDate: z.string().optional(),
+});
 export const insertShipmentSchema = createInsertSchema(shipments).omit({ id: true, createdAt: true, organizationId: true });
 export const insertBatchHistorySchema = createInsertSchema(batchHistory).omit({ id: true, createdAt: true, organizationId: true });
 export const insertProductStockSchema = createInsertSchema(productStock).omit({ id: true, updatedAt: true });
