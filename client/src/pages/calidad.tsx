@@ -347,6 +347,43 @@ export default function Calidad() {
     }
   };
 
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al eliminar lote');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
+      toast({
+        title: "Lote eliminado",
+        description: "El lote ha sido eliminado exitosamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el lote",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteBatch = async (batch: QualityBatch | QualityCheckRecord) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode || (batch as QualityBatch).code}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id || (batch as QualityCheckRecord).batchId);
+    }
+  };
+
   const pendingColumns: Column<QualityBatch>[] = [
     { 
       key: "code", 
@@ -526,6 +563,7 @@ export default function Calidad() {
             columns={pendingColumns}
             data={filteredPendingBatches}
             onView={(row) => handleOpenDialog(row)}
+            onDelete={handleDeleteBatch}
             emptyMessage="No hay lotes esterilizados pendientes de revisión"
           />
         </TabsContent>
@@ -534,6 +572,7 @@ export default function Calidad() {
           <DataTable
             columns={reviewedColumns}
             data={filteredReviewedBatches}
+            onDelete={handleDeleteBatch}
             emptyMessage="No hay lotes revisados"
           />
         </TabsContent>

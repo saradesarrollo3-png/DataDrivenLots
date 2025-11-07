@@ -728,6 +728,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/shipments/:id", requireAuth, async (req, res) => {
+    try {
+      const shipmentId = req.params.id;
+      
+      // Get shipment data to restore batch quantity
+      const shipmentData = await storage.getShipmentById(shipmentId, req.user!.organizationId);
+      
+      if (shipmentData) {
+        const batchId = shipmentData.shipment.batchId;
+        const shippedQuantity = parseFloat(shipmentData.shipment.quantity);
+        const unit = shipmentData.shipment.unit;
+        
+        // Get current batch data
+        const batchData = await storage.getBatchById(batchId, req.user!.organizationId);
+        
+        if (batchData) {
+          const currentQuantity = parseFloat(batchData.batch.quantity);
+          const restoredQuantity = currentQuantity + shippedQuantity;
+          
+          // Restore batch quantity and status
+          await storage.updateBatch(batchId, {
+            quantity: restoredQuantity.toFixed(2),
+            status: 'APROBADO'
+          });
+          
+          // Restore product stock
+          if (batchData.batch.productId && unit) {
+            await storage.updateProductStock(
+              req.user!.organizationId,
+              batchData.batch.productId,
+              unit,
+              shippedQuantity
+            );
+          }
+        }
+        
+        // Delete traceability events associated with this shipment
+        await storage.deleteTraceabilityEventsByShipment(shipmentId);
+      }
+      
+      // Delete the shipment
+      await storage.deleteShipment(shipmentId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Error al eliminar la expedición" });
+    }
+  });
+
   // Product Stock
   app.get("/api/product-stock", requireAuth, async (req, res) => {
     const stock = await storage.getProductStock(req.user!.organizationId);

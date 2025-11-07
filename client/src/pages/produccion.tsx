@@ -1032,7 +1032,19 @@ export default function Produccion() {
 
   const handleDelete = async (batch: ProductionBatch) => {
     if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
-      await deleteBatchMutation.mutateAsync(batch.id);
+      try {
+        await deleteBatchMutation.mutateAsync(batch.id);
+        toast({
+          title: "Lote eliminado",
+          description: `El lote ${batch.batchCode} ha sido eliminado exitosamente`,
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo eliminar el lote",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -1125,9 +1137,8 @@ export default function Produccion() {
                 <DataTable
                   columns={columns}
                   data={stage.data}
-                  onView={stage.id === "asado" ? handleView : undefined}
-                  onEdit={stage.id === "asado" ? handleEdit : undefined}
-                  onDelete={stage.id === "asado" ? handleDelete : undefined}
+                  onView={handleView}
+                  onDelete={handleDelete}
                   emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
                 />
               </CardContent>
