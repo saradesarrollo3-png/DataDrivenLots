@@ -7,7 +7,7 @@ import {
   type Batch, type ProductionRecord, type QualityCheck, type Shipment, type BatchHistory, type ProductStock,
   type QualityChecklistTemplate
 } from "@shared/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export const storage = {
   // Suppliers
@@ -293,46 +293,19 @@ export const storage = {
 
   // Shipments
   async getShipments(organizationId: string) {
-    const result = await db.select({
+    return db.select({
       shipment: shipments,
-      batch: batches,
       customer: customers,
-      product: products,
+      batch: batches,
+      product: products
     })
     .from(shipments)
-    .leftJoin(batches, eq(shipments.batchId, batches.id))
     .leftJoin(customers, eq(shipments.customerId, customers.id))
+    .leftJoin(batches, eq(shipments.batchId, batches.id))
     .leftJoin(products, eq(batches.productId, products.id))
     .where(eq(shipments.organizationId, organizationId))
     .orderBy(desc(shipments.shippedAt));
-
-    return result;
   },
-
-  async getShipmentById(id: string, organizationId: string) {
-    const [result] = await db.select({
-      shipment: shipments,
-      batch: batches,
-      customer: customers,
-      product: products,
-    })
-    .from(shipments)
-    .leftJoin(batches, eq(shipments.batchId, batches.id))
-    .leftJoin(customers, eq(shipments.customerId, customers.id))
-    .leftJoin(products, eq(batches.productId, products.id))
-    .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
-
-    return result;
-  },
-
-  async deleteShipment(id: string) {
-    await db.delete(shipments).where(eq(shipments.id, id));
-  },
-
-  async deleteTraceabilityEventsByShipment(shipmentId: string) {
-    await db.delete(traceabilityEvents).where(eq(traceabilityEvents.shipmentId, shipmentId));
-  },
-
   async insertShipment(data: typeof shipments.$inferInsert) {
     const [shipment] = await db.insert(shipments).values(data).returning();
     return shipment;

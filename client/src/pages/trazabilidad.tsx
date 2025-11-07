@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Package, Truck, CheckCircle, ClipboardCheck, Flame, Scissors, PackageIcon, Droplets, Trash2 } from "lucide-react";
+import { Search, Package, Truck, CheckCircle, ClipboardCheck, Flame, Scissors, PackageIcon, Droplets } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 
 interface TraceabilityStep {
   id: string;
@@ -26,7 +25,6 @@ interface TraceabilityStep {
 }
 
 export default function Trazabilidad() {
-  const queryClient = useQueryClient();
   const [searchCode, setSearchCode] = useState("");
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
 
@@ -42,47 +40,17 @@ export default function Trazabilidad() {
     ? shipments.find(s => s.shipment.id === selectedShipmentId)
     : null;
 
-  const deleteShipmentMutation = useMutation({
-    mutationFn: async (shipmentId: string) => {
-      const response = await fetch(`/api/shipments/${shipmentId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete shipment');
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
-      setSelectedShipmentId(null);
-      toast.success("Expedición eliminada correctamente.");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Error al eliminar la expedición.");
-    },
-  });
-
-  const handleDeleteShipment = (shipmentId: string, shipmentCode: string) => {
-    toast.promise(
-      deleteShipmentMutation.mutateAsync(shipmentId),
-      {
-        loading: `Eliminando expedición ${shipmentCode}...`,
-        success: "Expedición eliminada.",
-        error: "Error al eliminar la expedición.",
-      }
-    );
-  };
-
   const buildTraceability = (shipmentId: string): TraceabilityStep[] => {
     console.log("🔍 buildTraceability - shipmentId:", shipmentId);
     console.log("🔍 Total eventos de trazabilidad:", traceabilityEvents.length);
-
+    
     const steps: TraceabilityStep[] = [];
 
     // Primero buscar el evento de expedición para obtener el código del lote expedido
-    const expedicionEvent = traceabilityEvents.find((e: any) =>
+    const expedicionEvent = traceabilityEvents.find((e: any) => 
       e.eventType === 'EXPEDICION' && e.shipmentId === shipmentId
     );
-
+    
     console.log("📦 Evento EXPEDICION encontrado:", !!expedicionEvent, expedicionEvent?.outputBatchCode);
 
     if (!expedicionEvent) {
@@ -105,11 +73,11 @@ export default function Trazabilidad() {
     const shipmentEvents = traceabilityEvents.filter((e: any) => {
       // Incluir eventos donde el lote está en output o en input
       const isOutputBatch = e.outputBatchCode === batchCode;
-      const isInputBatch = e.inputBatchCodes &&
+      const isInputBatch = e.inputBatchCodes && 
         JSON.parse(e.inputBatchCodes || '[]').includes(batchCode);
       return isOutputBatch || isInputBatch || e.shipmentId === shipmentId;
     });
-
+    
     console.log("🔍 Eventos relacionados encontrados:", shipmentEvents.length);
 
     if (shipmentEvents.length === 0) {
@@ -527,19 +495,12 @@ export default function Trazabilidad() {
 
       {selectedShipmentId && selectedShipment && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               onClick={() => setSelectedShipmentId(null)}
             >
               ← Volver a lista
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleDeleteShipment(selectedShipment.shipment.id, selectedShipment.shipment.shipmentCode)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Eliminar Expedición
             </Button>
           </div>
 
