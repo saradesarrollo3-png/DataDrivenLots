@@ -125,10 +125,6 @@ export default function Expedicion() {
       queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
-      toast({
-        title: "Expedición creada",
-        description: "El albarán se ha registrado correctamente y el stock se ha actualizado",
-      });
       handleCloseDialog();
     },
     onError: (error: Error) => {

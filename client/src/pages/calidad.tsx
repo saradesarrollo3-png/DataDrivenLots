@@ -173,10 +173,6 @@ export default function Calidad() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/quality-checklist-templates'] });
       setNewChecklistLabel("");
-      toast({
-        title: "Checklist creado",
-        description: "El nuevo punto de control ha sido añadido.",
-      });
     },
   });
 
@@ -198,10 +194,6 @@ export default function Calidad() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/quality-checklist-templates'] });
-      toast({
-        title: "Checklist eliminado",
-        description: "El punto de control ha sido eliminado.",
-      });
     },
   });
 
@@ -260,11 +252,6 @@ export default function Calidad() {
         processedDate: processedDate,
       });
 
-      toast({
-        title: "Lote Aprobado",
-        description: `El lote ${selectedBatch.code} ha sido aprobado para venta con caducidad ${new Date(expiryDate).toLocaleDateString('es-ES')}.`,
-      });
-
       resetDialog();
     } catch (error: any) {
       toast({
@@ -300,12 +287,6 @@ export default function Calidad() {
         notes: notes,
         checklistData: JSON.stringify(checklist),
         processedDate: processedDate,
-      });
-
-      toast({
-        title: "Lote Bloqueado",
-        description: `El lote ${selectedBatch.code} ha sido bloqueado.`,
-        variant: "destructive",
       });
 
       resetDialog();

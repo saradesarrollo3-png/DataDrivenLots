@@ -116,10 +116,6 @@ export default function Recepcion() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       setIsDialogOpen(false);
       setEditingReception(null);
-      toast({
-        title: editingReception ? "Recepción actualizada" : "Recepción creada",
-        description: editingReception ? "El lote ha sido actualizado correctamente." : "El lote ha sido registrado correctamente.",
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -148,10 +144,6 @@ export default function Recepcion() {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
       setDeletingReception(null);
-      toast({
-        title: "Recepción eliminada",
-        description: "El lote ha sido eliminado correctamente.",
-      });
     },
     onError: (error: Error) => {
       toast({
