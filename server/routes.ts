@@ -287,6 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       notes: `Recepción de materia prima. Matrícula: ${batch.truckPlate || '-'}`,
       performedBy: req.user!.id,
       performedAt: batch.arrivedAt || new Date(),
+      processedDate: batch.processedDate || batch.arrivedAt || new Date(),
     });
 
     // Update product stock
@@ -521,6 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: data.notes || historyNotes,
         performedBy: req.user!.id,
         performedAt: recordData.processedDate || recordData.completedAt,
+        processedDate: recordData.processedDate || recordData.completedAt,
       });
       
       res.json(record);
@@ -616,6 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       notes: data.notes || (data.approved === 1 ? 'Lote aprobado' : data.approved === -1 ? 'Lote rechazado' : 'Lote en revisión'),
       performedBy: req.user!.id,
       performedAt: new Date(),
+      processedDate: batch?.batch.processedDate || new Date(),
     });
 
     res.json(check);
@@ -698,6 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: `Expedición de ${shippedQuantity} ${data.unit}. Matrícula: ${data.truckPlate || '-'}. Restante: ${remainingQuantity.toFixed(2)} ${data.unit}`,
           performedBy: req.user!.id,
           performedAt: new Date(),
+          processedDate: batchData.batch.processedDate || new Date(),
         });
       }
 

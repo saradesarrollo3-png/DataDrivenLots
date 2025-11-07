@@ -255,6 +255,7 @@ export const traceabilityEvents = pgTable("traceability_events", {
   // Auditoría
   performedBy: varchar("performed_by").references(() => users.id),
   performedAt: timestamp("performed_at").defaultNow(),
+  processedDate: timestamp("processed_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

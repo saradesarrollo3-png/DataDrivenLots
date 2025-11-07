@@ -101,7 +101,7 @@ export default function Trazabilidad() {
         stage: 'Expedición',
         icon: Truck,
         color: 'text-indigo-600',
-        timestamp: new Date(expedicionEvent.performedAt).toLocaleString('es-ES', {
+        timestamp: new Date(expedicionEvent.processedDate || expedicionEvent.performedAt).toLocaleString('es-ES', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -136,7 +136,7 @@ export default function Trazabilidad() {
           stage: 'Control de Calidad',
           icon: ClipboardCheck,
           color: 'text-green-600',
-          timestamp: new Date(calidadEvent.performedAt).toLocaleString('es-ES', {
+          timestamp: new Date(calidadEvent.processedDate || calidadEvent.performedAt).toLocaleString('es-ES', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
@@ -169,7 +169,7 @@ export default function Trazabilidad() {
           stage: 'Esterilizado',
           icon: Droplets,
           color: 'text-purple-600',
-          timestamp: new Date(esterilizadoEvent.performedAt).toLocaleString('es-ES', {
+          timestamp: new Date(esterilizadoEvent.processedDate || esterilizadoEvent.performedAt).toLocaleString('es-ES', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
@@ -219,7 +219,7 @@ export default function Trazabilidad() {
             stage: 'Envasado',
             icon: PackageIcon,
             color: 'text-green-600',
-            timestamp: new Date(envasadoEvents[0].performedAt).toLocaleString('es-ES', {
+            timestamp: new Date(envasadoEvents[0].processedDate || envasadoEvents[0].performedAt).toLocaleString('es-ES', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
@@ -272,7 +272,7 @@ export default function Trazabilidad() {
               stage: 'Pelado y Corte',
               icon: Scissors,
               color: 'text-blue-600',
-              timestamp: new Date(peladoEvents[0].performedAt).toLocaleString('es-ES', {
+              timestamp: new Date(peladoEvents[0].processedDate || peladoEvents[0].performedAt).toLocaleString('es-ES', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -324,7 +324,7 @@ export default function Trazabilidad() {
                 stage: 'Asado',
                 icon: Flame,
                 color: 'text-orange-600',
-                timestamp: new Date(asadoEvents[0].performedAt).toLocaleString('es-ES', {
+                timestamp: new Date(asadoEvents[0].processedDate || asadoEvents[0].performedAt).toLocaleString('es-ES', {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
@@ -360,7 +360,7 @@ export default function Trazabilidad() {
                       { label: 'Cantidad Recepcionada', value: `${recEvent.outputQuantity} ${recEvent.outputUnit}` },
                       { label: 'Temperatura', value: recEvent.temperature ? `${parseFloat(recEvent.temperature).toFixed(1)}°C` : '-' },
                       { label: 'Albarán', value: recEvent.deliveryNote || '-' },
-                      { label: 'Fecha', value: new Date(recEvent.performedAt).toLocaleString('es-ES', {
+                      { label: 'Fecha', value: new Date(recEvent.processedDate || recEvent.performedAt).toLocaleString('es-ES', {
                         year: 'numeric',
                         month: '2-digit',
                         day: '2-digit',
@@ -376,7 +376,7 @@ export default function Trazabilidad() {
                   stage: 'Recepción de Materia Prima',
                   icon: Package,
                   color: 'text-blue-600',
-                  timestamp: new Date(recepcionEvents[0].performedAt).toLocaleString('es-ES', {
+                  timestamp: new Date(recepcionEvents[0].processedDate || recepcionEvents[0].performedAt).toLocaleString('es-ES', {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
