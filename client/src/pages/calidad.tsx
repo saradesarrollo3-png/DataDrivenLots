@@ -64,6 +64,7 @@ interface QualityCheckRecord {
   approved: number;
   notes: string;
   checkedAt: string;
+  expiryDate: string;
   status: BatchStatus;
 }
 
@@ -124,6 +125,7 @@ export default function Calidad() {
       approved: 1,
       notes: '',
       checkedAt: item.batch.updatedAt || item.batch.createdAt,
+      expiryDate: item.batch.expiryDate || '-',
       status: item.batch.status
     })),
     ...blockedBatches.map(item => ({
@@ -135,6 +137,7 @@ export default function Calidad() {
       approved: -1,
       notes: '',
       checkedAt: item.batch.updatedAt || item.batch.createdAt,
+      expiryDate: item.batch.expiryDate || '-',
       status: item.batch.status
     }))
   ].map(batch => {
@@ -144,7 +147,7 @@ export default function Calidad() {
       return {
         ...batch,
         notes: check.check.notes || '',
-        checkedAt: check.check.checkedAt,
+        checkedAt: check.check.processedDate || check.check.checkedAt,
         approved: check.check.approved
       };
     }
@@ -401,6 +404,11 @@ export default function Calidad() {
       key: "quantity", 
       label: "Cantidad",
       render: (value) => `${value} envases`
+    },
+    { 
+      key: "expiryDate", 
+      label: "Fecha Caducidad",
+      render: (value) => value && value !== '-' ? new Date(value).toLocaleDateString('es-ES') : '-'
     },
     { 
       key: "approved", 
