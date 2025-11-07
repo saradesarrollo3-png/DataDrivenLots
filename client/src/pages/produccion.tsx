@@ -1036,6 +1036,24 @@ export default function Produccion() {
     }
   };
 
+  const handleDeletePelado = async (batch: ProductionBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
+  const handleDeleteEnvasado = async (batch: ProductionBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
+  const handleDeleteEsterilizado = async (batch: ProductionBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
   const stages = [
     {
       id: "asado",
@@ -1127,7 +1145,13 @@ export default function Produccion() {
                   data={stage.data}
                   onView={stage.id === "asado" ? handleView : undefined}
                   onEdit={stage.id === "asado" ? handleEdit : undefined}
-                  onDelete={stage.id === "asado" ? handleDelete : undefined}
+                  onDelete={
+                    stage.id === "asado" ? handleDelete :
+                    stage.id === "pelado" ? handleDeletePelado :
+                    stage.id === "envasado" ? handleDeleteEnvasado :
+                    stage.id === "esterilizado" ? handleDeleteEsterilizado :
+                    undefined
+                  }
                   emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
                 />
               </CardContent>

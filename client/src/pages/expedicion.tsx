@@ -328,6 +328,35 @@ export default function Expedicion() {
 
   const totalLines = shipmentLines.reduce((sum, line) => sum + line.quantity, 0);
 
+  // Mutación para eliminar lote
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al eliminar lote');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      toast({
+        title: "Lote eliminado",
+        description: "El lote ha sido eliminado exitosamente",
+      });
+    },
+  });
+
+  const handleDeleteStock = async (batch: ApprovedBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -621,6 +650,7 @@ export default function Expedicion() {
               <DataTable
                 columns={stockColumns}
                 data={filteredStockBatches}
+                onDelete={handleDeleteStock}
                 emptyMessage="No hay stock aprobado disponible"
               />
             </CardContent>

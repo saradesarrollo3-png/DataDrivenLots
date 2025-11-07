@@ -439,6 +439,44 @@ export default function Calidad() {
     b.product.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Mutación para eliminar lote
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error al eliminar lote');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      toast({
+        title: "Lote eliminado",
+        description: "El lote ha sido eliminado exitosamente",
+      });
+    },
+  });
+
+  const handleDeletePending = async (batch: QualityBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.code}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
+  const handleDeleteReviewed = async (batch: QualityCheckRecord) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.batchId);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -526,6 +564,7 @@ export default function Calidad() {
             columns={pendingColumns}
             data={filteredPendingBatches}
             onView={(row) => handleOpenDialog(row)}
+            onDelete={handleDeletePending}
             emptyMessage="No hay lotes esterilizados pendientes de revisión"
           />
         </TabsContent>
@@ -534,6 +573,7 @@ export default function Calidad() {
           <DataTable
             columns={reviewedColumns}
             data={filteredReviewedBatches}
+            onDelete={handleDeleteReviewed}
             emptyMessage="No hay lotes revisados"
           />
         </TabsContent>
