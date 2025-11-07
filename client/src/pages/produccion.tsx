@@ -228,13 +228,29 @@ export default function Produccion() {
   console.log("📦 Lotes PELADO filtrados (cantidad > 0):", peladoBatches.length, "de", peladoBatchesRaw.length);
   console.log("📦 Lotes PELADO RAW:", peladoBatchesRaw.map(b => ({code: b.batch.batchCode, qty: b.batch.quantity})));
 
-  const { data: envasadoBatches = [] } = useQuery<any[]>({
+  const { data: envasadoBatchesRaw = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ENVASADO'],
   });
 
-  const { data: esterilizadoBatches = [] } = useQuery<any[]>({
+  // Filtrar lotes de envasado con cantidad mayor a 0
+  const envasadoBatches = envasadoBatchesRaw.filter(b => {
+    const quantity = parseFloat(b.batch.quantity);
+    return quantity > 0;
+  });
+
+  console.log("📦 Lotes ENVASADO filtrados (cantidad > 0):", envasadoBatches.length, "de", envasadoBatchesRaw.length);
+
+  const { data: esterilizadoBatchesRaw = [] } = useQuery<any[]>({
     queryKey: ['/api/batches/status/ESTERILIZADO'],
   });
+
+  // Filtrar lotes de esterilizado con cantidad mayor a 0
+  const esterilizadoBatches = esterilizadoBatchesRaw.filter(b => {
+    const quantity = parseFloat(b.batch.quantity);
+    return quantity > 0;
+  });
+
+  console.log("📦 Lotes ESTERILIZADO filtrados (cantidad > 0):", esterilizadoBatches.length, "de", esterilizadoBatchesRaw.length);
 
   const { data: allBatches = [] } = useQuery<any[]>({
     queryKey: ['/api/batches'],
