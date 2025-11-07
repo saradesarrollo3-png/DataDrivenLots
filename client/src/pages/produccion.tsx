@@ -991,6 +991,53 @@ export default function Produccion() {
         };
       });
 
+  const handleEditProduction = async (batch: ProductionBatch, stage: string) => {
+    setActiveStage(stage);
+    setEditingBatch(batch);
+    setOutputBatchCode(batch.batchCode);
+    setOutputQuantity(batch.quantity.toString());
+
+    // Cargar los registros de producción para obtener fecha/hora y notas
+    try {
+      const response = await fetch(`/api/production-records/batch/${batch.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+      if (response.ok) {
+        const records = await response.json();
+        if (records.length > 0) {
+          const record = records[0].record;
+
+          if (record.notes) {
+            setNotes(record.notes);
+          }
+
+          // Cargar fecha y hora desde processedDate
+          if (record.processedDate) {
+            const processedDateTime = new Date(record.processedDate);
+            setEditProcessedDate(processedDateTime.toISOString().split('T')[0]);
+            setEditProcessedTime(processedDateTime.toTimeString().slice(0, 5));
+          } else {
+            setEditProcessedDate(new Date().toISOString().split('T')[0]);
+            setEditProcessedTime(new Date().toTimeString().slice(0, 5));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading production records:', error);
+    }
+
+    setSelectedBatches([]);
+    setShowNewProcessDialog(true);
+  };
+
+  const handleDeleteProduction = async (batch: ProductionBatch) => {
+    if (window.confirm(`¿Estás seguro de eliminar el lote ${batch.batchCode}?`)) {
+      await deleteBatchMutation.mutateAsync(batch.id);
+    }
+  };
+
   const asadoTableData = mapBatchesToTable(asadoBatches);
   const peladoTableData = mapBatchesToTable(peladoBatches);
   const envasadoTableData = mapBatchesToTable(envasadoBatches);
@@ -1157,9 +1204,9 @@ export default function Produccion() {
                 <DataTable
                   columns={columns}
                   data={stage.data}
-                  onView={stage.id === "asado" ? handleView : undefined}
-                  onEdit={stage.id === "asado" ? handleEdit : undefined}
-                  onDelete={stage.id === "asado" ? handleDelete : undefined}
+                  onView={handleView}
+                  onEdit={(batch) => handleEditProduction(batch, stage.id)}
+                  onDelete={handleDeleteProduction}
                   emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
                 />
               </CardContent>

@@ -65,6 +65,8 @@ interface QualityCheckRecord {
   notes: string;
   checkedAt: string;
   status: BatchStatus;
+  checkId?: string;
+  expiryDate?: string;
 }
 
 export default function Calidad() {
@@ -77,6 +79,8 @@ export default function Calidad() {
   const [showConfig, setShowConfig] = useState(false);
   const [newChecklistLabel, setNewChecklistLabel] = useState("");
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
+  const [editingCheck, setEditingCheck] = useState<QualityCheckRecord | null>(null);
+  const [deletingCheck, setDeletingCheck] = useState<QualityCheckRecord | null>(null);
 
   // Obtener templates de checklist
   const { data: checklistTemplates = [] } = useQuery<ChecklistTemplate[]>({
@@ -124,7 +128,8 @@ export default function Calidad() {
       approved: 1,
       notes: '',
       checkedAt: item.batch.updatedAt || item.batch.createdAt,
-      status: item.batch.status
+      status: item.batch.status,
+      expiryDate: item.batch.expiryDate ? new Date(item.batch.expiryDate).toISOString().split('T')[0] : undefined,
     })),
     ...blockedBatches.map(item => ({
       id: item.batch.id,
@@ -135,7 +140,8 @@ export default function Calidad() {
       approved: -1,
       notes: '',
       checkedAt: item.batch.updatedAt || item.batch.createdAt,
-      status: item.batch.status
+      status: item.batch.status,
+      expiryDate: item.batch.expiryDate ? new Date(item.batch.expiryDate).toISOString().split('T')[0] : undefined,
     }))
   ].map(batch => {
     // Buscar el quality check correspondiente
@@ -145,7 +151,8 @@ export default function Calidad() {
         ...batch,
         notes: check.check.notes || '',
         checkedAt: check.check.checkedAt,
-        approved: check.check.approved
+        approved: check.check.approved,
+        checkId: check.check.id,
       };
     }
     return batch;
@@ -205,6 +212,35 @@ export default function Calidad() {
         title: "Checklist eliminado",
         description: "El punto de control ha sido eliminado.",
       });
+    },
+  });
+
+  // Mutación para eliminar quality check
+  const deleteQualityCheckMutation = useMutation({
+    mutationFn: async (checkId: string) => {
+      const response = await fetch(`/api/quality-checks/${checkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar la revisión de calidad');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/APROBADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/BLOQUEADO'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ESTERILIZADO'] });
+      toast({
+        title: "Revisión eliminada",
+        description: "La revisión de calidad ha sido eliminada.",
+      });
+      setDeletingCheck(null);
     },
   });
 
@@ -326,6 +362,7 @@ export default function Calidad() {
     setNotes("");
     setChecklist([]);
     setExpiryDate("");
+    setEditingCheck(null);
   };
 
   const handleChecklistChange = (id: string, checked: boolean) => {
@@ -366,6 +403,47 @@ export default function Calidad() {
     if (deleteTemplateId) {
       await deleteTemplateMutation.mutateAsync(deleteTemplateId);
       setDeleteTemplateId(null);
+    }
+  };
+
+  const handleEditCheck = (check: QualityCheckRecord) => {
+    // Crear un objeto QualityBatch a partir del check
+    const batchToEdit: QualityBatch = {
+      id: check.batchId,
+      code: check.batchCode,
+      product: check.product,
+      quantity: check.quantity,
+      manufactureDate: '-',
+      expiryDate: check.expiryDate ? new Date(check.expiryDate).toLocaleDateString('es-ES') : '-',
+      status: check.status,
+    };
+    
+    setEditingCheck(check);
+    setSelectedBatch(batchToEdit);
+    setNotes(check.notes);
+    setExpiryDate(check.expiryDate || '');
+    
+    // Cargar checklist desde el check existente
+    if (check.checkId) {
+      const checkData = qualityChecks.find((qc: any) => qc.check.id === check.checkId);
+      if (checkData?.check.checklistData) {
+        try {
+          const parsedChecklist = JSON.parse(checkData.check.checklistData);
+          setChecklist(parsedChecklist);
+        } catch (e) {
+          console.error('Error parsing checklist data:', e);
+        }
+      }
+    }
+  };
+
+  const handleDeleteCheck = (check: QualityCheckRecord) => {
+    setDeletingCheck(check);
+  };
+
+  const confirmDeleteCheck = async () => {
+    if (deletingCheck?.checkId) {
+      await deleteQualityCheckMutation.mutateAsync(deletingCheck.checkId);
     }
   };
 
@@ -546,6 +624,8 @@ export default function Calidad() {
           <DataTable
             columns={reviewedColumns}
             data={filteredReviewedBatches}
+            onEdit={handleEditCheck}
+            onDelete={handleDeleteCheck}
             emptyMessage="No hay lotes revisados"
           />
         </TabsContent>
@@ -691,6 +771,27 @@ export default function Calidad() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteTemplate}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deletingCheck !== null} onOpenChange={(open) => !open && setDeletingCheck(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar revisión de calidad?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará la revisión del lote{' '}
+              <span className="font-mono font-semibold">{deletingCheck?.batchCode}</span> y el lote volverá al estado ESTERILIZADO.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteCheck}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

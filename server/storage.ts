@@ -286,9 +286,35 @@ export const storage = {
     .leftJoin(products, eq(batches.productId, products.id))
     .where(eq(batches.status, 'ESTERILIZADO'), eq(batches.organizationId, organizationId));
   },
-  async insertQualityCheck(data: typeof qualityChecks.$inferInsert) {
+  async insertQualityCheck(data: any) {
     const [check] = await db.insert(qualityChecks).values(data).returning();
     return check;
+  },
+
+  async deleteQualityCheck(id: string, organizationId: string) {
+    // Obtener el quality check para recuperar el batchId
+    const [check] = await db.select()
+      .from(qualityChecks)
+      .where(eq(qualityChecks.id, id));
+
+    if (!check) {
+      throw new Error('Quality check no encontrado');
+    }
+
+    // Verificar que pertenece a la organización
+    if (check.organizationId !== organizationId) {
+      throw new Error('No autorizado');
+    }
+
+    // Cambiar el estado del lote de vuelta a ESTERILIZADO
+    await db.update(batches)
+      .set({ status: 'ESTERILIZADO', expiryDate: null })
+      .where(eq(batches.id, check.batchId));
+
+    // Eliminar el quality check
+    await db.delete(qualityChecks).where(eq(qualityChecks.id, id));
+
+    return { success: true };
   },
 
   // Shipments
@@ -306,9 +332,57 @@ export const storage = {
     .where(eq(shipments.organizationId, organizationId))
     .orderBy(desc(shipments.shippedAt));
   },
-  async insertShipment(data: typeof shipments.$inferInsert) {
+  async insertShipment(data: any) {
     const [shipment] = await db.insert(shipments).values(data).returning();
     return shipment;
+  },
+
+  async deleteShipment(shipmentCode: string, organizationId: string) {
+    // Obtener el shipment para recuperar información necesaria
+    const [shipment] = await db.select()
+      .from(shipments)
+      .where(eq(shipments.shipmentCode, shipmentCode));
+
+    if (!shipment) {
+      throw new Error('Expedición no encontrada');
+    }
+
+    // Verificar que pertenece a la organización
+    if (shipment.organizationId !== organizationId) {
+      throw new Error('No autorizado');
+    }
+
+    // Obtener información del lote
+    const batchData = await this.getBatchById(shipment.batchId, organizationId);
+
+    if (batchData) {
+      const shippedQuantity = parseFloat(shipment.quantity);
+      const currentQuantity = parseFloat(batchData.batch.quantity);
+      const restoredQuantity = currentQuantity + shippedQuantity;
+
+      // Restaurar la cantidad del lote
+      await db.update(batches)
+        .set({
+          quantity: restoredQuantity.toString(),
+          status: 'APROBADO' // Volver a estado APROBADO
+        })
+        .where(eq(batches.id, shipment.batchId));
+
+      // Restaurar stock del producto
+      if (batchData.batch.productId) {
+        await this.updateProductStock(
+          organizationId,
+          batchData.batch.productId,
+          shipment.unit,
+          shippedQuantity
+        );
+      }
+    }
+
+    // Eliminar el shipment
+    await db.delete(shipments).where(eq(shipments.shipmentCode, shipmentCode));
+
+    return { success: true };
   },
 
   // Batch History
@@ -417,7 +491,7 @@ export const storage = {
       const currentQuantity = parseFloat(existingStock.quantity);
       const newQuantity = currentQuantity + quantityChange;
       const [updated] = await db.update(productStock)
-        .set({ 
+        .set({
           quantity: newQuantity.toFixed(2),
           updatedAt: new Date()
         })

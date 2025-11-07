@@ -22,6 +22,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Truck, Plus, Package, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -72,6 +82,8 @@ export default function Expedicion() {
   const [shipmentLines, setShipmentLines] = useState<ShipmentLine[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
+  const [deletingShipment, setDeletingShipment] = useState<Shipment | null>(null);
   const { toast } = useToast();
 
   const { data: shipments = [] } = useQuery({
@@ -137,6 +149,33 @@ export default function Expedicion() {
         description: error.message || "No se pudo crear la expedición. Verifica que el código del albarán no esté duplicado.",
         variant: "destructive",
       });
+    },
+  });
+
+  const deleteShipmentMutation = useMutation({
+    mutationFn: async (shipmentCode: string) => {
+      const response = await fetch(`/api/shipments/${shipmentCode}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar la expedición');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
+      toast({
+        title: "Expedición eliminada",
+        description: "La expedición ha sido eliminada correctamente",
+      });
+      setDeletingShipment(null);
     },
   });
 
@@ -254,6 +293,27 @@ export default function Expedicion() {
     setDeliveryNote("");
     setShipmentLines([]);
     setSelectedProduct("");
+    setEditingShipment(null);
+  };
+
+  const handleEditShipment = (shipment: Shipment) => {
+    // En este caso, no permitiremos editar expediciones existentes
+    // ya que esto podría comprometer la trazabilidad
+    toast({
+      title: "Edición no permitida",
+      description: "Por razones de trazabilidad, no se pueden editar expediciones existentes. Si necesitas corregir algo, elimina la expedición y créala nuevamente.",
+      variant: "destructive",
+    });
+  };
+
+  const handleDeleteShipment = (shipment: Shipment) => {
+    setDeletingShipment(shipment);
+  };
+
+  const confirmDeleteShipment = async () => {
+    if (deletingShipment) {
+      await deleteShipmentMutation.mutateAsync(deletingShipment.shipmentCode);
+    }
   };
 
   const processedShipments: Shipment[] = shipments.map((item: any) => ({
@@ -599,6 +659,8 @@ export default function Expedicion() {
                 columns={shipmentsColumns}
                 data={processedShipments}
                 onView={(row) => console.log("View shipment:", row)}
+                onEdit={handleEditShipment}
+                onDelete={handleDeleteShipment}
               />
             </CardContent>
           </Card>
@@ -631,6 +693,27 @@ export default function Expedicion() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={deletingShipment !== null} onOpenChange={(open) => !open && setDeletingShipment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar expedición?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará la expedición{' '}
+              <span className="font-mono font-semibold">{deletingShipment?.shipmentCode}</span> y se restaurará el stock del lote.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteShipment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
