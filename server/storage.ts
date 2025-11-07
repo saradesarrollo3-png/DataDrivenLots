@@ -307,7 +307,7 @@ export const storage = {
     .orderBy(desc(shipments.shippedAt));
 
     return result;
-  }
+  },
 
   async getShipmentById(id: string, organizationId: string) {
     const [result] = await db.select({
@@ -323,15 +323,15 @@ export const storage = {
     .where(and(eq(shipments.id, id), eq(shipments.organizationId, organizationId)));
 
     return result;
-  }
+  },
 
   async deleteShipment(id: string) {
     await db.delete(shipments).where(eq(shipments.id, id));
-  }
+  },
 
   async deleteTraceabilityEventsByShipment(shipmentId: string) {
     await db.delete(traceabilityEvents).where(eq(traceabilityEvents.shipmentId, shipmentId));
-  }
+  },
 
   async insertShipment(data: typeof shipments.$inferInsert) {
     const [shipment] = await db.insert(shipments).values(data).returning();
