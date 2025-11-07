@@ -131,7 +131,7 @@ function Router() {
     <Switch>
       <Route path="/" component={() => {
         console.log("Route / - sessionId:", sessionId, "user:", user);
-        return sessionId ? <ProtectedRoute component={Dashboard} /> : <Landing />;
+        return sessionId ? <ProtectedRoute component={Dashboard} /> : <Login />;
       }} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />

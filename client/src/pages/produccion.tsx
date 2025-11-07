@@ -756,7 +756,6 @@ export default function Produccion() {
           }
         }
       } else if (activeStage === "esterilizado") {
-      try {
         // Agrupar lotes por tipo de envase
         const packageTypesMap = new Map<string, {
           typeName: string;
@@ -836,104 +835,91 @@ export default function Produccion() {
             });
           }
         }
+      } else {
+          // Para asado, crear nuevo lote o actualizar existente
+          const inputBatchCodes = selectedBatches
+            .filter(b => b.selectedQuantity > 0)
+            .map(b => b.batchCode)
+            .join(', ');
 
-        toast({
-          title: "Proceso completado",
-          description: `Se han creado ${packageTypesMap.size} lote(s) esterilizado(s) agrupados por tipo de envase`,
-        });
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "No se pudo completar el proceso",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
-        // Para asado, crear nuevo lote o actualizar existente
-        const inputBatchCodes = selectedBatches
-          .filter(b => b.selectedQuantity > 0)
-          .map(b => b.batchCode)
-          .join(', ');
+          const inputBatchDetails = selectedBatches
+            .filter(b => b.selectedQuantity > 0)
+            .map(b => ({
+              batchId: b.batchId,
+              batchCode: b.batchCode,
+              quantity: b.selectedQuantity,
+            }));
 
-        const inputBatchDetails = selectedBatches
-          .filter(b => b.selectedQuantity > 0)
-          .map(b => ({
-            batchId: b.batchId,
-            batchCode: b.batchCode,
-            quantity: b.selectedQuantity,
-          }));
+          const totalInput = calculateTotalInput();
 
-        const totalInput = calculateTotalInput();
+          if (editingBatch) {
+            // Actualizar lote existente
+            await updateBatchMutation.mutateAsync({
+              id: editingBatch.id,
+              data: {
+                quantity: finalOutputQuantity.toString(),
+                processedDate: processedDateTime,
+              },
+            });
 
-        if (editingBatch) {
-          // Actualizar lote existente
-          await updateBatchMutation.mutateAsync({
-            id: editingBatch.id,
-            data: {
+            // Actualizar el registro de producción existente
+            const existingRecords = await fetch(`/api/production-records/batch/${editingBatch.id}`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
+              },
+            }).then(r => r.json());
+
+            if (existingRecords.length > 0) {
+              // Aquí deberías tener una ruta PUT para actualizar el registro
+              // Por ahora, se mantiene como está
+            }
+          } else {
+            // Crear lote de ASADO
+            const batchData: any = {
+              batchCode: outputBatchCode,
+              productId: firstBatch?.batch.productId,
+              initialQuantity: finalOutputQuantity.toString(),
               quantity: finalOutputQuantity.toString(),
+              unit: finalUnit,
+              status: 'ASADO',
               processedDate: processedDateTime,
-            },
-          });
+            };
 
-          // Actualizar el registro de producción existente
-          const existingRecords = await fetch(`/api/production-records/batch/${editingBatch.id}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('sessionId')}`,
-            },
-          }).then(r => r.json());
+            const newBatch = await createBatchMutation.mutateAsync(batchData);
 
-          if (existingRecords.length > 0) {
-            // Aquí deberías tener una ruta PUT para actualizar el registro
-            // Por ahora, se mantiene como está
-          }
-        } else {
-          // Crear lote de ASADO
-          const batchData: any = {
-            batchCode: outputBatchCode,
-            productId: firstBatch?.batch.productId,
-            initialQuantity: finalOutputQuantity.toString(),
-            quantity: finalOutputQuantity.toString(),
-            unit: finalUnit,
-            status: 'ASADO',
-            processedDate: processedDateTime,
-          };
+            // Crear registro de producción
+            await createProductionRecordMutation.mutateAsync({
+              batchId: newBatch.id,
+              stage: 'ASADO',
+              inputBatchCode: inputBatchCodes,
+              outputBatchCode: outputBatchCode,
+              inputQuantity: totalInput.toString(),
+              outputQuantity: finalOutputQuantity.toString(),
+              unit: finalUnit,
+              inputBatchDetails: JSON.stringify(inputBatchDetails),
+              notes: notes || null,
+              processedDate: processedDateTime,
+              completedAt: new Date().toISOString(),
+            });
 
-          const newBatch = await createBatchMutation.mutateAsync(batchData);
-
-          // Crear registro de producción
-          await createProductionRecordMutation.mutateAsync({
-            batchId: newBatch.id,
-            stage: 'ASADO',
-            inputBatchCode: inputBatchCodes,
-            outputBatchCode: outputBatchCode,
-            inputQuantity: totalInput.toString(),
-            outputQuantity: finalOutputQuantity.toString(),
-            unit: finalUnit,
-            inputBatchDetails: JSON.stringify(inputBatchDetails),
-            notes: notes || null,
-            processedDate: processedDateTime,
-            completedAt: new Date().toISOString(),
-          });
-
-          // Reducir cantidad de los lotes de RECEPCIÓN sin cambiar su estado
-          for (const selectedBatch of selectedBatches) {
-            if (selectedBatch.selectedQuantity > 0) {
-              const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
-              if (currentBatch) {
-                const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
-                await updateBatchMutation.mutateAsync({
-                  id: selectedBatch.batchId,
-                  data: {
-                    quantity: remainingQuantity.toString(),
-                    // NO cambiar el estado, permanece en RECEPCION
-                  },
-                });
+            // Reducir cantidad de los lotes de RECEPCIÓN sin cambiar su estado
+            for (const selectedBatch of selectedBatches) {
+              if (selectedBatch.selectedQuantity > 0) {
+                const currentBatch = allBatches.find((b: any) => b.batch.id === selectedBatch.batchId);
+                if (currentBatch) {
+                  const remainingQuantity = parseFloat(currentBatch.batch.quantity) - selectedBatch.selectedQuantity;
+                  await updateBatchMutation.mutateAsync({
+                    id: selectedBatch.batchId,
+                    data: {
+                      quantity: remainingQuantity.toString(),
+                      // NO cambiar el estado, permanece en RECEPCION
+                    },
+                  });
+                }
               }
             }
           }
-        }
-    }
+      }
 
       // Invalidate queries for all stages to refresh data
       await queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
@@ -1115,7 +1101,7 @@ export default function Produccion() {
       </div>
 
       <Tabs defaultValue="asado" className="space-y-4" onValueChange={setActiveStage}>
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4">
           {stages.map((stage) => {
             const Icon = stage.icon;
             return (
