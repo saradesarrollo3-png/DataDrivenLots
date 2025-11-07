@@ -458,10 +458,6 @@ export default function Calidad() {
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quality-checks'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
-      toast({
-        title: "Lote eliminado",
-        description: "El lote ha sido eliminado exitosamente",
-      });
     },
   });
 

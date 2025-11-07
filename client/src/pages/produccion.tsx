@@ -336,10 +336,6 @@ export default function Produccion() {
       queryClient.invalidateQueries({ queryKey: ['/api/batches/status/ASADO'] });
       queryClient.invalidateQueries({ queryKey: ['/api/batches'] });
       queryClient.invalidateQueries({ queryKey: ['/api/product-stock'] });
-      toast({
-        title: "Lote eliminado",
-        description: "El lote ha sido eliminado exitosamente",
-      });
     },
   });
 
