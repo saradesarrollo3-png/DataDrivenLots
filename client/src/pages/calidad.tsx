@@ -114,45 +114,31 @@ export default function Calidad() {
     status: item.batch.status
   }));
 
-  // Combinar lotes aprobados y bloqueados
-  const reviewedBatches: QualityCheckRecord[] = [
-    ...approvedBatches.map(item => ({
-      id: item.batch.id,
-      batchId: item.batch.id,
-      batchCode: item.batch.batchCode,
-      product: item.product?.name || '-',
-      quantity: parseFloat(item.batch.quantity),
-      approved: 1,
-      notes: '',
-      checkedAt: item.batch.updatedAt || item.batch.createdAt,
-      expiryDate: item.batch.expiryDate || '-',
-      status: item.batch.status
-    })),
-    ...blockedBatches.map(item => ({
-      id: item.batch.id,
-      batchId: item.batch.id,
-      batchCode: item.batch.batchCode,
-      product: item.product?.name || '-',
-      quantity: parseFloat(item.batch.quantity),
-      approved: -1,
-      notes: '',
-      checkedAt: item.batch.updatedAt || item.batch.createdAt,
-      expiryDate: item.batch.expiryDate || '-',
-      status: item.batch.status
-    }))
-  ].map(batch => {
-    // Buscar el quality check correspondiente
-    const check = qualityChecks.find((qc: any) => qc.check.batchId === batch.batchId);
-    if (check) {
+  // Combinar lotes aprobados y bloqueados con sus quality checks
+  const reviewedBatches: QualityCheckRecord[] = qualityChecks
+    .map((qc: any) => {
+      // Buscar el lote correspondiente en aprobados o bloqueados
+      const approvedBatch = approvedBatches.find(item => item.batch.id === qc.check.batchId);
+      const blockedBatch = blockedBatches.find(item => item.batch.id === qc.check.batchId);
+      const batchData = approvedBatch || blockedBatch;
+
+      if (!batchData) return null;
+
       return {
-        ...batch,
-        notes: check.check.notes || '',
-        checkedAt: check.check.processedDate || check.check.checkedAt,
-        approved: check.check.approved
+        id: batchData.batch.id,
+        batchId: batchData.batch.id,
+        batchCode: batchData.batch.batchCode,
+        product: batchData.product?.name || '-',
+        quantity: parseFloat(batchData.batch.quantity),
+        approved: qc.check.approved,
+        notes: qc.check.notes || '',
+        checkedAt: qc.check.processedDate,
+        expiryDate: batchData.batch.expiryDate || '-',
+        status: batchData.batch.status
       };
-    }
-    return batch;
-  }).sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
+    })
+    .filter((batch): batch is QualityCheckRecord => batch !== null)
+    .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime());
 
   // Mutación para crear template
   const createTemplateMutation = useMutation({
