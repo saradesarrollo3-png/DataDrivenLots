@@ -383,6 +383,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get batch data before deleting to update stock
       const batchData = await storage.getBatchById(req.params.id, req.user!.organizationId);
       
+      // Delete traceability events associated with this batch first
+      await storage.deleteTraceabilityEventsByBatch(req.params.id);
+      
       await storage.deleteBatch(req.params.id);
       
       // Reduce stock when batch is deleted

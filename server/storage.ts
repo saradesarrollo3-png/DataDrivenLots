@@ -370,6 +370,10 @@ export const storage = {
     const [event] = await db.insert(traceabilityEvents).values(data).returning();
     return event;
   },
+  async deleteTraceabilityEventsByBatch(batchId: string) {
+    await db.delete(traceabilityEvents)
+      .where(eq(traceabilityEvents.outputBatchId, batchId));
+  },
 
   // Product Stock
   async getProductStock(organizationId: string) {
