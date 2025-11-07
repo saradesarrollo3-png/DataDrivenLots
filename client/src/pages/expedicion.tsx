@@ -87,7 +87,7 @@ export default function Expedicion() {
   });
 
   const createShipmentMutation = useMutation({
-    mutationFn: async (lines: ShipmentLine[]) => {
+    mutationFn: async ({ lines, processedDate }: { lines: ShipmentLine[], processedDate: string }) => {
       // Crear un shipment por cada línea con código único
       const promises = lines.map((line, index) => {
         // Generar código único: código base + sufijo si hay múltiples líneas
@@ -109,6 +109,7 @@ export default function Expedicion() {
             unit: line.unit,
             truckPlate: truckPlate,
             deliveryNote: deliveryNote,
+            processedDate: processedDate,
           }),
         }).then(async res => {
           if (!res.ok) {
@@ -198,7 +199,13 @@ export default function Expedicion() {
       return;
     }
 
-    createShipmentMutation.mutate(shipmentLines);
+    const processedDateInput = (document.getElementById('processedDate') as HTMLInputElement)?.value;
+    const processedTimeInput = (document.getElementById('processedTime') as HTMLInputElement)?.value;
+    const processedDate = processedDateInput && processedTimeInput 
+      ? new Date(`${processedDateInput}T${processedTimeInput}:00`).toISOString()
+      : new Date().toISOString();
+
+    createShipmentMutation.mutate({ lines: shipmentLines, processedDate });
   };
 
   const handleAddLine = (batch: ApprovedBatch) => {
@@ -395,6 +402,29 @@ export default function Expedicion() {
                     value={deliveryNote}
                     onChange={(e) => setDeliveryNote(e.target.value)}
                     data-testid="input-delivery-note"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="processedDate">Fecha de Expedición *</Label>
+                  <Input
+                    id="processedDate"
+                    type="date"
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    data-testid="input-processed-date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="processedTime">Hora de Expedición *</Label>
+                  <Input
+                    id="processedTime"
+                    type="time"
+                    defaultValue={new Date().toTimeString().slice(0, 5)}
+                    data-testid="input-processed-time"
+                    required
                   />
                 </div>
               </div>

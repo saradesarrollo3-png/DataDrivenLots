@@ -210,7 +210,7 @@ export default function Calidad() {
 
   // Mutación para crear quality check
   const createQualityCheckMutation = useMutation({
-    mutationFn: async (data: { batchId: string; approved: number; notes: string; checklistData: string; expiryDate?: string }) => {
+    mutationFn: async (data: { batchId: string; approved: number; notes: string; checklistData: string; expiryDate?: string; processedDate?: string }) => {
       const response = await fetch('/api/quality-checks', {
         method: 'POST',
         headers: {
@@ -247,6 +247,12 @@ export default function Calidad() {
       return;
     }
 
+    const processedDateInput = (document.getElementById('processedDate') as HTMLInputElement)?.value;
+    const processedTimeInput = (document.getElementById('processedTime') as HTMLInputElement)?.value;
+    const processedDate = processedDateInput && processedTimeInput 
+      ? new Date(`${processedDateInput}T${processedTimeInput}:00`).toISOString()
+      : new Date().toISOString();
+
     try {
       await createQualityCheckMutation.mutateAsync({
         batchId: selectedBatch.id,
@@ -254,6 +260,7 @@ export default function Calidad() {
         notes: notes,
         checklistData: JSON.stringify(checklist),
         expiryDate: expiryDate,
+        processedDate: processedDate,
       });
 
       toast({
@@ -283,12 +290,19 @@ export default function Calidad() {
       return;
     }
 
+    const processedDateInput = (document.getElementById('processedDate') as HTMLInputElement)?.value;
+    const processedTimeInput = (document.getElementById('processedTime') as HTMLInputElement)?.value;
+    const processedDate = processedDateInput && processedTimeInput 
+      ? new Date(`${processedDateInput}T${processedTimeInput}:00`).toISOString()
+      : new Date().toISOString();
+
     try {
       await createQualityCheckMutation.mutateAsync({
         batchId: selectedBatch.id,
         approved: -1,
         notes: notes,
         checklistData: JSON.stringify(checklist),
+        processedDate: processedDate,
       });
 
       toast({
@@ -605,6 +619,29 @@ export default function Calidad() {
                   data-testid="input-expiry-date"
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="processedDate">Fecha de Revisión *</Label>
+                  <Input
+                    id="processedDate"
+                    type="date"
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    data-testid="input-processed-date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="processedTime">Hora de Revisión *</Label>
+                  <Input
+                    id="processedTime"
+                    type="time"
+                    defaultValue={new Date().toTimeString().slice(0, 5)}
+                    data-testid="input-processed-time"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
