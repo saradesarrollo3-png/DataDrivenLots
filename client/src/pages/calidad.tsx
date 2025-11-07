@@ -124,7 +124,8 @@ export default function Calidad() {
 
       if (!batchData) return null;
 
-      // Usar processedDate si existe, sino usar checkedAt
+      // Usar processedDate (fecha y hora de revisión ingresada manualmente)
+      // Si no existe, usar checkedAt como fallback
       const reviewDate = qc.check.processedDate || qc.check.checkedAt;
 
       return {

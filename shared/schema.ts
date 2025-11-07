@@ -168,6 +168,7 @@ export const qualityChecks = pgTable("quality_checks", {
   approved: integer("approved").notNull().default(0), // 0 = pending, 1 = approved, -1 = rejected
   notes: text("notes"),
   checklistData: text("checklist_data"), // JSON string
+  processedDate: timestamp("processed_date"), // Fecha y hora de revisión ingresada manualmente
   checkedAt: timestamp("checked_at").defaultNow(),
 });
 
