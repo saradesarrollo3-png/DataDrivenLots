@@ -5,7 +5,7 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, XCircle, Plus, Trash2, Settings, ClipboardCheck } from "lucide-react";
+import { Search, CheckCircle, XCircle, Plus, Trash2, Settings, ClipboardCheck, Droplets } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -495,44 +495,93 @@ export default function Calidad() {
       </div>
 
       {/* Guía de ayuda para el usuario */}
-      <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2">
-              <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Sección: ¿Cómo realizar un control de calidad? */}
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2">
+                <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                  ¿Cómo realizar un control de calidad?
+                </h3>
+                <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+                  <li>En la pestaña <strong>"Pendientes de Revisión"</strong>, verás los lotes esterilizados que esperan control de calidad</li>
+                  <li>Haz clic en el <strong>icono del ojo (👁️)</strong> en la columna "Acciones" del lote que deseas revisar</li>
+                  <li>Se abrirá un formulario donde podrás completar el checklist de calidad, establecer fecha de caducidad y añadir observaciones</li>
+                  <li>Finalmente, <strong>aprueba el lote para venta</strong> si cumple los requisitos o <strong>recházalo</strong> si detectas problemas</li>
+                </ol>
+                {qualityBatches.length === 0 && (
+                  <p className="text-sm text-blue-700 dark:text-blue-300 italic mt-2">
+                    ℹ️ No hay lotes esterilizados pendientes de revisión en este momento
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex-1 space-y-2">
-              <h3 className="font-medium text-blue-900 dark:text-blue-100">
-                ¿Cómo realizar un control de calidad?
-              </h3>
-              <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-                <li>En la pestaña <strong>"Pendientes de Revisión"</strong>, verás los lotes esterilizados que esperan control de calidad</li>
-                <li>Haz clic en el <strong>icono del ojo (👁️)</strong> en la columna "Acciones" del lote que deseas revisar</li>
-                <li>Se abrirá un formulario donde podrás completar el checklist de calidad, establecer fecha de caducidad y añadir observaciones</li>
-                <li>Finalmente, <strong>aprueba el lote para venta</strong> si cumple los requisitos o <strong>recházalo</strong> si detectas problemas</li>
-              </ol>
-              {qualityBatches.length === 0 && (
-                <p className="text-sm text-blue-700 dark:text-blue-300 italic mt-2">
-                  ℹ️ No hay lotes esterilizados pendientes de revisión en este momento
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
+        {/* Sección: ¿De dónde vienen los lotes? */}
+        <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2">
+                <Droplets className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <h3 className="font-medium text-green-900 dark:text-green-100">
+                  ¿De dónde vienen los lotes pendientes?
+                </h3>
+                <div className="text-sm text-green-800 dark:text-green-200 space-y-2">
+                  <p>
+                    Los lotes que aparecen en <strong>"Pendientes de Revisión"</strong> son aquellos que han completado el proceso de <strong>esterilizado</strong> en la página de Producción.
+                  </p>
+                  <div className="bg-white/50 dark:bg-black/20 rounded-md p-3 border border-green-200 dark:border-green-800">
+                    <p className="font-medium mb-1">📋 Flujo del proceso:</p>
+                    <p className="text-xs">
+                      Recepción → Asado → Pelado → Envasado → <strong className="text-green-700 dark:text-green-300">Esterilizado</strong> → ✅ <strong>Control de Calidad</strong> → Expedición
+                    </p>
+                  </div>
+                  <p className="text-xs italic">
+                    Una vez que apruebes un lote aquí, estará disponible para expedición a clientes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sección: Configurar Checklists */}
       {showConfig && (
-        <Card>
+        <Card className="border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 dark:border-purple-800">
           <CardHeader>
-            <CardTitle>Configuración de Checklists</CardTitle>
-            <CardDescription>
-              Gestiona los puntos de control para la revisión de calidad
-            </CardDescription>
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2">
+                <Settings className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-purple-900 dark:text-purple-100">Configuración de Checklists</CardTitle>
+                <CardDescription className="text-purple-700 dark:text-purple-300 mt-2">
+                  Los <strong>checklists</strong> son puntos de verificación que aparecerán al revisar cada lote. 
+                  Personalízalos según tus necesidades de control de calidad (verificación visual, temperatura, pH, etc.).
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="bg-purple-100/50 dark:bg-purple-900/20 rounded-md p-3 border border-purple-200 dark:border-purple-800">
+              <p className="text-sm text-purple-800 dark:text-purple-200">
+                <strong>💡 Tip:</strong> Añade puntos como "Verificación de color", "Control de temperatura", "Integridad del envase", etc. 
+                Estos aparecerán automáticamente en cada revisión de lote.
+              </p>
+            </div>
+            
             <div className="flex gap-2">
               <Input
-                placeholder="Nuevo punto de control..."
+                placeholder="Ej: Verificación visual del producto..."
                 value={newChecklistLabel}
                 onChange={(e) => setNewChecklistLabel(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddChecklist()}
@@ -545,7 +594,7 @@ export default function Calidad() {
 
             <div className="space-y-2">
               {checklistTemplates.map((template) => (
-                <div key={template.id} className="flex items-center justify-between p-3 border rounded-md">
+                <div key={template.id} className="flex items-center justify-between p-3 border rounded-md bg-white dark:bg-gray-800">
                   <span className="text-sm">{template.label}</span>
                   <Button
                     variant="ghost"
@@ -559,7 +608,7 @@ export default function Calidad() {
               ))}
               {checklistTemplates.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay puntos de control configurados
+                  No hay puntos de control configurados. Añade el primero arriba ⬆️
                 </p>
               )}
             </div>
