@@ -81,13 +81,8 @@ function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('sessionId');
     localStorage.removeItem('user');
     queryClient.clear();
-    // Use toast imperatively to avoid re-renders
-    const { toast } = await import("@/hooks/use-toast");
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión correctamente",
-    });
-    setLocation('/');
+    // Forzar recarga completa para limpiar el estado
+    window.location.href = '/';
   };
 
   return (
