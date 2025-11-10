@@ -5,7 +5,7 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, XCircle, Plus, Trash2, Settings, ClipboardCheck, Droplets } from "lucide-react";
+import { Search, CheckCircle, XCircle, Plus, Trash2, Settings, ClipboardCheck, Droplets, ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -497,16 +498,21 @@ export default function Calidad() {
       {/* Guía de ayuda para el usuario */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Sección: ¿Cómo realizar un control de calidad? */}
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2">
-                <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="font-medium text-blue-900 dark:text-blue-100">
-                  ¿Cómo realizar un control de calidad?
-                </h3>
+        <Collapsible defaultOpen={false}>
+          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+            <CardHeader>
+              <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <CardTitle className="text-base font-medium text-blue-900 dark:text-blue-100">
+                    ¿Cómo realizar un control de calidad?
+                  </CardTitle>
+                </div>
+                <ChevronDown className="h-5 w-5 text-blue-600 dark:text-blue-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
                 <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
                   <li>En la pestaña <strong>"Pendientes de Revisión"</strong>, verás los lotes esterilizados que esperan control de calidad</li>
                   <li>Haz clic en el <strong>icono del ojo (👁️)</strong> en la columna "Acciones" del lote que deseas revisar</li>
@@ -518,22 +524,27 @@ export default function Calidad() {
                     ℹ️ No hay lotes esterilizados pendientes de revisión en este momento
                   </p>
                 )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Sección: ¿De dónde vienen los lotes? */}
-        <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2">
-                <Droplets className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="font-medium text-green-900 dark:text-green-100">
-                  ¿De dónde vienen los lotes pendientes?
-                </h3>
+        <Collapsible defaultOpen={false}>
+          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800">
+            <CardHeader>
+              <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-2">
+                  <Droplets className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <CardTitle className="text-base font-medium text-green-900 dark:text-green-100">
+                    ¿De dónde vienen los lotes pendientes?
+                  </CardTitle>
+                </div>
+                <ChevronDown className="h-5 w-5 text-green-600 dark:text-green-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
                 <div className="text-sm text-green-800 dark:text-green-200 space-y-2">
                   <p>
                     Los lotes que aparecen en <strong>"Pendientes de Revisión"</strong> son aquellos que han completado el proceso de <strong>esterilizado</strong> en la página de Producción.
@@ -548,10 +559,10 @@ export default function Calidad() {
                     Una vez que apruebes un lote aquí, estará disponible para expedición a clientes.
                   </p>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div>
 
       {/* Sección: Configurar Checklists */}

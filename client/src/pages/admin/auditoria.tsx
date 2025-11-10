@@ -139,7 +139,7 @@ export default function Auditoria() {
         </p>
       </div>
 
-      <Collapsible defaultOpen={true}>
+      <Collapsible defaultOpen={false}>
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
           <CardHeader>
             <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">

@@ -37,6 +37,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ProductionBatch {
   id: string;
@@ -221,7 +222,21 @@ export default function Produccion() {
   const [viewingBatch, setViewingBatch] = useState<ProductionBatch | null>(null);
   const [editProcessedDate, setEditProcessedDate] = useState<string>('');
   const [editProcessedTime, setEditProcessedTime] = useState<string>('');
+
+  // Estado para controlar la apertura por defecto de los Collapsibles
+  const [openStages, setOpenStages] = useState<Record<string, boolean>>({
+    asado: false,
+    pelado: false,
+    envasado: false,
+    esterilizado: false,
+  });
   
+  // Manejador para el estado de apertura del Collapsible
+  const handleToggleCollapsible = (stageId: string) => {
+    setOpenStages((prev) => ({ ...prev, [stageId]: !prev[stageId] }));
+  };
+
+
   // Generar código de lote base según la etapa
   const generateBatchCode = (stage: string) => {
     const today = new Date();
@@ -229,13 +244,13 @@ export default function Produccion() {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    
+
     const prefixes: Record<string, string> = {
       'asado': 'ASA',
       'envasado': 'ENV',
       'esterilizado': 'EST',
     };
-    
+
     const prefix = prefixes[stage] || 'LOTE';
     return `${prefix}-${year}${month}${day}-${random}`;
   };
@@ -525,7 +540,7 @@ export default function Produccion() {
     setEditProcessedDate("");
     setEditProcessedTime("");
   };
-  
+
   // Generar código al abrir el diálogo
   const handleOpenNewProcessDialog = () => {
     if (!editingBatch && activeStage !== "pelado") {
@@ -1261,38 +1276,57 @@ export default function Produccion() {
                 </div>
               </CardHeader>
               <CardContent>
-                {stage.data.length === 0 ? (
-                  <div className="text-center py-12">
-                    <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground mb-4">
-                      No hay lotes en la etapa de {stage.title.toLowerCase()}
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Comienza creando un nuevo proceso con lotes en estado {stage.inputStatus}
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleOpenNewProcessDialog}
-                    >
-                      Crear Primer Lote
-                    </Button>
-                  </div>
-                ) : (
-                  <DataTable
-                    columns={columns}
-                    data={stage.data}
-                    onView={stage.id === "asado" ? handleView : undefined}
-                    onEdit={stage.id === "asado" ? handleEdit : undefined}
-                    onDelete={
-                      stage.id === "asado" ? handleDelete :
-                      stage.id === "pelado" ? handleDeletePelado :
-                      stage.id === "envasado" ? handleDeleteEnvasado :
-                      stage.id === "esterilizado" ? handleDeleteEsterilizado :
-                      undefined
-                    }
-                    emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
-                  />
-                )}
+              <Collapsible 
+                open={openStages[stage.id]} 
+                onOpenChange={() => handleToggleCollapsible(stage.id)}
+                className="w-full rounded-md border"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-4 hover:bg-transparent">
+                    <div className="flex items-center gap-2">
+                      <stage.icon className={`h-5 w-5 ${stage.color}`} />
+                      <span className="text-lg font-semibold">
+                        Lotes en {stage.title} ({stage.data.length})
+                      </span>
+                    </div>
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-4 pb-4">
+                  {stage.data.length === 0 ? (
+                    <div className="text-center py-12">
+                      <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">
+                        No hay lotes en la etapa de {stage.title.toLowerCase()}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Comienza creando un nuevo proceso con lotes en estado {stage.inputStatus}
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={handleOpenNewProcessDialog}
+                      >
+                        Crear Primer Lote
+                      </Button>
+                    </div>
+                  ) : (
+                    <DataTable
+                      columns={columns}
+                      data={stage.data}
+                      onView={stage.id === "asado" ? handleView : undefined}
+                      onEdit={stage.id === "asado" ? handleEdit : undefined}
+                      onDelete={
+                        stage.id === "asado" ? handleDelete :
+                        stage.id === "pelado" ? handleDeletePelado :
+                        stage.id === "envasado" ? handleDeleteEnvasado :
+                        stage.id === "esterilizado" ? handleDeleteEsterilizado :
+                        undefined
+                      }
+                      emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
+                    />
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1756,3 +1790,4 @@ export default function Produccion() {
     </div>
   );
 }
+</replit_final_file>
