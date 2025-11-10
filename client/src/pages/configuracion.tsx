@@ -373,6 +373,26 @@ export default function Configuracion() {
         </TabsList>
 
         <TabsContent value="suppliers">
+          <Card className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
+            <CardHeader>
+              <CardTitle className="text-base font-medium">ℹ️ ¿Qué configurar en Proveedores?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                Los <strong>proveedores</strong> son las empresas que te suministran materia prima (pimientos, tomates, etc.).
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Qué registrar:</strong> Nombre de la empresa, código identificador (opcional), persona de contacto, teléfono y email.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Cuándo hacerlo:</strong> Antes de realizar la primera recepción de materia prima. Cada vez que trabajes con un nuevo proveedor, deberás añadirlo aquí.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Cómo usarlo:</strong> Haz clic en "Nuevo Proveedor", rellena los datos y guarda. Luego podrás seleccionarlo al registrar recepciones de materia prima.
+              </p>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -500,6 +520,31 @@ export default function Configuracion() {
         </TabsContent>
 
         <TabsContent value="products">
+          <Card className="mb-4 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-900">
+            <CardHeader>
+              <CardTitle className="text-base font-medium">ℹ️ ¿Qué configurar en Productos?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                El <strong>catálogo de productos</strong> incluye todo lo que manejas: materia prima, semielaborados y productos terminados.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Tipos de productos:</strong>
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground ml-4 space-y-1">
+                <li><strong>Materia Prima:</strong> Pimientos crudos, tomates, etc.</li>
+                <li><strong>Semielaborado:</strong> Pimiento asado, pelado, etc.</li>
+                <li><strong>Producto Terminado:</strong> Pimiento envasado en frasco 370ml, etc.</li>
+              </ul>
+              <p className="text-muted-foreground">
+                <strong>Qué registrar:</strong> Nombre del producto, código (opcional), tipo, formato de presentación y vida útil en días.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Consejo:</strong> Registra primero las materias primas que recibes, luego los productos terminados que vendes. Los semielaborados se generan automáticamente durante la producción.
+              </p>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -644,6 +689,32 @@ export default function Configuracion() {
         </TabsContent>
 
         <TabsContent value="locations">
+          <Card className="mb-4 border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-900">
+            <CardHeader>
+              <CardTitle className="text-base font-medium">ℹ️ ¿Qué configurar en Ubicaciones?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                Las <strong>ubicaciones</strong> son las zonas físicas donde almacenas los productos según su etapa del proceso.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Tipos de ubicaciones:</strong>
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground ml-4 space-y-1">
+                <li><strong>Recepción:</strong> Donde llega y se almacena la materia prima recibida</li>
+                <li><strong>Producción:</strong> Zonas de procesamiento (asado, pelado, envasado)</li>
+                <li><strong>Calidad:</strong> Donde se revisan los lotes antes de aprobarlos</li>
+                <li><strong>Expedición:</strong> Productos aprobados listos para enviar a clientes</li>
+              </ul>
+              <p className="text-muted-foreground">
+                <strong>Qué registrar:</strong> Nombre descriptivo de la ubicación, código identificador y tipo de zona.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Ejemplo:</strong> "Recepción - Zona 1" (código: REC-Z1, tipo: RECEPCION), "Cámara de Asado A" (código: ASA-A, tipo: PRODUCCION).
+              </p>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -761,6 +832,29 @@ export default function Configuracion() {
         </TabsContent>
 
         <TabsContent value="customers">
+          <Card className="mb-4 border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-900">
+            <CardHeader>
+              <CardTitle className="text-base font-medium">ℹ️ ¿Qué configurar en Clientes?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                Los <strong>clientes</strong> son las empresas o distribuidores a quienes vendes y envías tus productos terminados.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Qué registrar:</strong> Nombre de la empresa, código identificador (opcional), persona de contacto, teléfono, email y dirección de envío.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Cuándo hacerlo:</strong> Antes de crear tu primera expedición. Cada vez que trabajes con un nuevo cliente, regístralo aquí primero.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Cómo usarlo:</strong> Haz clic en "Nuevo Cliente", completa la información de contacto y guarda. Podrás seleccionarlo al crear albaranes de expedición.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Consejo:</strong> Mantén actualizados los datos de contacto para facilitar la comunicación y el envío de mercancía.
+              </p>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -896,6 +990,34 @@ export default function Configuracion() {
         </TabsContent>
 
         <TabsContent value="packages">
+          <Card className="mb-4 border-indigo-200 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-900">
+            <CardHeader>
+              <CardTitle className="text-base font-medium">ℹ️ ¿Qué configurar en Tipos de Envase?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                Los <strong>tipos de envase</strong> son los formatos en que presentas tus productos terminados (frascos, latas, bolsas, etc.).
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Qué registrar:</strong> Nombre del envase, código identificador, capacidad (por ejemplo: 370) y unidad (ml, g, kg).
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Cuándo hacerlo:</strong> Antes de comenzar el proceso de envasado. Debes tener registrados todos los formatos de envase que utilizas.
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Ejemplos:</strong>
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground ml-4 space-y-1">
+                <li>Frasco vidrio 370ml (código: FRA-370)</li>
+                <li>Frasco grande 720ml (código: FRA-720)</li>
+                <li>Lata industrial 3kg (código: LAT-3K)</li>
+              </ul>
+              <p className="text-muted-foreground">
+                <strong>Cómo usarlo:</strong> Al envasar producto pelado, seleccionarás el tipo de envase correspondiente y el sistema calculará cuántos envases se generan.
+              </p>
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

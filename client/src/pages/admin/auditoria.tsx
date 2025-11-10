@@ -134,9 +134,65 @@ export default function Auditoria() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Auditoría</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Genera y descarga reportes en PDF para auditoría
+          Genera y descarga reportes en PDF y Excel para auditoría
         </p>
       </div>
+
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            ℹ️ ¿Cómo usar la Auditoría?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div>
+            <p className="font-medium mb-2">🎯 Propósito</p>
+            <p className="text-muted-foreground">
+              La sección de Auditoría te permite generar reportes completos en <strong>PDF</strong> o <strong>Excel</strong> para revisiones internas, auditorías externas o análisis de datos históricos.
+            </p>
+          </div>
+          
+          <div>
+            <p className="font-medium mb-2">📋 Pasos para generar un reporte</p>
+            <ol className="list-decimal list-inside text-muted-foreground ml-4 space-y-1">
+              <li>Selecciona el <strong>tipo de reporte</strong> que necesitas (historial de lotes, producción, calidad, etc.)</li>
+              <li>Opcionalmente, filtra por <strong>rango de fechas</strong> (desde - hasta) para limitar el período del reporte</li>
+              <li>Haz clic en <strong>"Descargar PDF"</strong> o <strong>"Descargar Excel"</strong> según prefieras</li>
+              <li>El archivo se descargará automáticamente a tu dispositivo</li>
+            </ol>
+          </div>
+
+          <div>
+            <p className="font-medium mb-2">📊 Tipos de reportes disponibles</p>
+            <ul className="list-disc list-inside text-muted-foreground ml-4 space-y-1">
+              <li><strong>Historial de Lotes:</strong> Todos los movimientos y cambios de estado de cada lote</li>
+              <li><strong>Registros de Producción:</strong> Detalles de asado, pelado, envasado y esterilizado</li>
+              <li><strong>Controles de Calidad:</strong> Revisiones realizadas con sus resultados y fechas de caducidad</li>
+              <li><strong>Expediciones:</strong> Albaranes de envío a clientes con trazabilidad completa</li>
+              <li><strong>Reportes por Albarán:</strong> Búsqueda específica por número de albarán de recepción o expedición</li>
+              <li><strong>Trazabilidad Completa:</strong> Registro cronológico de todos los eventos de trazabilidad</li>
+              <li><strong>Stock de Productos:</strong> Inventario actual de todos los productos en almacén</li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium mb-2">💡 Consejos de uso</p>
+            <ul className="list-disc list-inside text-muted-foreground ml-4 space-y-1">
+              <li>Si no especificas fechas, el reporte incluirá <strong>todos los registros históricos</strong></li>
+              <li>Usa <strong>PDF</strong> para documentación oficial y presentaciones</li>
+              <li>Usa <strong>Excel</strong> cuando necesites analizar o filtrar datos con mayor detalle</li>
+              <li>Los reportes incluyen el nombre de tu organización y la fecha de generación automáticamente</li>
+            </ul>
+          </div>
+
+          <div className="pt-2 border-t">
+            <p className="text-muted-foreground italic">
+              <strong>Nota:</strong> Los reportes reflejan el estado actual de la base de datos. Para auditorías oficiales, genera y archiva los reportes regularmente.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
