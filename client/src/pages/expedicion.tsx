@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Truck, Plus, Package, AlertCircle } from "lucide-react";
+import { Truck, Plus, Package, AlertCircle, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -617,14 +618,19 @@ export default function Expedicion() {
         </Dialog>
       </div>
 
-      <Card className="border-indigo-200 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-900">
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            ¿Cómo crear una Expedición?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <Collapsible defaultOpen={false}>
+        <Card className="border-indigo-200 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-900">
+          <CardHeader>
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                ¿Cómo crear una Expedición?
+              </CardTitle>
+              <ChevronDown className="h-5 w-5 text-indigo-600 dark:text-indigo-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 text-sm">
           <div className="flex items-start gap-3">
             <div className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 p-2 mt-0.5">
               <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs">1</span>
@@ -670,8 +676,10 @@ export default function Expedicion() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Tabs defaultValue="shipments" className="w-full">
         <TabsList>

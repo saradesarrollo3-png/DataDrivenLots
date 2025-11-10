@@ -1,12 +1,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, FileSpreadsheet } from "lucide-react";
+import { Download, FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function Auditoria() {
   const { toast } = useToast();
@@ -138,14 +139,19 @@ export default function Auditoria() {
         </p>
       </div>
 
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            ℹ️ ¿Cómo usar la Auditoría?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <Collapsible defaultOpen={true}>
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
+          <CardHeader>
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                ℹ️ ¿Cómo usar la Auditoría?
+              </CardTitle>
+              <ChevronDown className="h-5 w-5 text-blue-600 dark:text-blue-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 text-sm">
           <div>
             <p className="font-medium mb-2">🎯 Propósito</p>
             <p className="text-muted-foreground">
@@ -191,8 +197,10 @@ export default function Auditoria() {
               <strong>Nota:</strong> Los reportes reflejan el estado actual de la base de datos. Para auditorías oficiales, genera y archiva los reportes regularmente.
             </p>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

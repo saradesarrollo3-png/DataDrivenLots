@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Package, Truck, CheckCircle, ClipboardCheck, Flame, Scissors, PackageIcon, Droplets } from "lucide-react";
+import { Search, Package, Truck, CheckCircle, ClipboardCheck, Flame, Scissors, PackageIcon, Droplets, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/status-badge";
@@ -433,14 +434,19 @@ export default function Trazabilidad() {
         </p>
       </div>
 
-      <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-900">
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            ¿Cómo consultar la Trazabilidad?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <Collapsible defaultOpen={false}>
+        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-900">
+          <CardHeader>
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                ¿Cómo consultar la Trazabilidad?
+              </CardTitle>
+              <ChevronDown className="h-5 w-5 text-purple-600 dark:text-purple-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 text-sm">
           <div className="flex items-start gap-3">
             <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
               <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">1</span>
@@ -476,8 +482,10 @@ export default function Trazabilidad() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">

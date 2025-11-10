@@ -4,7 +4,8 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Clock } from "lucide-react";
+import { Search, Clock, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 
 interface HistoryEntry {
@@ -121,14 +122,19 @@ export default function Historial() {
         </p>
       </div>
 
-      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            ¿Qué muestra el Historial?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <Collapsible defaultOpen={false}>
+        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
+          <CardHeader>
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                ¿Qué muestra el Historial?
+              </CardTitle>
+              <ChevronDown className="h-5 w-5 text-amber-600 dark:text-amber-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 text-sm">
           <div className="flex items-start gap-3">
             <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
               <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">1</span>
@@ -163,8 +169,10 @@ export default function Historial() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

@@ -3,7 +3,8 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Printer, Tag } from "lucide-react";
+import { Search, Printer, Tag, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -220,14 +221,19 @@ export default function Etiquetas() {
         </div>
       </div>
 
-      <Card className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-900">
-        <CardHeader>
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Tag className="h-5 w-5 text-green-600 dark:text-green-400" />
-            ¿Cómo generar Etiquetas?
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+      <Collapsible defaultOpen={false}>
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-900">
+          <CardHeader>
+            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Tag className="h-5 w-5 text-green-600 dark:text-green-400" />
+                ¿Cómo generar Etiquetas?
+              </CardTitle>
+              <ChevronDown className="h-5 w-5 text-green-600 dark:text-green-400 transition-transform duration-200 data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 text-sm">
           <div className="flex items-start gap-3">
             <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2 mt-0.5">
               <span className="text-green-600 dark:text-green-400 font-semibold text-xs">1</span>
@@ -264,8 +270,10 @@ export default function Etiquetas() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Tabs defaultValue="aprobados" className="space-y-4">
         <TabsList>
