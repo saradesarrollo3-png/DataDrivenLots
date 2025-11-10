@@ -5,7 +5,7 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, XCircle, Plus, Trash2, Settings } from "lucide-react";
+import { Search, CheckCircle, XCircle, Plus, Trash2, Settings, ClipboardCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
