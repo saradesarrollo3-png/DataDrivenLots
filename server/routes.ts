@@ -1,3 +1,4 @@
+replit_final_file>
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -246,13 +247,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/batches", requireAuth, async (req, res) => {
     const { organizationId, ...bodyData } = req.body;
     const data = insertBatchSchema.omit({ organizationId: true }).parse(bodyData);
-    
+
     // Convert processedDate string to Date object if provided
     const batchData: any = { ...data, organizationId: req.user!.organizationId };
     if (data.processedDate) {
       batchData.processedDate = new Date(data.processedDate);
     }
-    
+
     const batch = await storage.insertBatch(batchData);
 
     // Create history entry
@@ -295,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quantityValue = typeof batch.quantity === 'string' 
         ? parseFloat(batch.quantity) 
         : Number(batch.quantity);
-      
+
       await storage.updateProductStock(
         req.user!.organizationId,
         batch.productId,
@@ -309,13 +310,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/batches/:id", requireAuth, async (req, res) => {
     const oldBatch = await storage.getBatchById(req.params.id, req.user!.organizationId);
-    
+
     // Convert processedDate string to Date object if provided
     const updateData: any = { ...req.body };
     if (updateData.processedDate) {
       updateData.processedDate = new Date(updateData.processedDate);
     }
-    
+
     const batch = await storage.updateBatch(req.params.id, updateData);
 
     // Update stock if quantity, unit, or product changed
@@ -382,12 +383,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get batch data before deleting to update stock
       const batchData = await storage.getBatchById(req.params.id, req.user!.organizationId);
-      
+
       // Delete traceability events associated with this batch first
       await storage.deleteTraceabilityEventsByBatch(req.params.id);
-      
+
       await storage.deleteBatch(req.params.id);
-      
+
       // Reduce stock when batch is deleted
       if (batchData?.batch.productId && batchData.batch.quantity && batchData.batch.unit) {
         await storage.updateProductStock(
@@ -397,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           -parseFloat(batchData.batch.quantity)
         );
       }
-      
+
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al eliminar el lote" });
@@ -429,14 +430,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: data.completedAt ? new Date(data.completedAt) : new Date(),
         organizationId: req.user!.organizationId,
       };
-      
+
       // Convert processedDate string to Date object if provided
       if (data.processedDate) {
         recordData.processedDate = new Date(data.processedDate);
       }
-      
+
       const record = await storage.insertProductionRecord(recordData);
-      
+
       // Crear historial con el estado específico de la etapa
       const stageStatusMap: Record<string, string> = {
         'ASADO': 'ASADO',
@@ -445,10 +446,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'ESTERILIZADO': 'ESTERILIZADO',
       };
       const toStatus = stageStatusMap[data.stage] || 'EN_PROCESO';
-      
+
       // Preparar notas con detalles de materias primas si es ASADO
       let historyNotes = `Procesado en etapa: ${data.stage}`;
-      
+
       if (data.stage === 'ASADO' && data.inputBatchDetails) {
         try {
           const inputDetails = JSON.parse(data.inputBatchDetails);
@@ -460,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error parsing inputBatchDetails for history:', e);
         }
       }
-      
+
       await storage.insertBatchHistory({
         batchId: data.batchId,
         action: 'processed',
@@ -478,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let inputBatchIds: string[] = [];
       let inputBatchCodes: string[] = [];
       let inputQuantitiesData: any[] = [];
-      
+
       if (data.inputBatchDetails) {
         try {
           const inputDetails = JSON.parse(data.inputBatchDetails);
@@ -527,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         performedAt: recordData.processedDate || recordData.completedAt,
         processedDate: recordData.processedDate || recordData.completedAt,
       });
-      
+
       res.json(record);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Error al crear el registro de producción" });
@@ -573,29 +574,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quality-checks", requireAuth, async (req, res) => {
     const data = insertQualityCheckSchema.parse(req.body);
-    
+
     // Convert processedDate string to Date object if provided
     const checkData: any = {
       ...data,
       organizationId: req.user!.organizationId,
       checkedBy: req.user!.id,
     };
-    
+
     if (data.processedDate) {
       checkData.processedDate = new Date(data.processedDate);
     }
-    
+
     const check = await storage.insertQualityCheck(checkData);
 
     // Update batch status and expiry date based on approval
     const newStatus = data.approved === 1 ? 'APROBADO' : data.approved === -1 ? 'BLOQUEADO' : 'RETENIDO';
     const updateData: any = { status: newStatus };
-    
+
     // If approved, save the expiry date from the request body
     if (data.approved === 1 && req.body.expiryDate) {
       updateData.expiryDate = new Date(req.body.expiryDate);
     }
-    
+
     await storage.updateBatch(data.batchId, updateData);
 
     // Create history entry
@@ -649,7 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get batch data
       const batchData = await storage.getBatchById(data.batchId, req.user!.organizationId);
-      
+
       if (batchData) {
         const currentQuantity = parseFloat(batchData.batch.quantity);
         const shippedQuantity = parseFloat(data.quantity);
@@ -775,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users", requireAuth, async (req, res) => {
     try {
       const { username, email, password } = req.body;
-      
+
       // Check if user exists
       const [existingUser] = await db.select().from(users).where(eq(users.email, email));
       if (existingUser) {
@@ -820,39 +821,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/audit/pdf", requireAuth, async (req, res) => {
     try {
       const { type, startDate, endDate } = req.query;
-      
+
       // Create PDF document
       const doc = new PDFDocument({ margin: 50 });
-      
+
       // Set response headers
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=auditoria_${type}_${new Date().toISOString().split('T')[0]}.pdf`);
-      
+
       // Pipe PDF to response
       doc.pipe(res);
-      
+
       // Add content
       doc.fontSize(20).text('Reporte de Auditoría', { align: 'center' });
       doc.moveDown();
-      
+
       const [org] = await db.select().from(organizations).where(eq(organizations.id, req.user!.organizationId));
       doc.fontSize(12).text(`Organización: ${org.name}`);
       doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-ES', { 
         year: 'numeric', month: 'long', day: 'numeric', 
         hour: '2-digit', minute: '2-digit' 
       })}`);
-      
+
       if (startDate) {
         doc.text(`Desde: ${new Date(startDate as string).toLocaleDateString('es-ES')}`);
       }
       if (endDate) {
         doc.text(`Hasta: ${new Date(endDate as string).toLocaleDateString('es-ES')}`);
       }
-      
+
       doc.moveDown();
       doc.fontSize(16).text(getReportTitle(type as string));
       doc.moveDown();
-      
+
       // Get data based on report type
       let data: any[] = [];
       switch (type) {
@@ -862,28 +863,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           batches.forEach((item, index) => {
             const history = item.history || item;
             const batch = item.batch;
-            
+
             const batchCode = batch?.batchCode || item.batchCode || '-';
             const action = history.action || '-';
             const timestamp = history.createdAt || item.timestamp;
             const fromStatus = history.fromStatus || '-';
             const toStatus = history.toStatus || '-';
             const notes = history.notes;
-            
+
             doc.text(`${index + 1}. Lote ${batchCode} - ${action} - ${new Date(timestamp).toLocaleDateString('es-ES')}`);
             doc.fontSize(10).text(`   Estado: ${fromStatus} → ${toStatus}`);
             if (notes) doc.text(`   Notas: ${notes}`);
             doc.fontSize(12).moveDown(0.5);
           });
           break;
-          
+
         case 'production':
           const records = await storage.getProductionRecords(req.user!.organizationId);
           doc.fontSize(12);
           records.forEach((item, index) => {
             const record = item.record || item;
             const batch = item.batch;
-            
+
             const batchCode = batch?.batchCode || item.batchCode || '-';
             const stage = record.stage || '-';
             const completedAt = record.completedAt || record.createdAt;
@@ -891,7 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const outputQuantity = record.outputQuantity || '0';
             const unit = record.unit || '-';
             const notes = record.notes;
-            
+
             doc.text(`${index + 1}. Lote ${batchCode} - ${stage}`);
             doc.fontSize(10).text(`   Fecha: ${new Date(completedAt).toLocaleDateString('es-ES')}`);
             doc.text(`   Entrada: ${inputQuantity} ${unit} → Salida: ${outputQuantity} ${unit}`);
@@ -899,7 +900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             doc.fontSize(12).moveDown(0.5);
           });
           break;
-          
+
         case 'quality':
           const checks = await storage.getQualityChecks(req.user!.organizationId);
           doc.fontSize(12);
@@ -907,13 +908,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const check = item.check || item.qualityCheck || item;
             const batch = item.batch || {};
             const product = item.product || {};
-            
+
             const approved = check.approved === 1 ? 'Aprobado' : check.approved === -1 ? 'Rechazado' : 'Pendiente';
             const batchCode = batch.batchCode || '-';
             const productName = product.name || '-';
             const checkedAt = check.checkedAt || check.createdAt;
             const notes = check.notes || '';
-            
+
             doc.text(`${index + 1}. Lote ${batchCode} - ${approved}`);
             doc.fontSize(10).text(`   Producto: ${productName}`);
             doc.text(`   Fecha: ${new Date(checkedAt).toLocaleDateString('es-ES')}`);
@@ -921,7 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             doc.fontSize(12).moveDown(0.5);
           });
           break;
-          
+
         case 'shipments':
           const shipments = await storage.getShipments(req.user!.organizationId);
           doc.fontSize(12);
@@ -929,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const shipment = item.shipment || item;
             const customer = item.customer;
             const batch = item.batch;
-            
+
             const shipmentCode = shipment.shipmentCode || '-';
             const customerName = customer?.name || item.customerName || '-';
             const batchCode = batch?.batchCode || item.batchCode || '-';
@@ -937,7 +938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const unit = shipment.unit || '-';
             const shippedAt = shipment.shippedAt || shipment.createdAt;
             const deliveryNote = shipment.deliveryNote;
-            
+
             doc.text(`${index + 1}. ${shipmentCode} - Cliente: ${customerName}`);
             doc.fontSize(10).text(`   Lote: ${batchCode}`);
             doc.text(`   Cantidad: ${quantity} ${unit}`);
@@ -946,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             doc.fontSize(12).moveDown(0.5);
           });
           break;
-          
+
         case 'traceability':
           const events = await storage.getTraceabilityEvents(req.user!.organizationId);
           doc.fontSize(12);
@@ -959,15 +960,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
             doc.fontSize(12).moveDown(0.5);
           });
           break;
-          
+
+        case 'delivery_notes':
+          // Get batches with delivery notes (receptions)
+          const batchesWithDN = await storage.getBatches(req.user!.organizationId);
+          doc.fontSize(12);
+
+          doc.fontSize(14).text('Recepciones con Albarán:', { underline: true });
+          doc.fontSize(12).moveDown(0.5);
+
+          let receptionIndex = 0;
+          batchesWithDN.forEach((item) => {
+            if (item.batch.deliveryNote) {
+              receptionIndex++;
+              doc.text(`${receptionIndex}. Albarán: ${item.batch.deliveryNote}`);
+              doc.fontSize(10).text(`   Lote: ${item.batch.batchCode}`);
+              doc.text(`   Producto: ${item.product?.name || '-'}`);
+              doc.text(`   Proveedor: ${item.supplier?.name || '-'}`);
+              doc.text(`   Cantidad: ${item.batch.quantity} ${item.batch.unit}`);
+              doc.text(`   Fecha: ${new Date(item.batch.arrivedAt || item.batch.createdAt).toLocaleDateString('es-ES')}`);
+              doc.fontSize(12).moveDown(0.5);
+            }
+          });
+
+          if (receptionIndex === 0) {
+            doc.text('No hay recepciones con albarán registrado');
+          }
+
+          doc.moveDown();
+          doc.fontSize(14).text('Expediciones con Albarán:', { underline: true });
+          doc.fontSize(12).moveDown(0.5);
+
+          const shipmentsWithDN = await storage.getShipments(req.user!.organizationId);
+          let shipmentIndex = 0;
+          shipmentsWithDN.forEach((item) => {
+            if (item.shipment.deliveryNote) {
+              shipmentIndex++;
+              doc.text(`${shipmentIndex}. Albarán: ${item.shipment.deliveryNote}`);
+              doc.fontSize(10).text(`   Código Expedición: ${item.shipment.shipmentCode}`);
+              doc.text(`   Lote: ${item.batch?.batchCode || '-'}`);
+              doc.text(`   Producto: ${item.product?.name || '-'}`);
+              doc.text(`   Cliente: ${item.customer?.name || '-'}`);
+              doc.text(`   Cantidad: ${item.shipment.quantity} ${item.shipment.unit}`);
+              doc.text(`   Fecha: ${new Date(item.shipment.shippedAt || item.shipment.createdAt).toLocaleDateString('es-ES')}`);
+              doc.fontSize(12).moveDown(0.5);
+            }
+          });
+
+          if (shipmentIndex === 0) {
+            doc.text('No hay expediciones con albarán registrado');
+          }
+          break;
+
         case 'stock':
           // Obtener recepciones y registros de producción de asado
           const stockBatches = await storage.getBatches(req.user!.organizationId);
           const stockProductionRecords = await storage.getProductionRecords(req.user!.organizationId);
-          
+
           // Agrupar movimientos por producto
           const productMovements = new Map();
-          
+
           // 1. Recepciones (entradas de materia prima)
           stockBatches.forEach((item) => {
             if (item.batch.status === 'RECEPCION' && item.product?.name) {
@@ -985,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           });
-          
+
           // 2. Consumos en ASADO únicamente
           stockProductionRecords.forEach((item) => {
             if (item.record.stage === 'ASADO' && item.product?.name) {
@@ -1003,48 +1055,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           });
-          
+
           doc.fontSize(12);
-          
+
           // Imprimir movimientos por producto
           let productIndex = 0;
           productMovements.forEach((movements, productName) => {
             productIndex++;
-            
+
             // Ordenar movimientos por fecha
             movements.sort((a, b) => a.date - b.date);
-            
+
             // Calcular balance total
             const totalBalance = movements.reduce((sum, mov) => sum + mov.quantity, 0);
-            
+
             doc.fontSize(14).fillColor('#000000').text(`${productIndex}. ${productName}`, { underline: true });
             doc.fontSize(10).fillColor('#666666').text(`   Balance total: ${totalBalance.toFixed(2)} ${movements[0]?.unit || ''}`);
             doc.moveDown(0.3);
-            
+
             // Imprimir cada movimiento
             movements.forEach((mov, idx) => {
               const sign = mov.quantity >= 0 ? '+' : '';
               const color = mov.quantity >= 0 ? '#006400' : '#8B0000';
-              
+
               doc.fontSize(9).fillColor('#000000').text(`   ${idx + 1}. ${mov.type} - ${mov.date.toLocaleDateString('es-ES')}`);
               doc.fillColor(color).text(`      Cantidad: ${sign}${mov.quantity.toFixed(2)} ${mov.unit}`);
               doc.fillColor('#000000').text(`      Lote: ${mov.batchCode}`);
-              
+
               if (mov.supplier) doc.text(`      Proveedor: ${mov.supplier}`);
               if (mov.notes) doc.text(`      ${mov.notes}`);
-              
+
               doc.moveDown(0.2);
             });
-            
+
             doc.moveDown(0.5);
           });
-          
+
           if (productMovements.size === 0) {
             doc.text('No hay movimientos de stock registrados');
           }
           break;
       }
-      
+
       // Finalize PDF
       doc.end();
     } catch (error: any) {
@@ -1059,6 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'quality': 'Controles de Calidad',
       'shipments': 'Expediciones',
       'traceability': 'Trazabilidad Completa',
+      'delivery_notes': 'Reportes por Albarán',
       'stock': 'Stock de Productos',
     };
     return titles[type] || 'Reporte';
@@ -1067,3 +1120,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+</replit_final_file>

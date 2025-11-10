@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, FileSpreadsheet } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,9 @@ export default function Auditoria() {
   const [reportType, setReportType] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [excelReportType, setExcelReportType] = useState<string>("");
+  const [excelStartDate, setExcelStartDate] = useState<string>("");
+  const [excelEndDate, setExcelEndDate] = useState<string>("");
 
   const handleDownloadPDF = async () => {
     if (!reportType) {
@@ -65,11 +68,63 @@ export default function Auditoria() {
     }
   };
 
+  const handleDownloadExcel = async () => {
+    if (!excelReportType) {
+      toast({
+        title: "Error",
+        description: "Selecciona un tipo de reporte",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const sessionId = localStorage.getItem('sessionId');
+      const params = new URLSearchParams({
+        type: excelReportType,
+        ...(excelStartDate && { startDate: excelStartDate }),
+        ...(excelEndDate && { endDate: excelEndDate }),
+      });
+
+      const response = await fetch(`/api/admin/audit/excel?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionId}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al generar el Excel');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auditoria_${excelReportType}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Excel generado",
+        description: "El reporte se ha descargado correctamente"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo generar el Excel",
+        variant: "destructive"
+      });
+    }
+  };
+
   const reportTypes = [
     { value: "batches", label: "Historial de Lotes" },
     { value: "production", label: "Registros de Producción" },
     { value: "quality", label: "Controles de Calidad" },
     { value: "shipments", label: "Expediciones" },
+    { value: "delivery_notes", label: "Reportes por Albarán" },
     { value: "traceability", label: "Trazabilidad Completa" },
     { value: "stock", label: "Stock de Productos" },
   ];
@@ -144,6 +199,64 @@ export default function Auditoria() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Generar Reporte Excel
+            </CardTitle>
+            <CardDescription>
+              Selecciona el tipo de reporte y el período para generar el Excel
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="excel-report-type">Tipo de Reporte *</Label>
+              <Select value={excelReportType} onValueChange={setExcelReportType}>
+                <SelectTrigger id="excel-report-type">
+                  <SelectValue placeholder="Seleccionar tipo de reporte" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reportTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="excel-start-date">Fecha de Inicio</Label>
+              <Input
+                id="excel-start-date"
+                type="date"
+                value={excelStartDate}
+                onChange={(e) => setExcelStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="excel-end-date">Fecha de Fin</Label>
+              <Input
+                id="excel-end-date"
+                type="date"
+                value={excelEndDate}
+                onChange={(e) => setExcelEndDate(e.target.value)}
+              />
+            </div>
+
+            <Button 
+              onClick={handleDownloadExcel} 
+              className="w-full"
+              disabled={!excelReportType}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Excel
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Tipos de Reportes Disponibles</CardTitle>
             <CardDescription>
               Información incluida en cada tipo de reporte
@@ -173,6 +286,12 @@ export default function Auditoria() {
                 <h4 className="font-medium mb-1">Expediciones</h4>
                 <p className="text-muted-foreground">
                   Historial de expediciones a clientes
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-1">Reportes por Albarán</h4>
+                <p className="text-muted-foreground">
+                  Búsqueda y reporte detallado por número de albarán de recepción o expedición
                 </p>
               </div>
               <div>
