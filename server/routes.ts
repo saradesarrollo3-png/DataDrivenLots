@@ -1003,7 +1003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           worksheet.getRow(startRow).font = { bold: true, size: 12 };
           startRow++;
           
-          worksheet.getRow(startRow).values = ['#', 'Albarán', 'Código Expedición', 'Lote', 'Producto', 'Cliente', 'Cantidad', 'Unidad', 'Fecha'];
+          worksheet.getRow(startRow).values = ['#', 'Albarán', 'Lote', 'Producto', 'Cliente', 'Cantidad', 'Unidad', 'Fecha'];
           worksheet.getRow(startRow).font = { bold: true };
           startRow++;
           
@@ -1015,7 +1015,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               worksheet.addRow([
                 shipmentIndex,
                 item.shipment.deliveryNote,
-                item.shipment.shipmentCode,
                 item.batch?.batchCode || '-',
                 item.product?.name || '-',
                 item.customer?.name || '-',
@@ -1305,8 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (item.shipment.deliveryNote) {
               shipmentIndex++;
               doc.text(`${shipmentIndex}. Albarán: ${item.shipment.deliveryNote}`);
-              doc.fontSize(10).text(`   Código Expedición: ${item.shipment.shipmentCode}`);
-              doc.text(`   Lote: ${item.batch?.batchCode || '-'}`);
+              doc.fontSize(10).text(`   Lote: ${item.batch?.batchCode || '-'}`);
               doc.text(`   Producto: ${item.product?.name || '-'}`);
               doc.text(`   Cliente: ${item.customer?.name || '-'}`);
               doc.text(`   Cantidad: ${item.shipment.quantity} ${item.shipment.unit}`);
