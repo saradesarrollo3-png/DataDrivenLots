@@ -223,19 +223,6 @@ export default function Produccion() {
   const [editProcessedDate, setEditProcessedDate] = useState<string>('');
   const [editProcessedTime, setEditProcessedTime] = useState<string>('');
 
-  // Estado para controlar la apertura por defecto de los Collapsibles
-  const [openStages, setOpenStages] = useState<Record<string, boolean>>({
-    asado: false,
-    pelado: false,
-    envasado: false,
-    esterilizado: false,
-  });
-  
-  // Manejador para el estado de apertura del Collapsible
-  const handleToggleCollapsible = (stageId: string) => {
-    setOpenStages((prev) => ({ ...prev, [stageId]: !prev[stageId] }));
-  };
-
 
   // Generar código de lote base según la etapa
   const generateBatchCode = (stage: string) => {
@@ -1218,46 +1205,55 @@ export default function Produccion() {
               </AlertDescription>
             </Alert>
 
-            {/* Card con instrucciones paso a paso */}
-            <Card className="border-primary/30 bg-muted/30">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                  ¿Cómo crear un nuevo proceso?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="space-y-2 text-sm">
-                  {stage.instructions.map((instruction, idx) => (
-                    <li key={idx} className="flex gap-2">
-                      <span className="font-semibold text-primary min-w-6">{idx + 1}.</span>
-                      <span className="text-muted-foreground">{instruction}</span>
-                    </li>
-                  ))}
-                </ol>
-                <div className="mt-4 pt-4 border-t">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          data-testid={`button-new-${stage.id}`}
-                          onClick={handleOpenNewProcessDialog}
-                          className="w-full sm:w-auto"
-                        >
-                          <stage.icon className="h-4 w-4 mr-2" />
-                          Iniciar Nuevo Proceso de {stage.title}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Los lotes disponibles estarán en estado {stage.inputStatus}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Tutorial contraíble */}
+            <Collapsible defaultOpen={false}>
+              <Card className="border-primary/30 bg-muted/30">
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        ¿Cómo crear un nuevo proceso?
+                      </div>
+                      <ArrowRight className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-90" />
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent>
+                    <ol className="space-y-2 text-sm">
+                      {stage.instructions.map((instruction, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="font-semibold text-primary min-w-6">{idx + 1}.</span>
+                          <span className="text-muted-foreground">{instruction}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <div className="mt-4 pt-4 border-t">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-testid={`button-new-${stage.id}`}
+                              onClick={handleOpenNewProcessDialog}
+                              className="w-full sm:w-auto"
+                            >
+                              <stage.icon className="h-4 w-4 mr-2" />
+                              Iniciar Nuevo Proceso de {stage.title}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Los lotes disponibles estarán en estado {stage.inputStatus}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
-            {/* Tabla de lotes */}
+            {/* Tabla de lotes - siempre visible */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1276,57 +1272,38 @@ export default function Produccion() {
                 </div>
               </CardHeader>
               <CardContent>
-              <Collapsible 
-                open={openStages[stage.id]} 
-                onOpenChange={() => handleToggleCollapsible(stage.id)}
-                className="w-full rounded-md border"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-4 hover:bg-transparent">
-                    <div className="flex items-center gap-2">
-                      <stage.icon className={`h-5 w-5 ${stage.color}`} />
-                      <span className="text-lg font-semibold">
-                        Lotes en {stage.title} ({stage.data.length})
-                      </span>
-                    </div>
-                    <ArrowRight className="h-4 w-4 transition-transform duration-200" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-4 pb-4">
-                  {stage.data.length === 0 ? (
-                    <div className="text-center py-12">
-                      <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground mb-4">
-                        No hay lotes en la etapa de {stage.title.toLowerCase()}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Comienza creando un nuevo proceso con lotes en estado {stage.inputStatus}
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={handleOpenNewProcessDialog}
-                      >
-                        Crear Primer Lote
-                      </Button>
-                    </div>
-                  ) : (
-                    <DataTable
-                      columns={columns}
-                      data={stage.data}
-                      onView={stage.id === "asado" ? handleView : undefined}
-                      onEdit={stage.id === "asado" ? handleEdit : undefined}
-                      onDelete={
-                        stage.id === "asado" ? handleDelete :
-                        stage.id === "pelado" ? handleDeletePelado :
-                        stage.id === "envasado" ? handleDeleteEnvasado :
-                        stage.id === "esterilizado" ? handleDeleteEsterilizado :
-                        undefined
-                      }
-                      emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
-                    />
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
+                {stage.data.length === 0 ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      No hay lotes en la etapa de {stage.title.toLowerCase()}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Comienza creando un nuevo proceso con lotes en estado {stage.inputStatus}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={handleOpenNewProcessDialog}
+                    >
+                      Crear Primer Lote
+                    </Button>
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={columns}
+                    data={stage.data}
+                    onView={stage.id === "asado" ? handleView : undefined}
+                    onEdit={stage.id === "asado" ? handleEdit : undefined}
+                    onDelete={
+                      stage.id === "asado" ? handleDelete :
+                      stage.id === "pelado" ? handleDeletePelado :
+                      stage.id === "envasado" ? handleDeleteEnvasado :
+                      stage.id === "esterilizado" ? handleDeleteEsterilizado :
+                      undefined
+                    }
+                    emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
