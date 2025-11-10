@@ -816,6 +816,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin - Audit Excel Generation
+  app.get("/api/admin/audit/excel", requireAuth, async (req, res) => {
+    try {
+      const ExcelJS = await import('exceljs');
+      const { type, startDate, endDate } = req.query;
+
+      // Create workbook and worksheet
+      const workbook = new ExcelJS.default.Workbook();
+      const worksheet = workbook.addWorksheet('Reporte de Auditoría');
+
+      // Set response headers
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=auditoria_${type}_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+      // Get organization info
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, req.user!.organizationId));
+
+      // Add title and metadata
+      worksheet.mergeCells('A1:F1');
+      worksheet.getCell('A1').value = 'Reporte de Auditoría';
+      worksheet.getCell('A1').font = { size: 16, bold: true };
+      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+      worksheet.getCell('A2').value = `Organización: ${org.name}`;
+      worksheet.getCell('A3').value = `Fecha de generación: ${new Date().toLocaleDateString('es-ES', { 
+        year: 'numeric', month: 'long', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+      })}`;
+
+      if (startDate) {
+        worksheet.getCell('A4').value = `Desde: ${new Date(startDate as string).toLocaleDateString('es-ES')}`;
+      }
+      if (endDate) {
+        worksheet.getCell('A5').value = `Hasta: ${new Date(endDate as string).toLocaleDateString('es-ES')}`;
+      }
+
+      worksheet.getCell('A6').value = getReportTitle(type as string);
+      worksheet.getCell('A6').font = { size: 14, bold: true };
+
+      let startRow = 8;
+
+      // Get data based on report type
+      switch (type) {
+        case 'batches':
+          const batches = await storage.getAllBatchHistory(req.user!.organizationId);
+          worksheet.getRow(startRow).values = ['#', 'Lote', 'Acción', 'Fecha', 'Estado Origen', 'Estado Destino', 'Notas'];
+          worksheet.getRow(startRow).font = { bold: true };
+          
+          batches.forEach((item, index) => {
+            const history = item.history || item;
+            const batch = item.batch;
+            worksheet.addRow([
+              index + 1,
+              batch?.batchCode || item.batchCode || '-',
+              history.action || '-',
+              new Date(history.createdAt || item.timestamp).toLocaleDateString('es-ES'),
+              history.fromStatus || '-',
+              history.toStatus || '-',
+              history.notes || ''
+            ]);
+          });
+          break;
+
+        case 'production':
+          const records = await storage.getProductionRecords(req.user!.organizationId);
+          worksheet.getRow(startRow).values = ['#', 'Lote', 'Etapa', 'Fecha', 'Entrada', 'Salida', 'Unidad', 'Notas'];
+          worksheet.getRow(startRow).font = { bold: true };
+          
+          records.forEach((item, index) => {
+            const record = item.record || item;
+            const batch = item.batch;
+            worksheet.addRow([
+              index + 1,
+              batch?.batchCode || item.batchCode || '-',
+              record.stage || '-',
+              new Date(record.completedAt || record.createdAt).toLocaleDateString('es-ES'),
+              record.inputQuantity || '0',
+              record.outputQuantity || '0',
+              record.unit || '-',
+              record.notes || ''
+            ]);
+          });
+          break;
+
+        case 'quality':
+          const checks = await storage.getQualityChecks(req.user!.organizationId);
+          worksheet.getRow(startRow).values = ['#', 'Lote', 'Producto', 'Estado', 'Fecha', 'Notas'];
+          worksheet.getRow(startRow).font = { bold: true };
+          
+          checks.forEach((item, index) => {
+            const check = item.check || item.qualityCheck || item;
+            const batch = item.batch || {};
+            const product = item.product || {};
+            const approved = check.approved === 1 ? 'Aprobado' : check.approved === -1 ? 'Rechazado' : 'Pendiente';
+            
+            worksheet.addRow([
+              index + 1,
+              batch.batchCode || '-',
+              product.name || '-',
+              approved,
+              new Date(check.checkedAt || check.createdAt).toLocaleDateString('es-ES'),
+              check.notes || ''
+            ]);
+          });
+          break;
+
+        case 'shipments':
+          const shipments = await storage.getShipments(req.user!.organizationId);
+          worksheet.getRow(startRow).values = ['#', 'Código', 'Cliente', 'Lote', 'Cantidad', 'Unidad', 'Fecha', 'Albarán'];
+          worksheet.getRow(startRow).font = { bold: true };
+          
+          shipments.forEach((item, index) => {
+            const shipment = item.shipment || item;
+            const customer = item.customer;
+            const batch = item.batch;
+            
+            worksheet.addRow([
+              index + 1,
+              shipment.shipmentCode || '-',
+              customer?.name || item.customerName || '-',
+              batch?.batchCode || item.batchCode || '-',
+              shipment.quantity || '0',
+              shipment.unit || '-',
+              new Date(shipment.shippedAt || shipment.createdAt).toLocaleDateString('es-ES'),
+              shipment.deliveryNote || ''
+            ]);
+          });
+          break;
+
+        case 'traceability':
+          const events = await storage.getTraceabilityEvents(req.user!.organizationId);
+          worksheet.getRow(startRow).values = ['#', 'Tipo', 'Etapa Origen', 'Etapa Destino', 'Lote', 'Producto', 'Fecha', 'Notas'];
+          worksheet.getRow(startRow).font = { bold: true };
+          
+          events.forEach((event, index) => {
+            worksheet.addRow([
+              index + 1,
+              event.eventType,
+              event.fromStage || '-',
+              event.toStage || '-',
+              event.outputBatchCode || '-',
+              event.productName || '-',
+              new Date(event.performedAt).toLocaleDateString('es-ES'),
+              event.notes || ''
+            ]);
+          });
+          break;
+
+        case 'delivery_notes':
+          const batchesWithDN = await storage.getBatches(req.user!.organizationId);
+          
+          // Recepciones
+          worksheet.getRow(startRow).values = ['RECEPCIONES CON ALBARÁN'];
+          worksheet.getRow(startRow).font = { bold: true, size: 12 };
+          startRow++;
+          
+          worksheet.getRow(startRow).values = ['#', 'Albarán', 'Lote', 'Producto', 'Proveedor', 'Cantidad', 'Unidad', 'Fecha'];
+          worksheet.getRow(startRow).font = { bold: true };
+          startRow++;
+          
+          let receptionIndex = 0;
+          batchesWithDN.forEach((item) => {
+            if (item.batch.deliveryNote) {
+              receptionIndex++;
+              worksheet.addRow([
+                receptionIndex,
+                item.batch.deliveryNote,
+                item.batch.batchCode,
+                item.product?.name || '-',
+                item.supplier?.name || '-',
+                item.batch.quantity,
+                item.batch.unit,
+                new Date(item.batch.arrivedAt || item.batch.createdAt).toLocaleDateString('es-ES')
+              ]);
+            }
+          });
+          
+          if (receptionIndex === 0) {
+            worksheet.addRow(['No hay recepciones con albarán registrado']);
+          }
+          
+          // Expediciones
+          startRow = worksheet.lastRow.number + 2;
+          worksheet.getRow(startRow).values = ['EXPEDICIONES CON ALBARÁN'];
+          worksheet.getRow(startRow).font = { bold: true, size: 12 };
+          startRow++;
+          
+          worksheet.getRow(startRow).values = ['#', 'Albarán', 'Código Expedición', 'Lote', 'Producto', 'Cliente', 'Cantidad', 'Unidad', 'Fecha'];
+          worksheet.getRow(startRow).font = { bold: true };
+          startRow++;
+          
+          const shipmentsWithDN = await storage.getShipments(req.user!.organizationId);
+          let shipmentIndex = 0;
+          shipmentsWithDN.forEach((item) => {
+            if (item.shipment.deliveryNote) {
+              shipmentIndex++;
+              worksheet.addRow([
+                shipmentIndex,
+                item.shipment.deliveryNote,
+                item.shipment.shipmentCode,
+                item.batch?.batchCode || '-',
+                item.product?.name || '-',
+                item.customer?.name || '-',
+                item.shipment.quantity,
+                item.shipment.unit,
+                new Date(item.shipment.shippedAt || item.shipment.createdAt).toLocaleDateString('es-ES')
+              ]);
+            }
+          });
+          
+          if (shipmentIndex === 0) {
+            worksheet.addRow(['No hay expediciones con albarán registrado']);
+          }
+          break;
+
+        case 'stock':
+          const stockBatches = await storage.getBatches(req.user!.organizationId);
+          const stockProductionRecords = await storage.getProductionRecords(req.user!.organizationId);
+          
+          const productMovements = new Map();
+
+          // Recepciones
+          stockBatches.forEach((item) => {
+            if (item.batch.status === 'RECEPCION' && item.product?.name) {
+              const productName = item.product.name;
+              if (!productMovements.has(productName)) {
+                productMovements.set(productName, []);
+              }
+              productMovements.get(productName).push({
+                type: 'Recepción',
+                date: new Date(item.batch.arrivedAt || item.batch.createdAt),
+                batchCode: item.batch.batchCode,
+                quantity: parseFloat(item.batch.initialQuantity || item.batch.quantity),
+                unit: item.batch.unit,
+                supplier: item.supplier?.name || '-',
+              });
+            }
+          });
+
+          // Consumos en ASADO
+          stockProductionRecords.forEach((item) => {
+            if (item.record.stage === 'ASADO' && item.product?.name) {
+              const productName = item.product.name;
+              if (!productMovements.has(productName)) {
+                productMovements.set(productName, []);
+              }
+              productMovements.get(productName).push({
+                type: 'Consumo en Asado',
+                date: new Date(item.record.completedAt || item.record.createdAt),
+                batchCode: item.batch?.batchCode || '-',
+                quantity: -parseFloat(item.record.inputQuantity || '0'),
+                unit: item.record.unit,
+                notes: `Entrada: ${item.record.inputQuantity} kg → Salida: ${item.record.outputQuantity} kg`,
+              });
+            }
+          });
+
+          let productIndex = 0;
+          productMovements.forEach((movements, productName) => {
+            productIndex++;
+            movements.sort((a, b) => a.date - b.date);
+            const totalBalance = movements.reduce((sum, mov) => sum + mov.quantity, 0);
+
+            const titleRow = worksheet.addRow([`${productIndex}. ${productName}`, '', '', `Balance total: ${totalBalance.toFixed(2)} ${movements[0]?.unit || ''}`]);
+            titleRow.font = { bold: true };
+            
+            worksheet.addRow(['#', 'Tipo', 'Fecha', 'Lote', 'Cantidad', 'Proveedor/Notas']);
+            
+            movements.forEach((mov, idx) => {
+              worksheet.addRow([
+                idx + 1,
+                mov.type,
+                mov.date.toLocaleDateString('es-ES'),
+                mov.batchCode,
+                `${mov.quantity >= 0 ? '+' : ''}${mov.quantity.toFixed(2)} ${mov.unit}`,
+                mov.supplier || mov.notes || ''
+              ]);
+            });
+            
+            worksheet.addRow([]);
+          });
+          
+          if (productMovements.size === 0) {
+            worksheet.addRow(['No hay movimientos de stock registrados']);
+          }
+          break;
+      }
+
+      // Auto-fit columns
+      worksheet.columns.forEach((column) => {
+        let maxLength = 0;
+        column.eachCell({ includeEmpty: true }, (cell) => {
+          const cellLength = cell.value ? cell.value.toString().length : 10;
+          if (cellLength > maxLength) {
+            maxLength = cellLength;
+          }
+        });
+        column.width = maxLength < 10 ? 10 : maxLength + 2;
+      });
+
+      // Write to response
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error: any) {
+      console.error('Error generating Excel:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   // Admin - Audit PDF Generation
   app.get("/api/admin/audit/pdf", requireAuth, async (req, res) => {
     try {
