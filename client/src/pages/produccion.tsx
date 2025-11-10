@@ -1790,4 +1790,3 @@ export default function Produccion() {
     </div>
   );
 }
-</replit_final_file>
