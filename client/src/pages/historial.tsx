@@ -3,7 +3,8 @@ import { useState } from "react";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 interface HistoryEntry {
@@ -119,6 +120,51 @@ export default function Historial() {
           Registro completo de todas las operaciones
         </p>
       </div>
+
+      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            ¿Qué muestra el Historial?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Registro de Todas las Operaciones</p>
+              <p className="text-muted-foreground">
+                Aquí se registran <strong>todas las acciones</strong> realizadas sobre los lotes: recepción, asado, pelado, envasado, esterilizado, control de calidad y expedición.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Auditoría Completa</p>
+              <p className="text-muted-foreground">
+                Cada registro muestra la <strong>fecha/hora exacta</strong>, el lote afectado, la acción realizada, 
+                el cambio de estado y notas adicionales. Ideal para auditorías y seguimiento.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Búsqueda Rápida</p>
+              <p className="text-muted-foreground">
+                Utiliza el buscador para filtrar por código de lote, producto o tipo de acción.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

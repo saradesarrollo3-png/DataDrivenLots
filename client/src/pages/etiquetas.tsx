@@ -3,9 +3,9 @@ import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge, BatchStatus } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Printer } from "lucide-react";
+import { Search, Printer, Tag } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import QRCodeLib from "qrcode";
 
@@ -219,6 +219,53 @@ export default function Etiquetas() {
           </p>
         </div>
       </div>
+
+      <Card className="border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Tag className="h-5 w-5 text-green-600 dark:text-green-400" />
+            ¿Cómo generar Etiquetas?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2 mt-0.5">
+              <span className="text-green-600 dark:text-green-400 font-semibold text-xs">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Etiquetas de Lotes Aprobados</p>
+              <p className="text-muted-foreground">
+                En la pestaña <strong>"Lotes Aprobados"</strong> aparecen los productos que han pasado el control de calidad. 
+                Estos lotes están listos para expedición y necesitan etiquetas con código QR.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2 mt-0.5">
+              <span className="text-green-600 dark:text-green-400 font-semibold text-xs">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Etiquetas de Lotes Recepcionados</p>
+              <p className="text-muted-foreground">
+                En la pestaña <strong>"Lotes Recepcionados"</strong> aparecen las materias primas que han llegado de proveedores. 
+                Estas etiquetas incluyen información del proveedor, albarán y temperatura.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2 mt-0.5">
+              <span className="text-green-600 dark:text-green-400 font-semibold text-xs">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Imprimir Etiqueta</p>
+              <p className="text-muted-foreground">
+                Pulsa el botón <strong>"Etiqueta"</strong> en cualquier lote para ver una vista previa. 
+                El código QR contiene toda la información del lote para trazabilidad.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="aprobados" className="space-y-4">
         <TabsList>

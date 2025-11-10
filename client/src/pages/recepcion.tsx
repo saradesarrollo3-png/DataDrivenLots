@@ -557,6 +557,52 @@ export default function Recepcion() {
         </Dialog>
       </div>
 
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            ¿Cómo funciona la Recepción?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2 mt-0.5">
+              <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Registrar Nueva Recepción</p>
+              <p className="text-muted-foreground">
+                Pulsa el botón <strong>"Nueva Recepción"</strong> para registrar la llegada de materia prima. 
+                Se te pedirá el proveedor, producto, cantidad, temperatura y número de albarán.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2 mt-0.5">
+              <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Revisar Stock Disponible</p>
+              <p className="text-muted-foreground">
+                En la pestaña <strong>"Stock"</strong> puedes ver el inventario actual de materia prima disponible para producción.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2 mt-0.5">
+              <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Origen de los Lotes</p>
+              <p className="text-muted-foreground">
+                Los lotes que aparecen aquí son las <strong>materias primas recepcionadas</strong> de tus proveedores. 
+                Estos lotes se utilizarán en el proceso de producción (Asado, Pelado, etc.).
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="recepciones" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="recepciones">Recepciones</TabsTrigger>

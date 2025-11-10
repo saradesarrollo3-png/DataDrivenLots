@@ -617,6 +617,62 @@ export default function Expedicion() {
         </Dialog>
       </div>
 
+      <Card className="border-indigo-200 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            ¿Cómo crear una Expedición?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 p-2 mt-0.5">
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Crear Nuevo Albarán</p>
+              <p className="text-muted-foreground">
+                Pulsa <strong>"Nuevo Albarán"</strong> para iniciar una expedición. Selecciona el cliente y se generará automáticamente un código de albarán.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 p-2 mt-0.5">
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Lotes Disponibles - Origen</p>
+              <p className="text-muted-foreground">
+                Los lotes que aparecen son <strong>productos aprobados en Control de Calidad</strong> listos para expedición. 
+                Se muestran ordenados por <strong>FEFO (First Expired, First Out)</strong> - los que caducan antes aparecen primero.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 p-2 mt-0.5">
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Añadir Productos al Albarán</p>
+              <p className="text-muted-foreground">
+                Selecciona los lotes que deseas enviar y especifica las cantidades. Puedes añadir múltiples lotes al mismo albarán.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-indigo-100 dark:bg-indigo-900/30 p-2 mt-0.5">
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs">4</span>
+            </div>
+            <div>
+              <p className="font-medium">Stock Aprobado</p>
+              <p className="text-muted-foreground">
+                En la pestaña <strong>"Stock Aprobado"</strong> puedes ver todos los productos disponibles para expedición con sus fechas de caducidad.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="shipments" className="w-full">
         <TabsList>
           <TabsTrigger value="shipments">

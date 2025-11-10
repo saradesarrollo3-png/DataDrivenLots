@@ -433,6 +433,52 @@ export default function Trazabilidad() {
         </p>
       </div>
 
+      <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-900">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            ¿Cómo consultar la Trazabilidad?
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
+              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Buscar una Expedición</p>
+              <p className="text-muted-foreground">
+                Utiliza el buscador para encontrar una expedición por código de lote o código de expedición. 
+                También puedes seleccionar una expedición de la lista.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
+              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Historial Completo de Trazabilidad</p>
+              <p className="text-muted-foreground">
+                El sistema muestra el recorrido completo del producto desde <strong>Expedición → Calidad → Esterilizado → Envasado → Pelado → Asado → Recepción</strong>.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
+              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Origen de los Lotes</p>
+              <p className="text-muted-foreground">
+                Solo aparecen los <strong>lotes que han sido expedidos</strong> a clientes. 
+                Puedes rastrear cada lote hasta la materia prima original del proveedor.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
