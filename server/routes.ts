@@ -999,22 +999,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Expediciones
           startRow = worksheet.lastRow.number + 2;
-          worksheet.getRow(startRow).values = ['EXPEDICIONES CON ALBARÁN'];
+          worksheet.getRow(startRow).values = ['EXPEDICIONES CON CÓDIGO DE ALBARÁN'];
           worksheet.getRow(startRow).font = { bold: true, size: 12 };
           startRow++;
           
-          worksheet.getRow(startRow).values = ['#', 'Albarán', 'Código Expedición', 'Lote', 'Producto', 'Cliente', 'Cantidad', 'Unidad', 'Fecha'];
+          worksheet.getRow(startRow).values = ['#', 'Código Albarán', 'Lote', 'Producto', 'Cliente', 'Cantidad', 'Unidad', 'Fecha'];
           worksheet.getRow(startRow).font = { bold: true };
           startRow++;
           
           const shipmentsWithDN = await storage.getShipments(req.user!.organizationId);
           let shipmentIndex = 0;
           shipmentsWithDN.forEach((item) => {
-            if (item.shipment.deliveryNote) {
+            // Usar shipmentCode en lugar de deliveryNote para expediciones
+            if (item.shipment.shipmentCode) {
               shipmentIndex++;
               worksheet.addRow([
                 shipmentIndex,
-                item.shipment.deliveryNote,
                 item.shipment.shipmentCode,
                 item.batch?.batchCode || '-',
                 item.product?.name || '-',
@@ -1027,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           if (shipmentIndex === 0) {
-            worksheet.addRow(['No hay expediciones con albarán registrado']);
+            worksheet.addRow(['No hay expediciones con código de albarán registrado']);
           }
           break;
 
@@ -1296,17 +1296,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           doc.moveDown();
-          doc.fontSize(14).text('Expediciones con Albarán:', { underline: true });
+          doc.fontSize(14).text('Expediciones con Código de Albarán:', { underline: true });
           doc.fontSize(12).moveDown(0.5);
 
           const shipmentsWithDN = await storage.getShipments(req.user!.organizationId);
           let shipmentIndex = 0;
           shipmentsWithDN.forEach((item) => {
-            if (item.shipment.deliveryNote) {
+            // Usar shipmentCode en lugar de deliveryNote para expediciones
+            if (item.shipment.shipmentCode) {
               shipmentIndex++;
-              doc.text(`${shipmentIndex}. Albarán: ${item.shipment.deliveryNote}`);
-              doc.fontSize(10).text(`   Código Expedición: ${item.shipment.shipmentCode}`);
-              doc.text(`   Lote: ${item.batch?.batchCode || '-'}`);
+              doc.text(`${shipmentIndex}. Código Albarán: ${item.shipment.shipmentCode}`);
+              doc.fontSize(10).text(`   Lote: ${item.batch?.batchCode || '-'}`);
               doc.text(`   Producto: ${item.product?.name || '-'}`);
               doc.text(`   Cliente: ${item.customer?.name || '-'}`);
               doc.text(`   Cantidad: ${item.shipment.quantity} ${item.shipment.unit}`);
@@ -1316,7 +1316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           if (shipmentIndex === 0) {
-            doc.text('No hay expediciones con albarán registrado');
+            doc.text('No hay expediciones con código de albarán registrado');
           }
           break;
 
