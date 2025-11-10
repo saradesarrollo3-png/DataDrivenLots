@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Flame, Scissors, Package as PackageIcon, Droplets } from "lucide-react";
+import { Flame, Scissors, Package as PackageIcon, Droplets, Info, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -26,6 +26,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProductionBatch {
   id: string;
@@ -1088,6 +1099,15 @@ export default function Produccion() {
       description: "Proceso de asado de materia prima",
       data: asadoTableData,
       color: "text-orange-600 dark:text-orange-400",
+      helpText: "Convierte la materia prima (estado RECEPCIÓN) en producto asado",
+      inputStatus: "RECEPCIÓN",
+      outputStatus: "ASADO",
+      instructions: [
+        "Selecciona uno o varios lotes en estado RECEPCIÓN",
+        "Introduce la cantidad de cada lote que vas a procesar",
+        "El sistema creará un nuevo lote en estado ASADO",
+        "Los lotes de origen se reducirán en la cantidad procesada"
+      ]
     },
     {
       id: "pelado",
@@ -1096,6 +1116,15 @@ export default function Produccion() {
       description: "Pelado y corte del producto asado",
       data: peladoTableData,
       color: "text-blue-600 dark:text-blue-400",
+      helpText: "Cambia el estado de lotes ASADO a PELADO una vez procesados",
+      inputStatus: "ASADO",
+      outputStatus: "PELADO",
+      instructions: [
+        "Selecciona los lotes que han sido asados (estado ASADO)",
+        "La cantidad completa del lote se marca como procesada",
+        "El lote cambia automáticamente a estado PELADO",
+        "Se mantiene la trazabilidad completa del proceso"
+      ]
     },
     {
       id: "envasado",
@@ -1104,6 +1133,15 @@ export default function Produccion() {
       description: "Conversión a tarros y envasado",
       data: envasadoTableData,
       color: "text-green-600 dark:text-green-400",
+      helpText: "Convierte producto PELADO en envases específicos (frascos, tarros, etc.)",
+      inputStatus: "PELADO",
+      outputStatus: "ENVASADO",
+      instructions: [
+        "Selecciona lotes en estado PELADO con cantidad disponible",
+        "Define la cantidad de cada lote que vas a envasar",
+        "Añade los tipos de envase y cantidades producidas",
+        "Se crearán lotes nuevos por cada tipo de envase"
+      ]
     },
     {
       id: "esterilizado",
@@ -1112,6 +1150,15 @@ export default function Produccion() {
       description: "Esterilización y sellado final",
       data: esterilizadoTableData,
       color: "text-purple-600 dark:text-purple-400",
+      helpText: "Esteriliza los lotes ENVASADO para su conservación",
+      inputStatus: "ENVASADO",
+      outputStatus: "ESTERILIZADO",
+      instructions: [
+        "Selecciona lotes envasados (estado ENVASADO)",
+        "Los lotes se agrupan automáticamente por tipo de envase",
+        "Se crea un lote esterilizado consolidado por tipo",
+        "Los envases pasan a estado ESTERILIZADO para control de calidad"
+      ]
     },
   ];
 
@@ -1145,41 +1192,107 @@ export default function Produccion() {
 
         {stages.map((stage) => (
           <TabsContent key={stage.id} value={stage.id} className="space-y-4">
+            {/* Alerta informativa con ayuda contextual */}
+            <Alert className="border-primary/50">
+              <Info className="h-4 w-4" />
+              <AlertTitle className="flex items-center gap-2">
+                Proceso: {stage.inputStatus} <ArrowRight className="h-4 w-4" /> {stage.outputStatus}
+              </AlertTitle>
+              <AlertDescription>
+                {stage.helpText}
+              </AlertDescription>
+            </Alert>
+
+            {/* Card con instrucciones paso a paso */}
+            <Card className="border-primary/30 bg-muted/30">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  ¿Cómo crear un nuevo proceso?
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  {stage.instructions.map((instruction, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="font-semibold text-primary min-w-6">{idx + 1}.</span>
+                      <span className="text-muted-foreground">{instruction}</span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-4 pt-4 border-t">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          data-testid={`button-new-${stage.id}`}
+                          onClick={handleOpenNewProcessDialog}
+                          className="w-full sm:w-auto"
+                        >
+                          <stage.icon className="h-4 w-4 mr-2" />
+                          Iniciar Nuevo Proceso de {stage.title}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Los lotes disponibles estarán en estado {stage.inputStatus}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabla de lotes */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <stage.icon className={`h-5 w-5 ${stage.color}`} />
-                      {stage.title}
+                      Lotes en {stage.title}
                     </CardTitle>
                     <CardDescription className="mt-1">
-                      {stage.description}
+                      {stage.data.length === 0 
+                        ? `No hay lotes procesados en esta etapa`
+                        : `${stage.data.length} lote(s) en estado ${stage.outputStatus}`
+                      }
                     </CardDescription>
                   </div>
-                  <Button
-                    data-testid={`button-new-${stage.id}`}
-                    onClick={handleOpenNewProcessDialog}
-                  >
-                    Nuevo Proceso
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <DataTable
-                  columns={columns}
-                  data={stage.data}
-                  onView={stage.id === "asado" ? handleView : undefined}
-                  onEdit={stage.id === "asado" ? handleEdit : undefined}
-                  onDelete={
-                    stage.id === "asado" ? handleDelete :
-                    stage.id === "pelado" ? handleDeletePelado :
-                    stage.id === "envasado" ? handleDeleteEnvasado :
-                    stage.id === "esterilizado" ? handleDeleteEsterilizado :
-                    undefined
-                  }
-                  emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
-                />
+                {stage.data.length === 0 ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      No hay lotes en la etapa de {stage.title.toLowerCase()}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Comienza creando un nuevo proceso con lotes en estado {stage.inputStatus}
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={handleOpenNewProcessDialog}
+                    >
+                      Crear Primer Lote
+                    </Button>
+                  </div>
+                ) : (
+                  <DataTable
+                    columns={columns}
+                    data={stage.data}
+                    onView={stage.id === "asado" ? handleView : undefined}
+                    onEdit={stage.id === "asado" ? handleEdit : undefined}
+                    onDelete={
+                      stage.id === "asado" ? handleDelete :
+                      stage.id === "pelado" ? handleDeletePelado :
+                      stage.id === "envasado" ? handleDeleteEnvasado :
+                      stage.id === "esterilizado" ? handleDeleteEsterilizado :
+                      undefined
+                    }
+                    emptyMessage={`No hay lotes en la etapa de ${stage.title.toLowerCase()}`}
+                  />
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1203,7 +1316,12 @@ export default function Produccion() {
       <Dialog open={showNewProcessDialog} onOpenChange={setShowNewProcessDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {stages.find(s => s.id === activeStage)?.icon && 
+                React.createElement(stages.find(s => s.id === activeStage)!.icon, {
+                  className: `h-5 w-5 ${stages.find(s => s.id === activeStage)?.color}`
+                })
+              }
               {editingBatch ? "Editar Proceso" : "Nuevo Proceso"} - {stages.find(s => s.id === activeStage)?.title}
             </DialogTitle>
             <DialogDescription>
@@ -1215,18 +1333,35 @@ export default function Produccion() {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Alerta de ayuda dentro del diálogo */}
+          {!editingBatch && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Estado de lotes disponibles</AlertTitle>
+              <AlertDescription>
+                Los lotes que aparecen a continuación están en estado <strong>{stages.find(s => s.id === activeStage)?.inputStatus}</strong> y tienen cantidad disponible.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-6">
             {/* Selección de lotes de entrada - solo para asado */}
             {activeStage === "asado" && (
               <div>
                 <Label className="text-base font-semibold">
-                  {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles"}
+                  {editingBatch ? "Materia Prima Utilizada" : "Lotes Disponibles en RECEPCIÓN"}
                 </Label>
                 <div className="mt-2 border rounded-lg">
                   {availableBatches.length === 0 && selectedBatches.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground text-center">
-                      No hay lotes disponibles para esta etapa
-                    </p>
+                    <div className="p-8 text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-sm text-muted-foreground mb-2">
+                        No hay lotes en estado RECEPCIÓN con cantidad disponible
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Primero debes registrar materia prima en la sección de Recepción
+                      </p>
+                    </div>
                   ) : (
                     <div className="divide-y">
                       {/* Mostrar lotes seleccionados (en edición) */}
@@ -1335,12 +1470,22 @@ export default function Produccion() {
             {/* Selección de lotes - para pelado, envasado y esterilizado */}
             {activeStage !== "asado" && (
               <div>
-                <Label className="text-base font-semibold">Seleccionar Lotes</Label>
+                <Label className="text-base font-semibold">
+                  Lotes Disponibles en {stages.find(s => s.id === activeStage)?.inputStatus}
+                </Label>
                 <div className="mt-2 border rounded-lg">
                   {availableBatches.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground text-center">
-                      No hay lotes disponibles para esta etapa
-                    </p>
+                    <div className="p-8 text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-sm text-muted-foreground mb-2">
+                        No hay lotes en estado {stages.find(s => s.id === activeStage)?.inputStatus} con cantidad disponible
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {activeStage === "pelado" && "Primero debes procesar lotes en la etapa de Asado"}
+                        {activeStage === "envasado" && "Primero debes procesar lotes en la etapa de Pelado"}
+                        {activeStage === "esterilizado" && "Primero debes procesar lotes en la etapa de Envasado"}
+                      </p>
+                    </div>
                   ) : (
                     <div className="divide-y">
                       {availableBatches.map((batch) => {
