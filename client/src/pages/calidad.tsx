@@ -368,6 +368,11 @@ export default function Calidad() {
     },
   ];
 
+  // Texto de ayuda personalizado para la tabla de pendientes
+  const pendingEmptyMessage = qualityBatches.length === 0 
+    ? "No hay lotes esterilizados pendientes de revisión. Los lotes aparecerán aquí después de completar la etapa de esterilizado en Producción."
+    : "No hay lotes que coincidan con tu búsqueda";
+
   const reviewedColumns: Column<QualityCheckRecord>[] = [
     { 
       key: "batchCode", 
@@ -489,6 +494,33 @@ export default function Calidad() {
         </Button>
       </div>
 
+      {/* Guía de ayuda para el usuario */}
+      <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2">
+              <ClipboardCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                ¿Cómo realizar un control de calidad?
+              </h3>
+              <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+                <li>En la pestaña <strong>"Pendientes de Revisión"</strong>, verás los lotes esterilizados que esperan control de calidad</li>
+                <li>Haz clic en el <strong>icono del ojo (👁️)</strong> en la columna "Acciones" del lote que deseas revisar</li>
+                <li>Se abrirá un formulario donde podrás completar el checklist de calidad, establecer fecha de caducidad y añadir observaciones</li>
+                <li>Finalmente, <strong>aprueba el lote para venta</strong> si cumple los requisitos o <strong>recházalo</strong> si detectas problemas</li>
+              </ol>
+              {qualityBatches.length === 0 && (
+                <p className="text-sm text-blue-700 dark:text-blue-300 italic mt-2">
+                  ℹ️ No hay lotes esterilizados pendientes de revisión en este momento
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {showConfig && (
         <Card>
           <CardHeader>
@@ -548,21 +580,31 @@ export default function Calidad() {
 
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="pending">
+          <TabsTrigger value="pending" className="gap-2">
+            <ClipboardCheck className="h-4 w-4" />
             Pendientes de Revisión ({qualityBatches.length})
           </TabsTrigger>
-          <TabsTrigger value="reviewed">
+          <TabsTrigger value="reviewed" className="gap-2">
+            <CheckCircle className="h-4 w-4" />
             Revisados ({reviewedBatches.length})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-6">
+          {qualityBatches.length > 0 && filteredPendingBatches.length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+              <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                <span className="text-lg">👁️</span>
+                <strong>Tip:</strong> Haz clic en el icono del ojo en la columna "Acciones" para revisar cada lote
+              </p>
+            </div>
+          )}
           <DataTable
             columns={pendingColumns}
             data={filteredPendingBatches}
             onView={(row) => handleOpenDialog(row)}
             onDelete={handleDeletePending}
-            emptyMessage="No hay lotes esterilizados pendientes de revisión"
+            emptyMessage={pendingEmptyMessage}
           />
         </TabsContent>
 
@@ -579,9 +621,16 @@ export default function Calidad() {
       <Dialog open={selectedBatch !== null} onOpenChange={(open) => !open && resetDialog()}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Revisión de Calidad</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              Control de Calidad - Revisión de Lote
+            </DialogTitle>
             <DialogDescription>
-              Lote: {selectedBatch?.code} - {selectedBatch?.product}
+              <span className="font-medium">Lote: {selectedBatch?.code}</span> - {selectedBatch?.product}
+              <br />
+              <span className="text-xs mt-1 inline-block">
+                Completa el checklist, verifica los datos y decide si el lote cumple los estándares de calidad
+              </span>
             </DialogDescription>
           </DialogHeader>
           
