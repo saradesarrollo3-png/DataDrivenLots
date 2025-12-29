@@ -1,6 +1,10 @@
 
-import { Pool } from '@neondatabase/serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
 import { readFileSync } from 'fs';
+import ws from 'ws';
+
+// Configurar WebSocket para Neon
+neonConfig.webSocketConstructor = ws;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
