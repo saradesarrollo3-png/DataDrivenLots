@@ -1,0 +1,77 @@
+Browserslist: browsers data (caniuse-lite) is 14 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+Getting session: 9ls8q6v3uzwmjrdgyx2 Found: false Total sessions: 0
+4:32:02 PM [express] GET /api/auth/me 401 in 4ms :: {"message":"Sesión inválida"}
+Login attempt for email: sara@gmail.com
+Session created in store: rs6oos4ozn9mjrdmp6s Total sessions: 1
+Session created: rs6oos4ozn9mjrdmp6s
+Login response: {
+  sessionId: 'rs6oos4ozn9mjrdmp6s',
+  user: {
+    id: '97d3c10a-9bca-4a8a-a20a-87a911635ad5',
+    username: 'Sara',
+    email: 'sara@gmail.com',
+    organizationId: '9ea2b3eb-289f-4270-bf20-73c5975d221b',
+    organizationName: 'Empresa prueba'
+  }
+}
+4:32:35 PM [express] POST /api/auth/login 200 in 876ms :: {"sessionId":"rs6oos4ozn9mjrdmp6s","user":…
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+4:32:40 PM [express] GET /api/auth/me 304 in 122ms :: {"id":"97d3c10a-9bca-4a8a-a20a-87a911635ad5","…
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+4:32:40 PM [express] GET /api/batches 200 in 224ms :: [{"batch":{"id":"208986b0-550d-4b89-8629-3fcba…
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+4:33:07 PM [express] GET /api/suppliers 304 in 2310ms :: [{"id":"93332eb8-2388-4ec6-86d0-14f81665839…
+4:33:07 PM [express] GET /api/locations 304 in 2320ms :: [{"id":"f29ba238-dd50-411f-bcb1-50bcf0f6d5b…
+4:33:07 PM [express] GET /api/products 304 in 2318ms :: [{"id":"b73e805c-b1d9-4326-9ae7-2b636901b872…
+4:33:07 PM [express] GET /api/product-stock 200 in 2332ms :: [{"stock":{"id":"b73e805c-b1d9-4326-9ae…
+Getting session: rs6oos4ozn9mjrdmp6s Found: true Total sessions: 1
+🔗 Enviando a Sepolia: undefined (undefined)...
+❌ Error escribiendo en Blockchain: TypeError: Cannot read properties of undefined (reading 'then')
+    at ParamType.#walkAsync (/home/runner/workspace/node_modules/ethers/src.ts/abi/fragments.ts:780:20)
+    at ParamType.walkAsync (/home/runner/workspace/node_modules/ethers/src.ts/abi/fragments.ts:797:24)
+    at <anonymous> (/home/runner/workspace/node_modules/ethers/src.ts/contract/contract.ts:170:22)
+    at Array.map (<anonymous>)
+    at resolveArgs (/home/runner/workspace/node_modules/ethers/src.ts/contract/contract.ts:169:37)
+    at populateTransaction (/home/runner/workspace/node_modules/ethers/src.ts/contract/contract.ts:294:36)
+    at send (/home/runner/workspace/node_modules/ethers/src.ts/contract/contract.ts:313:55)
+    at Proxy.registerTraceabilityEvent (/home/runner/workspace/node_modules/ethers/src.ts/contract/contract.ts:352:22)
+    at recordBatchOnChain (/home/runner/workspace/server/blockchain.ts:59:31)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:368:26)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345
+o?t(o):n(u)},"cb"),s=new r(function(o,u){n=o,t=u}).catch(o=>{throw Error.captureStackTrace(
+                                                                         ^
+
+error: column "tx_hash" of relation "traceability_events" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async Object.insertTraceabilityEvent (/home/runner/workspace/server/storage.ts:370:21)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:397:5) {
+  length: 140,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '508',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+
+Node.js v20.19.3
