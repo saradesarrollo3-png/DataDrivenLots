@@ -1,9 +1,31 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Package, Truck, CheckCircle, ClipboardCheck, Flame, Scissors, PackageIcon, Droplets, ChevronDown } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Search,
+  Package,
+  Truck,
+  ClipboardCheck,
+  Flame,
+  Scissors,
+  PackageIcon,
+  Droplets,
+  ChevronDown,
+  ShieldCheck,
+  ExternalLink,
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +38,7 @@ interface TraceabilityStep {
   color: string;
   timestamp: string;
   status: string;
+  txHash?: string; // Campo para el hash
   items: Array<{
     title?: string;
     details: {
@@ -27,365 +50,313 @@ interface TraceabilityStep {
 
 export default function Trazabilidad() {
   const [searchCode, setSearchCode] = useState("");
-  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(
+    null,
+  );
 
   const { data: shipments = [] } = useQuery<any[]>({
-    queryKey: ['/api/shipments'],
+    queryKey: ["/api/shipments"],
   });
 
   const { data: traceabilityEvents = [] } = useQuery<any[]>({
-    queryKey: ['/api/traceability-events'],
+    queryKey: ["/api/traceability-events"],
   });
 
   const selectedShipment = selectedShipmentId
-    ? shipments.find(s => s.shipment.id === selectedShipmentId)
+    ? shipments.find((s) => s.shipment.id === selectedShipmentId)
     : null;
 
   const buildTraceability = (shipmentId: string): TraceabilityStep[] => {
-    console.log("🔍 buildTraceability - shipmentId:", shipmentId);
-    console.log("🔍 Total eventos de trazabilidad:", traceabilityEvents.length);
-    
     const steps: TraceabilityStep[] = [];
 
-    // Primero buscar el evento de expedición para obtener el código del lote expedido
-    const expedicionEvent = traceabilityEvents.find((e: any) => 
-      e.eventType === 'EXPEDICION' && e.shipmentId === shipmentId
+    const expedicionEvent = traceabilityEvents.find(
+      (e: any) => e.eventType === "EXPEDICION" && e.shipmentId === shipmentId,
     );
-    
-    console.log("📦 Evento EXPEDICION encontrado:", !!expedicionEvent, expedicionEvent?.outputBatchCode);
 
-    if (!expedicionEvent) {
-      console.warn("⚠️ No se encontró evento de EXPEDICION para shipmentId:", shipmentId);
-      console.log("📋 Eventos EXPEDICION disponibles:", traceabilityEvents
-        .filter((e: any) => e.eventType === 'EXPEDICION')
-        .map((e: any) => ({
-          id: e.id,
-          shipmentId: e.shipmentId,
-          outputBatchCode: e.outputBatchCode
-        })));
-      return [];
-    }
+    if (!expedicionEvent) return [];
 
-    // Obtener el código del lote expedido
     const batchCode = expedicionEvent.outputBatchCode;
-    console.log("🔍 Rastreando trazabilidad para lote:", batchCode);
 
-    // Obtener todos los eventos relacionados con este lote
+    // Obtener todos los eventos relacionados
     const shipmentEvents = traceabilityEvents.filter((e: any) => {
-      // Incluir eventos donde el lote está en output o en input
       const isOutputBatch = e.outputBatchCode === batchCode;
-      const isInputBatch = e.inputBatchCodes && 
-        JSON.parse(e.inputBatchCodes || '[]').includes(batchCode);
+      const isInputBatch =
+        e.inputBatchCodes &&
+        JSON.parse(e.inputBatchCodes || "[]").includes(batchCode);
       return isOutputBatch || isInputBatch || e.shipmentId === shipmentId;
     });
-    
-    console.log("🔍 Eventos relacionados encontrados:", shipmentEvents.length);
 
-    if (shipmentEvents.length === 0) {
-      console.warn("⚠️ No se encontraron eventos de trazabilidad para lote:", batchCode);
-      return [];
-    }
+    if (shipmentEvents.length === 0) return [];
 
-    // Ordenar eventos por fecha para asegurar el orden cronológico correcto
-    shipmentEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
-    console.log("🔍 Eventos ordenados:", shipmentEvents.map((e: any) => ({
-      eventType: e.eventType,
-      outputBatchCode: e.outputBatchCode,
-      performedAt: e.performedAt
-    })));
+    shipmentEvents.sort(
+      (a, b) =>
+        new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime(),
+    );
 
-    // 1. Evento de EXPEDICION (ya lo tenemos de antes)
+    // 1. EXPEDICION
     if (expedicionEvent) {
-      console.log("✅ Construyendo paso de EXPEDICION");
       steps.push({
-        id: 'shipment',
-        stage: 'Expedición',
+        id: "shipment",
+        stage: "Expedición",
         icon: Truck,
-        color: 'text-indigo-600',
-        timestamp: new Date(expedicionEvent.processedDate || expedicionEvent.performedAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
+        color: "text-indigo-600",
+        timestamp: new Date(
+          expedicionEvent.processedDate || expedicionEvent.performedAt,
+        ).toLocaleString("es-ES", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
         }),
-        status: 'EXPEDIDO',
-        items: [{
-          title: 'Detalles de Expedición',
-          details: [
-            { label: 'Código Expedición', value: expedicionEvent.shipmentCode || '-' },
-            { label: 'Cliente', value: expedicionEvent.customerName || '-' },
-            { label: 'Lote Expedido', value: expedicionEvent.outputBatchCode || '-' },
-            { label: 'Cantidad Expedida', value: `${expedicionEvent.outputQuantity} ${expedicionEvent.outputUnit}` },
-            { label: 'Albarán', value: expedicionEvent.deliveryNote || '-' },
-            { label: 'Notas', value: expedicionEvent.notes || '-' },
-          ]
-        }]
+        status: "EXPEDIDO",
+        txHash: expedicionEvent.txHash, // Hash
+        items: [
+          {
+            title: "Detalles de Expedición",
+            details: [
+              { label: "Cliente", value: expedicionEvent.customerName || "-" },
+              {
+                label: "Cantidad",
+                value: `${expedicionEvent.outputQuantity} ${expedicionEvent.outputUnit}`,
+              },
+              { label: "Albarán", value: expedicionEvent.deliveryNote || "-" },
+            ],
+          },
+        ],
       });
 
-      console.log("🔍 Buscando historial previo para lote:", batchCode);
-
-      // 2. Buscar evento de CALIDAD para este lote
-      const calidadEvent = traceabilityEvents.find((e: any) =>
-        e.eventType === 'CALIDAD' && e.outputBatchCode === batchCode
+      // 2. CALIDAD
+      const calidadEvent = traceabilityEvents.find(
+        (e: any) =>
+          e.eventType === "CALIDAD" && e.outputBatchCode === batchCode,
       );
-      console.log("✅ Evento CALIDAD encontrado:", !!calidadEvent);
 
       if (calidadEvent) {
         steps.push({
-          id: 'quality',
-          stage: 'Control de Calidad',
+          id: "quality",
+          stage: "Control de Calidad",
           icon: ClipboardCheck,
-          color: 'text-green-600',
-          timestamp: new Date(calidadEvent.processedDate || calidadEvent.performedAt).toLocaleString('es-ES', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
+          color: "text-green-600",
+          timestamp: new Date(
+            calidadEvent.processedDate || calidadEvent.performedAt,
+          ).toLocaleString("es-ES", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
           }),
-          status: 'APROBADO',
-          items: [{
-            title: batchCode,
-            details: [
-              { label: 'Resultado', value: calidadEvent.qualityApproved === 1 ? 'Aprobado ✓' : 'Rechazado ✗' },
-              { label: 'Producto', value: calidadEvent.productName || '-' },
-              { label: 'Notas', value: calidadEvent.notes || '-' },
-            ]
-          }]
+          status: "APROBADO",
+          txHash: calidadEvent.txHash, // Hash
+          items: [
+            {
+              title: batchCode,
+              details: [
+                {
+                  label: "Resultado",
+                  value:
+                    calidadEvent.qualityApproved === 1
+                      ? "Aprobado ✓"
+                      : "Rechazado ✗",
+                },
+                { label: "Producto", value: calidadEvent.productName || "-" },
+              ],
+            },
+          ],
         });
       }
 
-      // 3. Buscar evento de ESTERILIZADO
-      const esterilizadoEvent = traceabilityEvents.find((e: any) =>
-        e.eventType === 'ESTERILIZADO' && e.outputBatchCode === batchCode
+      // 3. ESTERILIZADO
+      const esterilizadoEvent = traceabilityEvents.find(
+        (e: any) =>
+          e.eventType === "ESTERILIZADO" && e.outputBatchCode === batchCode,
       );
-      console.log("🔥 Evento ESTERILIZADO encontrado:", !!esterilizadoEvent);
 
       if (esterilizadoEvent) {
-        const inputCodes = esterilizadoEvent.inputBatchCodes ? JSON.parse(esterilizadoEvent.inputBatchCodes) : [];
-
+        const inputCodes = esterilizadoEvent.inputBatchCodes
+          ? JSON.parse(esterilizadoEvent.inputBatchCodes)
+          : [];
         steps.push({
-          id: 'esterilizado',
-          stage: 'Esterilizado',
+          id: "esterilizado",
+          stage: "Esterilizado",
           icon: Droplets,
-          color: 'text-purple-600',
-          timestamp: new Date(esterilizadoEvent.processedDate || esterilizadoEvent.performedAt).toLocaleString('es-ES', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
+          color: "text-purple-600",
+          timestamp: new Date(
+            esterilizadoEvent.processedDate || esterilizadoEvent.performedAt,
+          ).toLocaleString("es-ES", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
           }),
-          status: 'ESTERILIZADO',
-          items: [{
-            title: 'Proceso de Esterilizado',
-            details: [
-              { label: 'Lote Entrada', value: inputCodes.join(', ') || '-' },
-              { label: 'Lote Salida', value: esterilizadoEvent.outputBatchCode || '-' },
-              { label: 'Cantidad Procesada', value: `${esterilizadoEvent.outputQuantity} ${esterilizadoEvent.outputUnit}` },
-              { label: 'Notas', value: esterilizadoEvent.notes || '-' },
-            ]
-          }]
+          status: "ESTERILIZADO",
+          txHash: esterilizadoEvent.txHash, // Hash
+          items: [
+            {
+              title: "Proceso de Esterilizado",
+              details: [
+                { label: "Lote Entrada", value: inputCodes.join(", ") || "-" },
+                {
+                  label: "Cantidad",
+                  value: `${esterilizadoEvent.outputQuantity} ${esterilizadoEvent.outputUnit}`,
+                },
+              ],
+            },
+          ],
         });
 
-        // 4. Buscar eventos de ENVASADO que produjeron el lote de entrada del esterilizado
-        const envasadoEvents = traceabilityEvents.filter((e: any) =>
-          e.eventType === 'ENVASADO' && inputCodes.includes(e.outputBatchCode)
+        // 4. ENVASADO
+        const envasadoEvents = traceabilityEvents.filter(
+          (e: any) =>
+            e.eventType === "ENVASADO" &&
+            inputCodes.includes(e.outputBatchCode),
         );
-        console.log("📦 Eventos ENVASADO encontrados:", envasadoEvents.length, "para códigos:", inputCodes);
 
         if (envasadoEvents.length > 0) {
-          const envasadoItems: any[] = [];
-
-          // Ordenar eventos de envasado por fecha
-          envasadoEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
-
-          envasadoEvents.forEach((envEvent: any) => {
-            const envInputCodes = envEvent.inputBatchCodes ? JSON.parse(envEvent.inputBatchCodes) : [];
-            const envInputQuantities = envEvent.inputQuantities ? JSON.parse(envEvent.inputQuantities) : [];
-
-            envasadoItems.push({
-              title: `${envEvent.packageType || 'Envase'} - ${envEvent.outputBatchCode}`,
-              details: [
-                { label: 'Lotes Entrada', value: envInputCodes.join(', ') || '-' },
-                { label: 'Cantidad Producida', value: `${envEvent.outputQuantity} ${envEvent.outputUnit}` },
-                { label: 'Notas', value: envEvent.notes || '-' },
-              ]
-            });
-          });
-
           steps.push({
-            id: 'envasado',
-            stage: 'Envasado',
+            id: "envasado",
+            stage: "Envasado",
             icon: PackageIcon,
-            color: 'text-green-600',
-            timestamp: new Date(envasadoEvents[0].processedDate || envasadoEvents[0].performedAt).toLocaleString('es-ES', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
+            color: "text-green-600",
+            timestamp: new Date(
+              envasadoEvents[0].processedDate || envasadoEvents[0].performedAt,
+            ).toLocaleString("es-ES", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
             }),
-            status: 'ENVASADO',
-            items: envasadoItems
+            status: "ENVASADO",
+            txHash: envasadoEvents[0].txHash, // Hash (usamos el del primero)
+            items: envasadoEvents.map((ev: any) => ({
+              title: `${ev.packageType || "Envase"} - ${ev.outputBatchCode}`,
+              details: [
+                {
+                  label: "Cantidad",
+                  value: `${ev.outputQuantity} ${ev.outputUnit}`,
+                },
+              ],
+            })),
           });
 
-          // 5. Buscar eventos de PELADO
+          // 5. PELADO
           const peladoInputCodes = envasadoEvents.flatMap((e: any) =>
-            e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
+            e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : [],
           );
-          console.log("✂️ Buscando eventos PELADO para códigos:", peladoInputCodes);
-
-          const peladoEvents = traceabilityEvents.filter((e: any) =>
-            e.eventType === 'PELADO' && peladoInputCodes.includes(e.outputBatchCode)
+          const peladoEvents = traceabilityEvents.filter(
+            (e: any) =>
+              e.eventType === "PELADO" &&
+              peladoInputCodes.includes(e.outputBatchCode),
           );
-          console.log("✂️ Eventos PELADO encontrados:", peladoEvents.length);
 
           if (peladoEvents.length > 0) {
-            const peladoItems: any[] = [];
-            peladoEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
-
-            peladoEvents.forEach((pelEvent: any) => {
-              const pelInputQuantities = pelEvent.inputQuantities ? JSON.parse(pelEvent.inputQuantities) : [];
-
-              peladoItems.push({
-                title: `Lote ${pelEvent.outputBatchCode}`,
-                details: [
-                  { label: 'Cantidad Salida', value: `${pelEvent.outputQuantity} ${pelEvent.outputUnit}` },
-                  { label: 'Notas', value: pelEvent.notes || '-' },
-                ]
-              });
-
-              // Mostrar materias primas consumidas
-              pelInputQuantities.forEach((input: any) => {
-                peladoItems.push({
-                  title: `Entrada: ${input.batchCode}`,
-                  details: [
-                    { label: 'Cantidad Consumida', value: `${input.quantity} ${input.unit}` },
-                  ]
-                });
-              });
-            });
-
             steps.push({
-              id: 'pelado',
-              stage: 'Pelado y Corte',
+              id: "pelado",
+              stage: "Pelado y Corte",
               icon: Scissors,
-              color: 'text-blue-600',
-              timestamp: new Date(peladoEvents[0].processedDate || peladoEvents[0].performedAt).toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
+              color: "text-blue-600",
+              timestamp: new Date(
+                peladoEvents[0].processedDate || peladoEvents[0].performedAt,
+              ).toLocaleString("es-ES", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
               }),
-              status: 'PELADO',
-              items: peladoItems
+              status: "PELADO",
+              txHash: peladoEvents[0].txHash, // Hash
+              items: peladoEvents.map((ev: any) => ({
+                title: `Lote ${ev.outputBatchCode}`,
+                details: [
+                  {
+                    label: "Cantidad",
+                    value: `${ev.outputQuantity} ${ev.outputUnit}`,
+                  },
+                ],
+              })),
             });
 
-            // 6. Buscar eventos de ASADO
+            // 6. ASADO
             const asadoInputCodes = peladoEvents.flatMap((e: any) =>
-              e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
+              e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : [],
             );
-            console.log("🔥 Buscando eventos ASADO para códigos:", asadoInputCodes);
-
-            const asadoEvents = traceabilityEvents.filter((e: any) =>
-              e.eventType === 'ASADO' && asadoInputCodes.includes(e.outputBatchCode)
+            const asadoEvents = traceabilityEvents.filter(
+              (e: any) =>
+                e.eventType === "ASADO" &&
+                asadoInputCodes.includes(e.outputBatchCode),
             );
-            console.log("🔥 Eventos ASADO encontrados:", asadoEvents.length);
 
             if (asadoEvents.length > 0) {
-              const asadoItems: any[] = [];
-              asadoEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
-
-              asadoEvents.forEach((asEvent: any) => {
-                const asInputQuantities = asEvent.inputQuantities ? JSON.parse(asEvent.inputQuantities) : [];
-
-                asadoItems.push({
-                  title: `Lote Salida ${asEvent.outputBatchCode}`,
-                  details: [
-                    { label: 'Cantidad Salida', value: `${asEvent.outputQuantity} ${asEvent.outputUnit}` },
-                  ]
-                });
-
-                // Mostrar materias primas utilizadas
-                asInputQuantities.forEach((input: any) => {
-                  asadoItems.push({
-                    title: `Materia Prima: ${input.batchCode}`,
-                    details: [
-                      { label: 'Cantidad Consumida', value: `${input.quantity} ${input.unit}` },
-                    ]
-                  });
-                });
-              });
-
               steps.push({
-                id: 'asado',
-                stage: 'Asado',
+                id: "asado",
+                stage: "Asado",
                 icon: Flame,
-                color: 'text-orange-600',
-                timestamp: new Date(asadoEvents[0].processedDate || asadoEvents[0].performedAt).toLocaleString('es-ES', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
+                color: "text-orange-600",
+                timestamp: new Date(
+                  asadoEvents[0].processedDate || asadoEvents[0].performedAt,
+                ).toLocaleString("es-ES", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 }),
-                status: 'ASADO',
-                items: asadoItems
+                status: "ASADO",
+                txHash: asadoEvents[0].txHash, // Hash
+                items: asadoEvents.map((ev: any) => ({
+                  title: `Lote Salida ${ev.outputBatchCode}`,
+                  details: [
+                    {
+                      label: "Cantidad",
+                      value: `${ev.outputQuantity} ${ev.outputUnit}`,
+                    },
+                  ],
+                })),
               });
 
-              // 7. Buscar eventos de RECEPCION de las materias primas
+              // 7. RECEPCION
               const recepcionCodes = asadoEvents.flatMap((e: any) =>
-                e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : []
+                e.inputBatchCodes ? JSON.parse(e.inputBatchCodes) : [],
               );
-              console.log("📥 Buscando eventos RECEPCION para códigos:", recepcionCodes);
-
-              const recepcionEvents = traceabilityEvents.filter((e: any) =>
-                e.eventType === 'RECEPCION' && recepcionCodes.includes(e.outputBatchCode)
+              const recepcionEvents = traceabilityEvents.filter(
+                (e: any) =>
+                  e.eventType === "RECEPCION" &&
+                  recepcionCodes.includes(e.outputBatchCode),
               );
-              console.log("📥 Eventos RECEPCION encontrados:", recepcionEvents.length);
 
               if (recepcionEvents.length > 0) {
-                const recepcionItems: any[] = [];
-                recepcionEvents.sort((a, b) => new Date(a.performedAt).getTime() - new Date(b.performedAt).getTime());
-
-
-                recepcionEvents.forEach((recEvent: any) => {
-                  recepcionItems.push({
-                    title: recEvent.productName || '-',
-                    details: [
-                      { label: 'Lote', value: recEvent.outputBatchCode || '-' },
-                      { label: 'Proveedor', value: recEvent.supplierName || '-' },
-                      { label: 'Cantidad Recepcionada', value: `${recEvent.outputQuantity} ${recEvent.outputUnit}` },
-                      { label: 'Temperatura', value: recEvent.temperature ? `${parseFloat(recEvent.temperature).toFixed(1)}°C` : '-' },
-                      { label: 'Albarán', value: recEvent.deliveryNote || '-' },
-                      { label: 'Fecha', value: new Date(recEvent.processedDate || recEvent.performedAt).toLocaleString('es-ES', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) },
-                    ]
-                  });
-                });
-
                 steps.push({
-                  id: 'reception',
-                  stage: 'Recepción de Materia Prima',
+                  id: "reception",
+                  stage: "Recepción Materia Prima",
                   icon: Package,
-                  color: 'text-blue-600',
-                  timestamp: new Date(recepcionEvents[0].processedDate || recepcionEvents[0].performedAt).toLocaleString('es-ES', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                  color: "text-blue-600",
+                  timestamp: new Date(
+                    recepcionEvents[0].processedDate ||
+                      recepcionEvents[0].performedAt,
+                  ).toLocaleString("es-ES", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   }),
-                  status: 'RECEPCION',
-                  items: recepcionItems
+                  status: "RECEPCION",
+                  txHash: recepcionEvents[0].txHash, // Hash
+                  items: recepcionEvents.map((ev: any) => ({
+                    title: ev.productName || "-",
+                    details: [
+                      { label: "Lote", value: ev.outputBatchCode || "-" },
+                      { label: "Proveedor", value: ev.supplierName || "-" },
+                      {
+                        label: "Cantidad",
+                        value: `${ev.outputQuantity} ${ev.outputUnit}`,
+                      },
+                    ],
+                  })),
                 });
               }
             }
@@ -393,99 +364,52 @@ export default function Trazabilidad() {
         }
       }
     }
-
-    console.log("✅ Trazabilidad construida - Total de pasos:", steps.length);
-    console.log("📋 Pasos:", steps.map(s => s.stage));
     return steps;
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchCode.trim()) {
-      const found = shipments.find(s =>
-        s.shipment.shipmentCode.toLowerCase().includes(searchCode.toLowerCase()) ||
-        s.batch?.batchCode?.toLowerCase().includes(searchCode.toLowerCase())
+      const found = shipments.find(
+        (s) =>
+          s.shipment.shipmentCode
+            .toLowerCase()
+            .includes(searchCode.toLowerCase()) ||
+          s.batch?.batchCode?.toLowerCase().includes(searchCode.toLowerCase()),
       );
-      if (found) {
-        setSelectedShipmentId(found.shipment.id);
-      } else {
-        setSelectedShipmentId(null);
-      }
+      if (found) setSelectedShipmentId(found.shipment.id);
+      else setSelectedShipmentId(null);
     }
   };
 
-  const traceabilitySteps = selectedShipmentId ? buildTraceability(selectedShipmentId) : [];
+  const traceabilitySteps = selectedShipmentId
+    ? buildTraceability(selectedShipmentId)
+    : [];
 
   const filteredShipments = searchCode.trim()
-    ? shipments.filter(s =>
-        s.shipment.shipmentCode.toLowerCase().includes(searchCode.toLowerCase()) ||
-        s.batch?.batchCode?.toLowerCase().includes(searchCode.toLowerCase()) ||
-        s.product?.name?.toLowerCase().includes(searchCode.toLowerCase()) ||
-        s.customer?.name?.toLowerCase().includes(searchCode.toLowerCase())
+    ? shipments.filter(
+        (s) =>
+          s.shipment.shipmentCode
+            .toLowerCase()
+            .includes(searchCode.toLowerCase()) ||
+          s.batch?.batchCode
+            ?.toLowerCase()
+            .includes(searchCode.toLowerCase()) ||
+          s.product?.name?.toLowerCase().includes(searchCode.toLowerCase()) ||
+          s.customer?.name?.toLowerCase().includes(searchCode.toLowerCase()),
       )
     : shipments;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Trazabilidad de Lotes Expedidos</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Trazabilidad de Lotes Expedidos
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Consulta el historial completo de cualquier expedición desde materia prima hasta cliente
+          Consulta el historial completo y sus certificados en Blockchain
         </p>
       </div>
-
-      <Collapsible defaultOpen={false}>
-        <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-900">
-          <CardHeader>
-            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                ¿Cómo consultar la Trazabilidad?
-              </CardTitle>
-              <ChevronDown className="h-5 w-5 text-purple-600 dark:text-purple-400 transition-transform duration-200 data-[state=open]:rotate-180" />
-            </CollapsibleTrigger>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="space-y-3 text-sm">
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
-              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">1</span>
-            </div>
-            <div>
-              <p className="font-medium">Buscar una Expedición</p>
-              <p className="text-muted-foreground">
-                Utiliza el buscador para encontrar una expedición por código de lote o código de expedición. 
-                También puedes seleccionar una expedición de la lista.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
-              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">2</span>
-            </div>
-            <div>
-              <p className="font-medium">Historial Completo de Trazabilidad</p>
-              <p className="text-muted-foreground">
-                El sistema muestra el recorrido completo del producto desde <strong>Expedición → Calidad → Esterilizado → Envasado → Pelado → Asado → Recepción</strong>.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-purple-100 dark:bg-purple-900/30 p-2 mt-0.5">
-              <span className="text-purple-600 dark:text-purple-400 font-semibold text-xs">3</span>
-            </div>
-            <div>
-              <p className="font-medium">Origen de los Lotes</p>
-              <p className="text-muted-foreground">
-                Solo aparecen los <strong>lotes que han sido expedidos</strong> a clientes. 
-                Puedes rastrear cada lote hasta la materia prima original del proveedor.
-              </p>
-            </div>
-          </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
 
       <form onSubmit={handleSearch} className="flex gap-2">
         <div className="relative flex-1">
@@ -495,53 +419,42 @@ export default function Trazabilidad() {
             value={searchCode}
             onChange={(e) => setSearchCode(e.target.value)}
             className="pl-9"
-            data-testid="input-search-batch"
           />
         </div>
-        <Button type="submit" data-testid="button-search">
-          Buscar
-        </Button>
+        <Button type="submit">Buscar</Button>
       </form>
 
       {!selectedShipmentId && (
         <Card>
           <CardHeader>
-            <CardTitle>Expediciones ({shipments.length})</CardTitle>
-            <CardDescription>
-              Haz clic en una expedición para ver su trazabilidad completa
-            </CardDescription>
+            <CardTitle>Expediciones ({filteredShipments.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {filteredShipments.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  {searchCode ? 'No se encontraron expediciones' : 'No hay expediciones'}
-                </p>
-              ) : (
-                filteredShipments.map((shipment) => (
-                  <button
-                    key={shipment.shipment.id}
-                    onClick={() => setSelectedShipmentId(shipment.shipment.id)}
-                    className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-medium">{shipment.batch?.batchCode || '-'}</span>
-                          <Badge variant="outline">{shipment.shipment.shipmentCode}</Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {shipment.product?.name || '-'} • Cliente: {shipment.customer?.name || '-'}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Expedido: {new Date(shipment.shipment.shippedAt).toLocaleString('es-ES')} • {shipment.shipment.quantity} {shipment.shipment.unit}
-                        </div>
+              {filteredShipments.map((shipment) => (
+                <button
+                  key={shipment.shipment.id}
+                  onClick={() => setSelectedShipmentId(shipment.shipment.id)}
+                  className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-medium">
+                          {shipment.batch?.batchCode || "-"}
+                        </span>
+                        <Badge variant="outline">
+                          {shipment.shipment.shipmentCode}
+                        </Badge>
                       </div>
-                      <Search className="h-5 w-5 text-muted-foreground" />
+                      <div className="text-sm text-muted-foreground">
+                        {shipment.product?.name || "-"} • Cliente:{" "}
+                        {shipment.customer?.name || "-"}
+                      </div>
                     </div>
-                  </button>
-                ))
-              )}
+                  </div>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -549,105 +462,89 @@ export default function Trazabilidad() {
 
       {selectedShipmentId && selectedShipment && (
         <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setSelectedShipmentId(null)}
-            >
-              ← Volver a lista
-            </Button>
-          </div>
-
+          <Button variant="outline" onClick={() => setSelectedShipmentId(null)}>
+            ← Volver a lista
+          </Button>
           <Card>
             <CardHeader>
-              <CardTitle>Información de la Expedición</CardTitle>
+              <CardTitle>Historial de Trazabilidad Certificado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Código de Expedición</p>
-                  <p className="font-medium font-mono">{selectedShipment.shipment.shipmentCode}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Lote Expedido</p>
-                  <p className="font-medium font-mono">{selectedShipment.batch?.batchCode || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{selectedShipment.customer?.name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Producto</p>
-                  <p className="font-medium">{selectedShipment.product?.name || '-'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <div className="relative border-l-2 border-muted ml-4 space-y-8 pl-8 py-2">
+                {traceabilitySteps.map((step) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.id} className="relative">
+                      {/* Icono del paso */}
+                      <div className="absolute -left-[41px] top-0 bg-background p-1.5 rounded-full border">
+                        <Icon className={`h-5 w-5 ${step.color}`} />
+                      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Historial de Trazabilidad Completo</CardTitle>
-              <CardDescription>
-                Flujo completo desde expedición hasta materia prima ({traceabilitySteps.length} etapas)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {traceabilitySteps.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No hay historial de trazabilidad para esta expedición
-                </p>
-              ) : (
-                <div className="relative">
-                  <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
-
-                  <div className="space-y-6">
-                    {traceabilitySteps.map((step, index) => {
-                      const Icon = step.icon;
-                      return (
-                        <div key={step.id} className="relative pl-16">
-                          <div className="absolute left-0 top-0 w-12 h-12 rounded-full bg-background border-2 border-border flex items-center justify-center">
-                            <Icon className={`h-6 w-6 ${step.color}`} />
+                      <div className="border rounded-lg p-4 bg-card shadow-sm">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              {step.stage}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {step.timestamp}
+                            </p>
                           </div>
 
-                          <div className="border rounded-lg p-4 bg-card">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-semibold text-lg">{step.stage}</h3>
-                                <p className="text-sm text-muted-foreground">{step.timestamp}</p>
-                              </div>
-                              <StatusBadge status={step.status as any} />
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={step.status as any} />
 
-                            <Separator className="my-3" />
+                            {/* BOTÓN VERIFICAR BLOCKCHAIN */}
+                            {step.txHash && (
+                              <a
+                                href={`https://sepolia.etherscan.io/tx/${step.txHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 transition-colors"
+                                title="Verificar en Ethereum Sepolia"
+                              >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Certificado Blockchain
+                                <ExternalLink className="h-3 w-3 opacity-50" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {step.items.map((item, itemIndex) => (
-                                <div key={itemIndex} className="border rounded-lg p-3 bg-muted/30">
-                                  {item.title && (
-                                    <h4 className="font-semibold text-sm mb-2 text-primary">{item.title}</h4>
-                                  )}
-                                  <div className="space-y-2">
-                                    {item.details.map((detail, detailIndex) => (
-                                      <div key={detailIndex}>
-                                        <p className="text-xs text-muted-foreground">{detail.label}</p>
-                                        <p className="text-sm font-medium">{detail.value}</p>
-                                      </div>
-                                    ))}
-                                  </div>
+                        <Separator className="my-3" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {step.items.map((item, itemIndex) => (
+                            <div
+                              key={itemIndex}
+                              className="bg-muted/30 rounded p-3 text-sm"
+                            >
+                              {item.title && (
+                                <p className="font-semibold mb-2">
+                                  {item.title}
+                                </p>
+                              )}
+                              {item.details.map((d, i) => (
+                                <div
+                                  key={i}
+                                  className="flex justify-between py-0.5"
+                                >
+                                  <span className="text-muted-foreground">
+                                    {d.label}:
+                                  </span>
+                                  <span className="font-medium text-right">
+                                    {d.value}
+                                  </span>
                                 </div>
                               ))}
                             </div>
-                          </div>
-
-                          <div className="absolute -left-1 top-14 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
-                            {index + 1}
-                          </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </div>
