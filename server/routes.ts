@@ -367,7 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Esperamos a recibir el hash (puede tardar 2-3 segundos extra)
     const txHash = await recordBatchOnChain(
       data.outputBatchCode,
-      prodName,
+      pName,
       data.stage,
     );
     // --- FIN BLOQUE BLOCKCHAIN ---
