@@ -27,13 +27,17 @@ import GestionUsuarios from "@/pages/admin/usuarios";
 import Auditoria from "@/pages/admin/auditoria";
 import Tutorial from "@/pages/tutorial";
 import { useToast } from "@/hooks/use-toast";
+import VerifyBatch from "./pages/verify-batch";
 
 interface AuthContextType {
   user: any | null;
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, logout: () => {} });
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  logout: () => {},
+});
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -43,22 +47,27 @@ function AuthProvider({ children }: { children: ReactNode }) {
 
   console.log("AuthProvider - sessionId:", sessionId);
 
-  const { data: user, refetch, isLoading, error } = useQuery({
-    queryKey: ['/api/auth/me'],
+  const {
+    data: user,
+    refetch,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["/api/auth/me"],
     enabled: !!sessionId,
     retry: false,
     queryFn: async () => {
       console.log("Fetching user with sessionId:", sessionId);
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch("/api/auth/me", {
         headers: {
-          'Authorization': `Bearer ${sessionId}`,
+          Authorization: `Bearer ${sessionId}`,
         },
       });
       if (!response.ok) {
         console.log("Auth failed, response:", response.status);
-        localStorage.removeItem('sessionId');
-        localStorage.removeItem('user');
-        throw new Error('Not authenticated');
+        localStorage.removeItem("sessionId");
+        localStorage.removeItem("user");
+        throw new Error("Not authenticated");
       }
       const userData = await response.json();
       console.log("User data fetched:", userData);
@@ -66,23 +75,30 @@ function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  console.log("AuthProvider - user:", user, "isLoading:", isLoading, "error:", error);
+  console.log(
+    "AuthProvider - user:",
+    user,
+    "isLoading:",
+    isLoading,
+    "error:",
+    error,
+  );
 
   const logout = async () => {
     const sessionId = localStorage.getItem("sessionId");
     if (sessionId) {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
+      await fetch("/api/auth/logout", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${sessionId}`,
+          Authorization: `Bearer ${sessionId}`,
         },
       });
     }
-    localStorage.removeItem('sessionId');
-    localStorage.removeItem('user');
+    localStorage.removeItem("sessionId");
+    localStorage.removeItem("user");
     queryClient.clear();
     // Forzar recarga completa para limpiar el estado
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   return (
@@ -92,7 +108,11 @@ function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function ProtectedRoute({ component: Component }: { component: () => JSX.Element }) {
+function ProtectedRoute({
+  component: Component,
+}: {
+  component: () => JSX.Element;
+}) {
   const { user } = useAuth();
   const sessionId = localStorage.getItem("sessionId");
 
@@ -107,9 +127,11 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
   // Si hay sessionId pero user aún no está cargado, mostrar loading
   if (!user) {
     console.log("ProtectedRoute - Loading user data...");
-    return <div className="flex items-center justify-center h-screen">
-      <div className="animate-pulse text-muted-foreground">Cargando...</div>
-    </div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-pulse text-muted-foreground">Cargando...</div>
+      </div>
+    );
   }
 
   console.log("ProtectedRoute - Rendering protected component");
@@ -119,88 +141,46 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
 function Router() {
   const { user } = useAuth();
   const sessionId = localStorage.getItem("sessionId");
-
-  console.log("Router - sessionId:", sessionId, "user:", user);
+  // ... logs existentes ...
 
   return (
     <Switch>
-      <Route path="/" component={() => {
-        console.log("Route / - sessionId:", sessionId, "user:", user);
-        return sessionId ? <ProtectedRoute component={Dashboard} /> : <Login />;
-      }} />
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/recepcion" component={() => <ProtectedRoute component={Recepcion} />} />
-      <Route path="/produccion" component={() => <ProtectedRoute component={Produccion} />} />
-      <Route path="/calidad" component={() => <ProtectedRoute component={Calidad} />} />
-      <Route path="/expedicion" component={() => <ProtectedRoute component={Expedicion} />} />
-      <Route path="/configuracion" component={() => <ProtectedRoute component={Configuracion} />} />
-      <Route path="/trazabilidad" component={() => <ProtectedRoute component={Trazabilidad} />} />
-      <Route path="/historial" component={() => <ProtectedRoute component={Historial} />} />
-      <Route path="/etiquetas" component={() => <ProtectedRoute component={Etiquetas} />} />
-      <Route path="/admin/usuarios" component={() => <ProtectedRoute component={GestionUsuarios} />} />
-      <Route path="/admin/auditoria" component={() => <ProtectedRoute component={Auditoria} />} />
-      <Route path="/tutorial" component={() => <ProtectedRoute component={Tutorial} />} />
+      {/* ... tus rutas existentes ... */}
+
+      {/* AÑADE ESTA RUTA NUEVA: */}
+      <Route path="/verify/:batchCode" component={VerifyBatch} />
+
+      <Route
+        path="/"
+        component={() => {
+          // ... lógica existente ...
+          return sessionId ? (
+            <ProtectedRoute component={Dashboard} />
+          ) : (
+            <Login />
+          );
+        }}
+      />
+      {/* ... resto de rutas ... */}
       <Route component={NotFound} />
     </Switch>
   );
 }
-
 function AppContent() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
+
   const isAuthPage = ['/login', '/register'].includes(location);
   const isLanding = location === '/' && !user;
+  // NUEVA LÍNEA: Detectar si es página de verificación
+  const isPublicVerify = location.startsWith('/verify/'); 
 
-  if (isAuthPage || isLanding) {
+  // AÑADIR isPublicVerify A LA CONDICIÓN
+  if (isAuthPage || isLanding || isPublicVerify) {
     return <Router />;
   }
 
-  const style = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
-  };
-
-  return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b">
-            <div className="flex items-center gap-2 md:gap-4">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              {user && (
-                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span className="hidden md:inline">{user.username}</span>
-                  <span className="text-xs hidden lg:inline">({user.organizationName})</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1 md:gap-2">
-              <ThemeToggle />
-              {user && (
-                <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:flex">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Cerrar Sesión</span>
-                </Button>
-              )}
-              {user && (
-                <Button variant="ghost" size="sm" onClick={logout} className="sm:hidden">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6">
-            <Router />
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
-}
-
+  // ... resto del código del Sidebar ...
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
