@@ -1,49 +1,9 @@
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import { ethers } from "ethers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, Box, ShieldCheck, XCircle } from "lucide-react";
-
-export default function VerifyBatch() {
-  const [, params] = useRoute("/verify/:batchCode");
-  const batchCode = params?.batchCode;
-
-  const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!batchCode) return;
-
-    const fetchBlockchain = async () => {
-      try {
-        // Consultamos a NUESTRA API, que decide si usa Blockchain Real o Simulación
-        const response = await fetch(`/api/traceability/${batchCode}`);
-
-        if (!response.ok) throw new Error("Error al consultar trazabilidad");
-
-        const data = await response.json();
-
-        // Formatear datos
-        const formatted = data.map((item: any) => ({
-          stage: item.stage,
-          product: item.product,
-          verified: item.verified,
-          timestamp: new Date(item.timestamp * 1000),
-        }));
-
-        setHistory(formatted);
-      } catch (err: any) {
-        console.error(err);
-        setError("No se pudo verificar la información del lote.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlockchain();
-  }, [batchCode]);
+import { ethers } from "ethers";
 
 // ABI mínimo para lectura (debe coincidir con el del server)
 const ABI = [
