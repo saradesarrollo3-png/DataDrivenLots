@@ -40,16 +40,15 @@ export default function Historial() {
   });
 
   const historyEntries: HistoryEntry[] = historyData.map((item) => ({
-    id: item.history.id,
+    id: item.history?.id || item.id,
     batchCode: item.batch?.batchCode || "-",
     product: item.product?.name || "-",
-    action: item.history.action,
-    fromStatus: item.history.fromStatus || "-",
-    toStatus: item.history.toStatus || "-",
-    notes: item.history.notes || "-",
-    // Intentamos buscar el hash si viene en el objeto (depende de tu backend)
-    txHash: item.history.txHash || item.txHash || null,
-    createdAt: new Date(item.history.createdAt).toLocaleString("es-ES", {
+    action: item.history?.action || item.action,
+    fromStatus: item.history?.fromStatus || item.fromStatus || "-",
+    toStatus: item.history?.toStatus || item.toStatus || "-",
+    notes: item.history?.notes || item.notes || "-",
+    txHash: item.txHash || item.history?.txHash || null,
+    createdAt: new Date(item.history?.createdAt || item.createdAt).toLocaleString("es-ES", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

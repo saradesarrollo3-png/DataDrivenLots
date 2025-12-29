@@ -325,16 +325,39 @@ export const storage = {
     .orderBy(desc(batchHistory.createdAt));
   },
   async getAllBatchHistory(organizationId: string) {
-    return db.select({
-      history: batchHistory,
-      batch: batches,
-      product: products
-    })
-    .from(batchHistory)
-    .leftJoin(batches, eq(batchHistory.batchId, batches.id))
-    .leftJoin(products, eq(batches.productId, products.id))
-    .where(eq(batchHistory.organizationId, organizationId))
-    .orderBy(desc(batchHistory.createdAt));
+    const historyRecords = await db
+      .select({
+        history: batchHistory,
+        batch: batches,
+        product: products,
+      })
+      .from(batchHistory)
+      .leftJoin(batches, eq(batchHistory.batchId, batches.id))
+      .leftJoin(products, eq(batches.productId, products.id))
+      .where(eq(batchHistory.organizationId, organizationId))
+      .orderBy(desc(batchHistory.createdAt));
+
+    // Obtener los txHash de los eventos de trazabilidad para cada entrada
+    const enrichedHistory = await Promise.all(
+      historyRecords.map(async (record) => {
+        if (record.batch) {
+          const traceabilityEvent = await db
+            .select({ txHash: traceabilityEvents.txHash })
+            .from(traceabilityEvents)
+            .where(eq(traceabilityEvents.outputBatchCode, record.batch.batchCode))
+            .orderBy(desc(traceabilityEvents.performedAt))
+            .limit(1);
+
+          return {
+            ...record,
+            txHash: traceabilityEvent[0]?.txHash || null,
+          };
+        }
+        return { ...record, txHash: null };
+      })
+    );
+
+    return enrichedHistory;
   },
   async insertBatchHistory(data: typeof batchHistory.$inferInsert) {
     const [history] = await db.insert(batchHistory).values(data).returning();
@@ -421,7 +444,7 @@ export const storage = {
       const currentQuantity = parseFloat(existingStock.quantity);
       const newQuantity = currentQuantity + quantityChange;
       const [updated] = await db.update(productStock)
-        .set({ 
+        .set({
           quantity: newQuantity.toFixed(2),
           updatedAt: new Date()
         })
