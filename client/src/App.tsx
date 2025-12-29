@@ -172,15 +172,39 @@ function AppContent() {
 
   const isAuthPage = ['/login', '/register'].includes(location);
   const isLanding = location === '/' && !user;
-  // NUEVA LÍNEA: Detectar si es página de verificación
   const isPublicVerify = location.startsWith('/verify/'); 
 
-  // AÑADIR isPublicVerify A LA CONDICIÓN
   if (isAuthPage || isLanding || isPublicVerify) {
     return <Router />;
   }
 
-  // ... resto del código del Sidebar ...
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <main className="flex-1 overflow-auto">
+          <div className="flex items-center justify-between border-b p-4">
+            <SidebarTrigger />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{user?.username}</span>
+              </div>
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" onClick={logout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="p-6">
+            <Router />
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
