@@ -364,8 +364,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         )?.name || "Producto"
       : "Materia Prima";
 
-    // Llamada asíncrona (sin await) para no detener la respuesta al usuario
-    recordBatchOnChain(batch.batchCode, pName, "RECEPCION");
+    // Esperamos a recibir el hash (puede tardar 2-3 segundos extra)
+    const txHash = await recordBatchOnChain(
+      data.outputBatchCode,
+      prodName,
+      data.stage,
+    );
     // --- FIN BLOQUE BLOCKCHAIN ---
 
     // Create history entry
@@ -408,6 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       performedBy: req.user!.id,
       performedAt: batch.arrivedAt || new Date(),
       processedDate: batch.processedDate || batch.arrivedAt || new Date(),
+      txHash: txHash || null,
     });
 
     // Update product stock
@@ -713,6 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         performedBy: req.user!.id,
         performedAt: recordData.processedDate || recordData.completedAt,
         processedDate: recordData.processedDate || recordData.completedAt,
+        txHash: txHash || null,
       });
 
       res.json(record);
@@ -802,9 +808,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       data.batchId,
       req.user!.organizationId,
     );
+    let txHash: string | null = null; // 1. Creamos la variable vacía
+
     if (bInfo) {
-      // Si approved es 1, certificamos como true. Si es -1 (rechazado) o 0, false.
-      certifyBatchOnChain(bInfo.batch.batchCode, data.approved === 1);
+      // 2. Esperamos (await) a que la blockchain nos dé el recibo y lo guardamos
+      txHash = await certifyBatchOnChain(
+        bInfo.batch.batchCode,
+        data.approved === 1,
+      );
     }
     // --- FIN BLOQUE BLOCKCHAIN ---
     // Update batch status and expiry date based on approval
@@ -874,6 +885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       performedBy: req.user!.id,
       performedAt: new Date(),
       processedDate: batch?.batch.processedDate || new Date(),
+      txHash: txHash || null,
     });
 
     res.json(check);
@@ -973,6 +985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           performedBy: req.user!.id,
           performedAt: new Date(),
           processedDate: batchData.batch.processedDate || new Date(),
+          txHash: txHash || null,
         });
       }
 

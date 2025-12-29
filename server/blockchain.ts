@@ -1,13 +1,14 @@
 import { ethers } from "ethers";
 import QRCode from "qrcode";
 
-// Variables de entorno o valores por defecto
-const RPC_URL =
-  process.env.BLOCKCHAIN_RPC_URL || "https://rpc-amoy.polygon.technology";
+// 1. Configuración de la red (CAMBIADO A SEPOLIA)
+const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
+
+// 2. Leemos las claves de Replit Secrets
 const PRIVATE_KEY = process.env.BLOCKCHAIN_PRIVATE_KEY;
 const CONTRACT_ADDRESS = process.env.BLOCKCHAIN_CONTRACT_ADDRESS;
 
-// ABI Mínimo necesario
+// ABI del contrato
 const CONTRACT_ABI = [
   "function registerTraceabilityEvent(string _batchCode, string _productType, string _stage) public",
   "function certifyQuality(string _batchCode, bool _approved) public",
@@ -15,30 +16,35 @@ const CONTRACT_ABI = [
 ];
 
 let contract: any = null;
-let isSimulationMode = false;
-
-// ALMACÉN LOCAL PARA SIMULACIÓN (Cuando no hay claves)
-const localBlockchainStorage: Record<string, any[]> = {};
 
 export async function initBlockchain() {
   if (!PRIVATE_KEY || !CONTRACT_ADDRESS) {
-    console.warn(
-      "⚠️ Blockchain: Faltan credenciales. ACTIVANDO MODO SIMULACIÓN (Mock Mode).",
+    console.error(
+      "❌ ERROR: Faltan las claves en Secrets. Revisa BLOCKCHAIN_PRIVATE_KEY y BLOCKCHAIN_CONTRACT_ADDRESS",
     );
-    isSimulationMode = true;
     return;
   }
+
   try {
+    // Conectamos a Sepolia
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
     contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
-    console.log("✅ Blockchain: Servicio Conectado a la red real.");
+
+    console.log("✅ Blockchain: Conectado a SEPOLIA (Ethereum)");
+
+    // Verificamos el saldo
+    const balance = await provider.getBalance(wallet.address);
+    const balanceEnEth = ethers.formatEther(balance);
+    console.log(`💰 Saldo disponible: ${balanceEnEth} ETH`);
+
+    if (parseFloat(balanceEnEth) === 0) {
+      console.warn(
+        "⚠️ ALERTA: Tienes 0 ETH. No podrás escribir datos en la blockchain.",
+      );
+    }
   } catch (error) {
-    console.error(
-      "❌ Blockchain: Error al conectar. Pasando a simulación.",
-      error,
-    );
-    isSimulationMode = true;
+    console.error("❌ Error conectando a la blockchain:", error);
   }
 }
 
@@ -47,39 +53,18 @@ export async function recordBatchOnChain(
   productType: string,
   stage: string,
 ) {
-  // MODO SIMULACIÓN
-  if (isSimulationMode || !contract) {
-    console.log(
-      `[SIMULACIÓN] 🔗 Registrando en bloque simulado: ${batchCode} - ${stage}`,
-    );
-
-    if (!localBlockchainStorage[batchCode]) {
-      localBlockchainStorage[batchCode] = [];
-    }
-
-    localBlockchainStorage[batchCode].push({
-      batchCode,
-      productType,
-      currentStage: stage,
-      isQualityVerified: false,
-      timestamp: Math.floor(Date.now() / 1000), // Unix timestamp
-      certifier: "0x000000000000000000000000000000000000dEaD", // Dirección fake
-    });
-
-    return "0x-hash-simulado-" + Math.random().toString(36).substring(7);
-  }
-
-  // MODO REAL
+  if (!contract) return null;
   try {
-    console.log(`🔗 Blockchain Real: Enviando tx para ${batchCode}...`);
+    console.log(`🔗 Enviando a Sepolia: ${batchCode} (${stage})...`);
     const tx = await contract.registerTraceabilityEvent(
       batchCode,
       productType,
       stage,
     );
+    console.log(`   ✅ Transacción enviada. Hash: ${tx.hash}`);
     return tx.hash;
   } catch (error) {
-    console.error("❌ Blockchain Error:", error);
+    console.error("❌ Error escribiendo en Blockchain:", error);
     return null;
   }
 }
@@ -88,71 +73,44 @@ export async function certifyBatchOnChain(
   batchCode: string,
   approved: boolean,
 ) {
-  // MODO SIMULACIÓN
-  if (isSimulationMode || !contract) {
-    console.log(
-      `[SIMULACIÓN] 🔗 Certificando calidad: ${batchCode} = ${approved}`,
-    );
-    if (
-      localBlockchainStorage[batchCode] &&
-      localBlockchainStorage[batchCode].length > 0
-    ) {
-      const lastRecord =
-        localBlockchainStorage[batchCode][
-          localBlockchainStorage[batchCode].length - 1
-        ];
-      lastRecord.isQualityVerified = approved;
-    }
-    return "0x-hash-cert-simulado-" + Math.random().toString(36).substring(7);
-  }
-
-  // MODO REAL
+  if (!contract) return null;
   try {
+    console.log(`🔗 Certificando en Sepolia: ${batchCode}...`);
     const tx = await contract.certifyQuality(batchCode, approved);
+    console.log(`   ✅ Certificación enviada. Hash: ${tx.hash}`);
     return tx.hash;
   } catch (error) {
-    console.error("❌ Blockchain Error:", error);
+    console.error("❌ Error certificando:", error);
     return null;
   }
 }
 
-// NUEVA FUNCIÓN: Obtener historial (sea real o simulado)
 export async function getBatchHistory(batchCode: string) {
-  // MODO SIMULACIÓN
-  if (isSimulationMode || !contract) {
-    return (localBlockchainStorage[batchCode] || []).map((record) => ({
-      stage: record.currentStage,
-      product: record.productType,
-      verified: record.isQualityVerified,
-      timestamp: record.timestamp,
-      txHash: "simulated-tx",
-    }));
-  }
+  if (!CONTRACT_ADDRESS) return [];
+  const readProvider = new ethers.JsonRpcProvider(RPC_URL);
+  const readContract = new ethers.Contract(
+    CONTRACT_ADDRESS,
+    CONTRACT_ABI,
+    readProvider,
+  );
 
-  // MODO REAL
   try {
-    const data = await contract.getBatchHistory(batchCode);
-    // Convertir respuesta de Solidity a objeto JS limpio
+    const data = await readContract.getBatchHistory(batchCode);
     return data.map((item: any) => ({
       stage: item.currentStage,
       product: item.productType,
       verified: item.isQualityVerified,
       timestamp: Number(item.timestamp),
-      txHash: "real-tx", // En lecturas simples no siempre tenemos el hash de creación a mano
     }));
   } catch (error) {
-    console.error("Error leyendo blockchain:", error);
+    console.error("Error leyendo historial:", error);
     return [];
   }
 }
 
 export async function generateTraceabilityQR(batchCode: string) {
-  // En Replit, usamos la URL dinámica del entorno
   const domain = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-  // O fallback a localhost si estás en local
-  const baseUrl = process.env.REPL_SLUG ? domain : "http://localhost:5000";
-
-  const verificationUrl = `${baseUrl}/verify/${batchCode}`;
+  const verificationUrl = `${domain}/verify/${batchCode}`;
 
   try {
     const qrDataUrl = await QRCode.toDataURL(verificationUrl);

@@ -1,11 +1,20 @@
-
 import { useState } from "react";
 import { DataTable, Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Clock, ChevronDown } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Search,
+  Clock,
+  ChevronDown,
+  ShieldCheck,
+  ExternalLink,
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 
 interface HistoryEntry {
@@ -17,100 +26,138 @@ interface HistoryEntry {
   toStatus: string;
   notes: string;
   createdAt: string;
+  txHash?: string; // Nuevo campo opcional
 }
 
 export default function Historial() {
   const [searchTerm, setSearchTerm] = useState("");
 
+  // NOTA: Para que el txHash aparezca aquí, asegúrate de que tu endpoint /api/batch-history
+  // devuelva también los datos de traceability_events o que hayas guardado el hash en batch_history.
+  // Si no, esta columna saldrá vacía hasta que conectes esos datos en el backend.
   const { data: historyData = [] } = useQuery<any[]>({
-    queryKey: ['/api/batch-history'],
+    queryKey: ["/api/batch-history"],
   });
 
-  const historyEntries: HistoryEntry[] = historyData.map(item => ({
+  const historyEntries: HistoryEntry[] = historyData.map((item) => ({
     id: item.history.id,
-    batchCode: item.batch?.batchCode || '-',
-    product: item.product?.name || '-',
+    batchCode: item.batch?.batchCode || "-",
+    product: item.product?.name || "-",
     action: item.history.action,
-    fromStatus: item.history.fromStatus || '-',
-    toStatus: item.history.toStatus || '-',
-    notes: item.history.notes || '-',
-    createdAt: new Date(item.history.createdAt).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    fromStatus: item.history.fromStatus || "-",
+    toStatus: item.history.toStatus || "-",
+    notes: item.history.notes || "-",
+    // Intentamos buscar el hash si viene en el objeto (depende de tu backend)
+    txHash: item.history.txHash || item.txHash || null,
+    createdAt: new Date(item.history.createdAt).toLocaleString("es-ES", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   }));
 
   const translateAction = (action: string): string => {
     const translations: Record<string, string> = {
-      'created': 'Creado',
-      'received': 'Recibido',
-      'status_changed': 'Cambio de Estado',
-      'roasted': 'Asado',
-      'peeled': 'Pelado',
-      'packaged': 'Envasado',
-      'sterilized': 'Esterilizado',
-      'quality_checked': 'Control de Calidad',
-      'approved': 'Aprobado',
-      'rejected': 'Rechazado',
-      'shipped': 'Expedido',
-      'partial_shipment': 'Expedición Parcial',
+      created: "Creado",
+      received: "Recibido",
+      status_changed: "Cambio de Estado",
+      roasted: "Asado",
+      peeled: "Pelado",
+      packaged: "Envasado",
+      sterilized: "Esterilizado",
+      quality_checked: "Control de Calidad",
+      approved: "Aprobado",
+      rejected: "Rechazado",
+      shipped: "Expedido",
+      partial_shipment: "Expedición Parcial",
     };
-    return translations[action] || action.replace('_', ' ');
+    return translations[action] || action.replace("_", " ");
   };
 
   const translateStatus = (status: string): string => {
     const translations: Record<string, string> = {
-      'received': 'Recibido',
-      'asado': 'Asado',
-      'pelado': 'Pelado',
-      'envasado': 'Envasado',
-      'esterilizado': 'Esterilizado',
-      'quality_check': 'Control de Calidad',
-      'approved': 'Aprobado',
-      'rejected': 'Rechazado',
-      'shipped': 'Expedido',
-      'in_transit': 'En Tránsito',
-      'delivered': 'Entregado',
+      received: "Recibido",
+      asado: "Asado",
+      pelado: "Pelado",
+      envasado: "Envasado",
+      esterilizado: "Esterilizado",
+      quality_check: "Control de Calidad",
+      approved: "Aprobado",
+      rejected: "Rechazado",
+      shipped: "Expedido",
+      in_transit: "En Tránsito",
+      delivered: "Entregado",
     };
     return translations[status] || status;
   };
 
   const columns: Column<HistoryEntry>[] = [
-    { 
-      key: "createdAt", 
-      label: "Fecha/Hora"
+    {
+      key: "createdAt",
+      label: "Fecha/Hora",
     },
-    { 
-      key: "batchCode", 
+    {
+      key: "batchCode",
       label: "Código Lote",
-      render: (value) => <span className="font-mono font-medium">{value}</span>
+      render: (value) => <span className="font-mono font-medium">{value}</span>,
     },
     { key: "product", label: "Producto" },
-    { 
-      key: "action", 
+    {
+      key: "action",
       label: "Acción",
-      render: (value) => <span className="capitalize">{translateAction(value)}</span>
+      render: (value) => (
+        <span className="capitalize">{translateAction(value)}</span>
+      ),
     },
-    { 
-      key: "fromStatus", 
+    {
+      key: "fromStatus",
       label: "Estado Anterior",
-      render: (value) => value !== '-' ? <StatusBadge status={value} label={translateStatus(value)} /> : '-'
+      render: (value) =>
+        value !== "-" ? (
+          <StatusBadge status={value} label={translateStatus(value)} />
+        ) : (
+          "-"
+        ),
     },
-    { 
-      key: "toStatus", 
+    {
+      key: "toStatus",
       label: "Nuevo Estado",
-      render: (value) => value !== '-' ? <StatusBadge status={value} label={translateStatus(value)} /> : '-'
+      render: (value) =>
+        value !== "-" ? (
+          <StatusBadge status={value} label={translateStatus(value)} />
+        ) : (
+          "-"
+        ),
     },
-    { key: "notes", label: "Notas" },
+    {
+      key: "txHash",
+      label: "Blockchain",
+      render: (value) =>
+        value ? (
+          <a
+            href={`https://sepolia.etherscan.io/tx/${value}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-fit font-medium text-xs border border-blue-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Verificar
+            <ExternalLink className="h-3 w-3 opacity-50" />
+          </a>
+        ) : (
+          <span className="text-muted-foreground text-xs opacity-50">-</span>
+        ),
+    },
   ];
 
-  const filteredEntries = historyEntries.filter(entry => 
-    entry.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.action.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEntries = historyEntries.filter(
+    (entry) =>
+      entry.batchCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.action.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -135,40 +182,22 @@ export default function Historial() {
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-3 text-sm">
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">1</span>
-            </div>
-            <div>
-              <p className="font-medium">Registro de Todas las Operaciones</p>
-              <p className="text-muted-foreground">
-                Aquí se registran <strong>todas las acciones</strong> realizadas sobre los lotes: recepción, asado, pelado, envasado, esterilizado, control de calidad y expedición.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">2</span>
-            </div>
-            <div>
-              <p className="font-medium">Auditoría Completa</p>
-              <p className="text-muted-foreground">
-                Cada registro muestra la <strong>fecha/hora exacta</strong>, el lote afectado, la acción realizada, 
-                el cambio de estado y notas adicionales. Ideal para auditorías y seguimiento.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">3</span>
-            </div>
-            <div>
-              <p className="font-medium">Búsqueda Rápida</p>
-              <p className="text-muted-foreground">
-                Utiliza el buscador para filtrar por código de lote, producto o tipo de acción.
-              </p>
-            </div>
-          </div>
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-2 mt-0.5">
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold text-xs">
+                    1
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium">Certificación Blockchain</p>
+                  <p className="text-muted-foreground">
+                    Los registros marcados con{" "}
+                    <ShieldCheck className="h-3 w-3 inline text-blue-600" />{" "}
+                    están inmutablemente guardados en la red Ethereum Sepolia.
+                    Haz clic para ver el certificado oficial.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </CollapsibleContent>
         </Card>
