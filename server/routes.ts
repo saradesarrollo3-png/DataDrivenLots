@@ -34,6 +34,7 @@ import {
   recordBatchOnChain,
   certifyBatchOnChain,
   generateTraceabilityQR,
+  getBatchHistory,
 } from "./blockchain";
 
 // Inicializar al arrancar
@@ -1056,6 +1057,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .from(users)
       .where(eq(users.organizationId, req.user!.organizationId));
     res.json(orgUsers);
+  });
+
+  // NUEVA RUTA: Obtener historial de blockchain (real o simulado)
+  app.get("/api/traceability/:code", async (req, res) => {
+    try {
+      const history = await getBatchHistory(req.params.code);
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ message: "Error obteniendo trazabilidad" });
+    }
   });
 
   app.post("/api/admin/users", requireAuth, async (req, res) => {
