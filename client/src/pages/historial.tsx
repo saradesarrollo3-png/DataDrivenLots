@@ -431,59 +431,30 @@ export default function Trazabilidad() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {filteredShipments.map((shipment) => {
-                // Buscar el evento de expedición para obtener el txHash
-                const expedicionEvent = traceabilityEvents.find(
-                  (e: any) =>
-                    e.eventType === "EXPEDICION" &&
-                    e.shipmentId === shipment.shipment.id
-                );
-
-                return (
-                  <button
-                    key={shipment.shipment.id}
-                    onClick={() => setSelectedShipmentId(shipment.shipment.id)}
-                    className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono font-medium">
-                            {shipment.batch?.batchCode || "-"}
-                          </span>
-                          <Badge variant="outline">
-                            {shipment.shipment.shipmentCode}
-                          </Badge>
-                          {expedicionEvent?.txHash && (
-                            <a
-                              href={`https://sepolia.etherscan.io/tx/${expedicionEvent.txHash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-1 rounded text-xs font-medium border border-blue-200"
-                              title="Ver en Blockchain"
-                            >
-                              <ShieldCheck className="h-3 w-3" />
-                              Blockchain
-                              <ExternalLink className="h-2.5 w-2.5 opacity-50" />
-                            </a>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {shipment.product?.name || "-"} • Cliente:{" "}
-                          {shipment.customer?.name || "-"}
-                        </div>
-                        {expedicionEvent?.txHash && (
-                          <div className="text-xs text-muted-foreground mt-1 font-mono">
-                            TX: {expedicionEvent.txHash.slice(0, 10)}...
-                            {expedicionEvent.txHash.slice(-8)}
-                          </div>
-                        )}
+              {filteredShipments.map((shipment) => (
+                <button
+                  key={shipment.shipment.id}
+                  onClick={() => setSelectedShipmentId(shipment.shipment.id)}
+                  className="w-full text-left p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-medium">
+                          {shipment.batch?.batchCode || "-"}
+                        </span>
+                        <Badge variant="outline">
+                          {shipment.shipment.shipmentCode}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {shipment.product?.name || "-"} • Cliente:{" "}
+                        {shipment.customer?.name || "-"}
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                  </div>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
