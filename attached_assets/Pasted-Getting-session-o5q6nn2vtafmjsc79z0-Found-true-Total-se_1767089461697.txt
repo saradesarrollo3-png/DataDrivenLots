@@ -1,0 +1,39 @@
+Getting session: o5q6nn2vtafmjsc79z0 Found: true Total sessions: 1
+🔗 Certificando en Sepolia: fff-Frasco...
+❌ Error certificando: Error: execution reverted: "El lote no existe" (action="estimateGas", data="0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000011456c206c6f7465206e6f20657869737465000000000000000000000000000000", reason="El lote no existe", transaction={ "data": "0xcc7c83a100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000a6666662d46726173636f00000000000000000000000000000000000000000000", "from": "0xbc4Fb00B11EE258a4DE13E0aE11E5815777d1dAf", "to": "0x32Ef9E130f1AD59840650F71eD16aDE33227eE38" }, invocation=null, revert={ "args": [ "El lote no existe" ], "name": "Error", "signature": "Error(string)" }, code=CALL_EXCEPTION, version=6.16.0)
+    at makeError (/home/runner/workspace/node_modules/ethers/src.ts/utils/errors.ts:698:21)
+    at getBuiltinCallException (/home/runner/workspace/node_modules/ethers/src.ts/abi/abi-coder.ts:118:12)
+    at Function.getBuiltinCallException (/home/runner/workspace/node_modules/ethers/src.ts/abi/abi-coder.ts:235:16)
+    at JsonRpcProvider.getRpcError (/home/runner/workspace/node_modules/ethers/src.ts/providers/provider-jsonrpc.ts:1016:32)
+    at <anonymous> (/home/runner/workspace/node_modules/ethers/src.ts/providers/provider-jsonrpc.ts:571:45)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  code: 'CALL_EXCEPTION',
+  action: 'estimateGas',
+  data: '0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000011456c206c6f7465206e6f20657869737465000000000000000000000000000000',
+  reason: 'El lote no existe',
+  transaction: {
+    to: '0x32Ef9E130f1AD59840650F71eD16aDE33227eE38',
+    data: '0xcc7c83a100000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000a6666662d46726173636f00000000000000000000000000000000000000000000',
+    from: '0xbc4Fb00B11EE258a4DE13E0aE11E5815777d1dAf'
+  },
+  invocation: null,
+  revert: {
+    signature: 'Error(string)',
+    name: 'Error',
+    args: [ 'El lote no existe' ]
+  },
+  shortMessage: 'execution reverted: "El lote no existe"',
+  info: {
+    error: {
+      code: 3,
+      message: 'execution reverted: El lote no existe',
+      data: '0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000011456c206c6f7465206e6f20657869737465000000000000000000000000000000'
+    },
+    payload: {
+      method: 'eth_estimateGas',
+      params: [Array],
+      id: 5,
+      jsonrpc: '2.0'
+    }
+  }
+}
