@@ -610,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const prodName = batchInfo?.product?.name || "Procesado";
       // Registramos la etapa actual (ASADO, PELADO, etc.)
-      recordBatchOnChain(data.outputBatchCode, prodName, data.stage);
+      const txHash = await recordBatchOnChain(data.outputBatchCode, prodName, data.stage);
       // --- FIN BLOQUE BLOCKCHAIN ---
       // Crear historial con el estado específico de la etapa
       const stageStatusMap: Record<string, string> = {
@@ -808,14 +808,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       data.batchId,
       req.user!.organizationId,
     );
-    let txHash: string | null = null; // 1. Creamos la variable vacía
+    let txHash: string | null = null;
 
     if (bInfo) {
-      // 2. Esperamos (await) a que la blockchain nos dé el recibo y lo guardamos
-      txHash = await certifyBatchOnChain(
-        bInfo.batch.batchCode,
-        data.approved === 1,
-      );
+      try {
+        // Primero intentamos registrar el lote si no existe
+        const prodName = bInfo.product?.name || "Procesado";
+        await recordBatchOnChain(bInfo.batch.batchCode, prodName, "CALIDAD");
+        
+        // Luego certificamos la calidad
+        txHash = await certifyBatchOnChain(
+          bInfo.batch.batchCode,
+          data.approved === 1,
+        );
+      } catch (error) {
+        console.error("⚠️ Error en blockchain (no crítico):", error);
+        // Continuar sin blockchain - no es crítico
+        txHash = null;
+      }
     }
     // --- FIN BLOQUE BLOCKCHAIN ---
     // Update batch status and expiry date based on approval
@@ -965,6 +975,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
           : null;
 
+        // Registrar en blockchain
+        const prodName = product?.name || "Producto";
+        const shipmentTxHash = await recordBatchOnChain(
+          batchData.batch.batchCode,
+          prodName,
+          "EXPEDICION"
+        );
+
         await storage.insertTraceabilityEvent({
           organizationId: req.user!.organizationId,
           eventType: "EXPEDICION",
@@ -985,7 +1003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           performedBy: req.user!.id,
           performedAt: new Date(),
           processedDate: batchData.batch.processedDate || new Date(),
-          txHash: txHash || null,
+          txHash: shipmentTxHash || null,
         });
       }
 
